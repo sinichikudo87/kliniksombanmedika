@@ -1,5 +1,5 @@
 <div align="center">
-  <img width="1200" height="475" alt="GHBanner" src="icon.jpeg" />
+  <img width="1200" height="475" alt="GHBanner" src="/icon.jpeg" />
 </div>
 
 # Aplikasi Bridging BPJS Kesehatan — Klinik Somban Medika
