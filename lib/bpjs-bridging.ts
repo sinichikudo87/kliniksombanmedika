@@ -3,14 +3,14 @@ import { BpjsBridgingConfig, BridgingLog } from '@/types/queue';
 // Default config from user's provided credentials in TPMD DR MACHMUJUR
 export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
   kdFaskes: "019U901",
-  namaFaskes: "TPMD DR MACHMUJUR",
+  namaFaskes: "KLINIK SOMBAN MEDIKA",
   jenisBridging: "Pcare (Eclaim) & Antrean Online",
   consId: "11495",
   secretKey: "4xHABA0A84",
   userKey: "4a1a84234ffc19f0c77750cebfa2444e",
   userPcareDev: "0195U091-dev",
   passPcareDev: "Dev1234#",
-  emailFaskes: "praktekdokter91@gmail.com",
+  emailFaskes: "sombanmedika@gmail.com",
   environment: "tester",
   baseUrl: "https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev",
   isOnline: true,

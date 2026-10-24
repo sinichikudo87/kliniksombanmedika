@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQueue } from '@/lib/queue-context';
+import { useAuth } from '@/lib/auth-context';
+import { LoginFormModal } from '@/components/LoginFormModal';
+import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { chimePlayer } from '@/lib/tts-announcer';
 import {
   CreditCard,
@@ -14,7 +17,14 @@ import {
   BellRing,
   Activity,
   Lock,
+  User,
+  LogOut,
+  LogIn,
+  Stethoscope,
+  KeyRound,
 } from 'lucide-react';
+
+import Image from 'next/image';
 
 interface NavbarProps {
   currentTab: 'KIOSK' | 'OPERATOR' | 'SECURITY' | 'TV';
@@ -24,7 +34,20 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpenSettings }) => {
   const { bpjsConfig, audioEnabled, setAudioEnabled } = useQueue();
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    isLoginModalOpen,
+    setIsLoginModalOpen,
+    isChangePasswordModalOpen,
+    setIsChangePasswordModalOpen,
+    lastLoginSource,
+  } = useAuth();
   const [formattedTime, setFormattedTime] = useState<string>('');
+
+  // Keamanan dan DB hanya bisa dilihat oleh Administrator RME
+  const isRmeAdmin = Boolean(user && user.role === 'ADMIN_RME');
 
   useEffect(() => {
     const updateTime = () => {
@@ -51,8 +74,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
         <div className="flex items-center justify-between h-16 gap-3">
           {/* Brand Logo & Clinic Info */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-emerald-500 flex items-center justify-center text-white shadow-sm ring-1 ring-emerald-700/20 shrink-0">
-              <Activity className="w-5 h-5" />
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
+              <Image
+                src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+                alt="Logo Somban Medika"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain p-0.5"
+                referrerPolicy="no-referrer"
+                priority
+              />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -77,7 +108,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
           <nav className="hidden lg:flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/70 shadow-2xs">
             <button
               onClick={() => setCurrentTab('KIOSK')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 currentTab === 'KIOSK'
                   ? 'bg-white text-emerald-900 shadow-xs ring-1 ring-slate-900/5'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -89,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
 
             <button
               onClick={() => setCurrentTab('OPERATOR')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 currentTab === 'OPERATOR'
                   ? 'bg-white text-emerald-900 shadow-xs ring-1 ring-slate-900/5'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -101,7 +132,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
 
             <button
               onClick={() => setCurrentTab('TV')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 currentTab === 'TV'
                   ? 'bg-emerald-700 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
@@ -111,17 +142,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               <span>Mode TV Display</span>
             </button>
 
-            <button
-              onClick={() => setCurrentTab('SECURITY')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                currentTab === 'SECURITY'
-                  ? 'bg-white text-emerald-900 shadow-xs ring-1 ring-slate-900/5'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-              }`}
-            >
-              <Lock className={`w-3.5 h-3.5 ${currentTab === 'SECURITY' ? 'text-emerald-600' : 'text-slate-400'}`} />
-              <span>Database Terenkripsi</span>
-            </button>
+            {isRmeAdmin && (
+              <button
+                onClick={() => setCurrentTab('SECURITY')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  currentTab === 'SECURITY'
+                    ? 'bg-white text-emerald-900 shadow-xs ring-1 ring-slate-900/5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <Lock className={`w-3.5 h-3.5 ${currentTab === 'SECURITY' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                <span>Database & Keamanan</span>
+              </button>
+            )}
           </nav>
 
           {/* Right Area: Live Clock, Audio Controls, Bridging Settings */}
@@ -163,6 +196,58 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               <Settings className="w-3.5 h-3.5 text-slate-500" />
               <span className="hidden sm:inline font-semibold">Bridging BPJS</span>
             </button>
+
+            {/* User Account / Login Button */}
+            {isAuthenticated && user ? (
+              <div className="flex items-center gap-1.5 bg-slate-100 border border-slate-200/80 pl-2 pr-1.5 py-1 rounded-xl text-xs">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
+                    {user.namaLengkap.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="hidden xl:block min-w-0 text-left">
+                    <div className="font-bold text-slate-800 text-[11px] truncate max-w-[110px] leading-tight">
+                      {user.namaLengkap}
+                    </div>
+                    <div className="text-[9px] text-slate-500 font-mono flex items-center gap-1">
+                      <span>[{user.role}]</span>
+                      <span className="text-emerald-700 font-bold">● {lastLoginSource === 'MYSQL' ? 'MySQL' : 'Server'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setIsChangePasswordModalOpen(true)}
+                  title="Ubah Password Akun"
+                  className="p-1 text-slate-500 hover:text-emerald-700 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  title="Ganti Akun Petugas"
+                  className="p-1 text-slate-500 hover:text-slate-800 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  onClick={logout}
+                  title="Keluar (Logout)"
+                  className="p-1 text-red-500 hover:text-red-700 rounded-lg hover:bg-white transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="h-9 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Login Petugas</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -198,18 +283,31 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
           >
             Mode TV
           </button>
-          <button
-            onClick={() => setCurrentTab('SECURITY')}
-            className={`flex-1 min-w-[76px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
-              currentTab === 'SECURITY'
-                ? 'bg-emerald-50 text-emerald-800 font-bold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Keamanan
-          </button>
+          {isRmeAdmin && (
+            <button
+              onClick={() => setCurrentTab('SECURITY')}
+              className={`flex-1 min-w-[76px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
+                currentTab === 'SECURITY'
+                  ? 'bg-emerald-50 text-emerald-800 font-bold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Keamanan & DB
+            </button>
+          )}
         </div>
       </div>
+
+      <LoginFormModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+        isMandatory={Boolean(user?.mustChangePassword)}
+      />
     </header>
   );
 };

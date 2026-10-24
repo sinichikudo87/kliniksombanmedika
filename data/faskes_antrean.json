@@ -1,0 +1,89 @@
+{
+  "version": "2.0.0",
+  "faskes": {
+    "kdFaskes": "019U901",
+    "namaFaskes": "TPMD DR MACHMUJUR"
+  },
+  "config": {
+    "consId": "11495",
+    "secretKey": "4xHABA0A84",
+    "userKey": "4a1a84234ffc19f0c77750cebfa2444e",
+    "kdFaskes": "019U901",
+    "namaFaskes": "TPMD DR MACHMUJUR",
+    "devUser": "0195U091-dev",
+    "devPass": "Dev1234#",
+    "environment": "tester",
+    "baseUrl": "https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev"
+  },
+  "users": [
+    {
+      "id": "usr-1",
+      "username": "0195U091-dev",
+      "passwordHash": "000000",
+      "namaLengkap": "Operator Bridging BPJS (VClaim)",
+      "role": "ADMIN_BRIDGING",
+      "nip": "198805122010011001",
+      "kdFaskes": "019U901",
+      "isActive": true,
+      "lastLogin": "2026-10-23T08:00:00.000Z"
+    },
+    {
+      "id": "usr-2",
+      "username": "admin",
+      "passwordHash": "000000",
+      "namaLengkap": "Administrator Rekam Medis (RME)",
+      "role": "ADMIN_RME",
+      "nip": "199003202015022002",
+      "kdFaskes": "019U901",
+      "isActive": true,
+      "lastLogin": "2026-10-23T08:30:00.000Z"
+    },
+    {
+      "id": "usr-3",
+      "username": "dr.machmujur",
+      "passwordHash": "000000",
+      "namaLengkap": "dr. Machmujur, M.Kes",
+      "role": "DOKTER",
+      "nip": "197508152002121003",
+      "kdFaskes": "019U901",
+      "isActive": true,
+      "lastLogin": "2026-10-23T07:15:00.000Z"
+    },
+    {
+      "id": "usr-4",
+      "username": "loket01",
+      "passwordHash": "000000",
+      "namaLengkap": "Petugas Pendaftaran Loket 01",
+      "role": "PETUGAS_LOKET",
+      "nip": "199511252019032004",
+      "kdFaskes": "019U901",
+      "isActive": true,
+      "lastLogin": "2026-10-23T07:00:00.000Z"
+    },
+    {
+      "id": "usr-5",
+      "username": "farmasi01",
+      "passwordHash": "000000",
+      "namaLengkap": "Apt. Farhan Maulana, S.Farm",
+      "role": "PETUGAS_FARMASI",
+      "nip": "199204102017011005",
+      "kdFaskes": "019U901",
+      "isActive": true,
+      "lastLogin": "2026-10-23T07:30:00.000Z"
+    }
+  ],
+  "patients": [],
+  "queues": [],
+  "securityLogs": [
+    {
+      "id": "sec-init",
+      "timestamp": "2026-10-23T00:00:00.000Z",
+      "actor": "Sistem Database RME",
+      "action": "KEY_ROTATE",
+      "status": "SUCCESS",
+      "details": "Basis data produksi diinisialisasi. Seluruh data pasien & antrean terhubung live ke database."
+    }
+  ],
+  "bridgingLogs": [],
+  "lastUpdated": "2026-10-24T00:40:00.000Z"
+}

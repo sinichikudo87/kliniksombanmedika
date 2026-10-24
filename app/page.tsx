@@ -1,19 +1,74 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { QueueProvider, useQueue } from '@/lib/queue-context';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { Navbar } from '@/components/Navbar';
 import { KioskMode } from '@/components/KioskMode';
 import { OperatorDashboard } from '@/components/OperatorDashboard';
 import { TvDisplayMode } from '@/components/TvDisplayMode';
 import { SecurityDatabaseView } from '@/components/SecurityDatabaseView';
 import { BridgingSettingsModal } from '@/components/BridgingSettingsModal';
-import { ShieldCheck, ArrowRight, HeartPulse, Sparkles, Building2, Phone, Mail } from 'lucide-react';
+import { InitialLoginView } from '@/components/InitialLoginView';
+import { ChangePasswordModal } from '@/components/ChangePasswordModal';
+import Image from 'next/image';
+import { ShieldCheck, ArrowRight, HeartPulse, Sparkles, Building2, Phone, Mail, Lock } from 'lucide-react';
 
 function MainApp() {
+  const { user, isAuthenticated } = useAuth();
   const [currentTab, setCurrentTab] = useState<'KIOSK' | 'OPERATOR' | 'SECURITY' | 'TV'>('KIOSK');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPatientBypass, setIsPatientBypass] = useState(false);
   const { bpjsConfig } = useQueue();
+
+  const isRmeAdmin = Boolean(user && user.role === 'ADMIN_RME');
+
+  const prevAuthRef = useRef(isAuthenticated);
+  useEffect(() => {
+    // If user was logged in and now logged out, return to Login Form screen
+    if (prevAuthRef.current && !isAuthenticated) {
+      setIsPatientBypass(false);
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated]);
+
+  // Initial Screen: Display Login Form first if not logged in
+  if (!isAuthenticated && !isPatientBypass) {
+    return (
+      <InitialLoginView
+        onBypassToKiosk={() => {
+          setIsPatientBypass(true);
+          setCurrentTab('KIOSK');
+        }}
+      />
+    );
+  }
+
+  // Jika login terdeteksi menggunakan password awal (000000), redirect wajib ubah password
+  if (isAuthenticated && user?.mustChangePassword) {
+    return (
+      <div className="relative min-h-screen bg-slate-900 flex items-center justify-center p-4 overflow-hidden">
+        {/* Large Transparent Background Watermark Logo */}
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
+          <div className="relative w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] opacity-[0.06] grayscale transform -rotate-12">
+            <Image
+              src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+              alt="Watermark Logo Somban Medika"
+              fill
+              className="object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        </div>
+
+        <ChangePasswordModal
+          isOpen={true}
+          onClose={() => {}}
+          isMandatory={true}
+        />
+      </div>
+    );
+  }
 
   // If in TV Mode, render fullscreen waiting room display
   if (currentTab === 'TV') {
@@ -32,8 +87,21 @@ function MainApp() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 flex flex-col justify-between font-sans">
-      <div>
+    <div className="relative min-h-screen bg-slate-100/70 text-slate-900 flex flex-col justify-between font-sans overflow-hidden">
+      {/* Large Transparent Background Watermark Logo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
+        <div className="relative w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] lg:w-[880px] lg:h-[880px] opacity-[0.035] grayscale transform -rotate-12">
+          <Image
+            src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+            alt="Watermark Logo Somban Medika"
+            fill
+            className="object-contain"
+            referrerPolicy="no-referrer"
+          />
+        </div>
+      </div>
+
+      <div className="relative z-10">
         <Navbar
           currentTab={currentTab}
           setCurrentTab={setCurrentTab}
@@ -43,12 +111,26 @@ function MainApp() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {currentTab === 'KIOSK' && <KioskMode />}
           {currentTab === 'OPERATOR' && <OperatorDashboard />}
-          {currentTab === 'SECURITY' && <SecurityDatabaseView />}
+          {currentTab === 'SECURITY' && (
+            isRmeAdmin ? (
+              <SecurityDatabaseView />
+            ) : (
+              <div className="bg-white rounded-3xl p-8 sm:p-12 border border-red-200 text-center max-w-xl mx-auto my-12 shadow-lg">
+                <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center mx-auto mb-5 shadow-xs">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black text-slate-900 mb-2">Akses Terbatas: Administrator RME</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
+                  Modul Keamanan dan Basis Data hanya dapat dilihat oleh Administrator RME.
+                </p>
+              </div>
+            )
+          )}
         </main>
       </div>
 
       {/* Hospital Footer */}
-      <footer className="bg-white border-t border-slate-200/80 mt-12 py-8">
+      <footer className="relative z-10 bg-white border-t border-slate-200/80 mt-12 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-xs text-slate-500">
             <div className="space-y-2 md:col-span-2">
@@ -114,8 +196,10 @@ function MainApp() {
 
 export default function Home() {
   return (
-    <QueueProvider>
-      <MainApp />
-    </QueueProvider>
+    <AuthProvider>
+      <QueueProvider>
+        <MainApp />
+      </QueueProvider>
+    </AuthProvider>
   );
 }

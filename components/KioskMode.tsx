@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useQueue } from '@/lib/queue-context';
 import { verifyBpjsParticipant } from '@/lib/bpjs-bridging';
 import { ThermalTicketModal } from './ThermalTicketModal';
@@ -126,19 +127,31 @@ export const KioskMode: React.FC = () => {
       <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white rounded-2xl p-6 sm:p-7 shadow-lg relative overflow-hidden border border-emerald-800/40">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-emerald-500/10 to-transparent pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5 text-xs font-semibold text-emerald-300">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span>Anjungan Mandiri Pasien</span>
-              <span className="text-emerald-600">·</span>
-              <span className="text-slate-300 font-normal">Bridging VClaim & PCare</span>
+          <div className="flex items-center gap-4">
+            <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-md border border-white/20 flex items-center justify-center shrink-0">
+              <Image
+                src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+                alt="Logo Somban Medika"
+                width={56}
+                height={56}
+                className="w-full h-full object-contain p-1"
+                referrerPolicy="no-referrer"
+              />
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              Pendaftaran & Cetak Tiket Antrean
-            </h1>
-            <p className="text-emerald-100/80 text-xs sm:text-sm mt-1">
-              TPMD DR. MACHMUJUR (Kode Faskes: {bpjsConfig.kdFaskes}) · Sentuh opsi di bawah untuk memulai
-            </p>
+            <div>
+              <div className="flex items-center gap-2 mb-1 text-xs font-semibold text-emerald-300">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Anjungan Mandiri Pasien</span>
+                <span className="text-emerald-500">·</span>
+                <span className="text-slate-300 font-normal">Bridging BPJS VClaim & PCare</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+                Pendaftaran & Cetak Tiket Antrean
+              </h1>
+              <p className="text-emerald-100/80 text-xs sm:text-sm mt-0.5">
+                {bpjsConfig.namaFaskes} (Kode Faskes: {bpjsConfig.kdFaskes}) · Sentuh opsi di bawah untuk memulai
+              </p>
+            </div>
           </div>
 
           {step !== 'TYPE' && (

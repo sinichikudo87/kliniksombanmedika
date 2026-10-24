@@ -47,214 +47,19 @@ interface QueueContextType {
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
-// Initial Patients Seed
-const INITIAL_PATIENTS: Patient[] = [
-  {
-    id: 'pat-1',
-    nik: '3201011508890001',
-    noBpjs: '0001234567890',
-    nama: 'BAMBANG PAMUNGKAS',
-    tglLahir: '1989-08-15',
-    jenisKelamin: 'L',
-    noHp: '081298765432',
-    alamat: 'Jl. Merdeka No. 45, RT 02/05',
-    statusBpjs: 'AKTIF',
-    jenisPeserta: 'PBI APBN',
-    faskesTingkat1: '019U901 - TPMD DR MACHMUJUR',
-    kelasRawat: 'Kelas 3',
-    createdAt: '2026-10-17T05:30:00.000Z',
-  },
-  {
-    id: 'pat-2',
-    nik: '3201022011920002',
-    noBpjs: '0002345678901',
-    nama: 'SITI NURHALIZA',
-    tglLahir: '1992-11-20',
-    jenisKelamin: 'P',
-    noHp: '085712345678',
-    alamat: 'Perum Graha Asri Blok B3 No. 12',
-    statusBpjs: 'AKTIF',
-    jenisPeserta: 'PPU BUMN',
-    faskesTingkat1: '019U901 - TPMD DR MACHMUJUR',
-    kelasRawat: 'Kelas 1',
-    createdAt: '2026-10-17T06:00:00.000Z',
-  },
-  {
-    id: 'pat-3',
-    nik: '3201031204850003',
-    noBpjs: '0003456789012',
-    nama: 'HENDRA WIJAYA',
-    tglLahir: '1985-04-12',
-    jenisKelamin: 'L',
-    noHp: '081345678901',
-    alamat: 'Kp. Melati RT 01/RW 03',
-    statusBpjs: 'AKTIF',
-    jenisPeserta: 'PBPU / Mandiri',
-    faskesTingkat1: '019U901 - TPMD DR MACHMUJUR',
-    kelasRawat: 'Kelas 2',
-    createdAt: '2026-10-17T06:30:00.000Z',
-  },
-  {
-    id: 'pat-4',
-    nik: '3201042509980004',
-    noBpjs: '0004567890123',
-    nama: 'NURUL HIDAYAH',
-    tglLahir: '1998-09-25',
-    jenisKelamin: 'P',
-    noHp: '087811223344',
-    alamat: 'Jl. Ahmad Yani No. 18',
-    statusBpjs: 'AKTIF',
-    jenisPeserta: 'PBI APBD',
-    faskesTingkat1: '019U901 - TPMD DR MACHMUJUR',
-    kelasRawat: 'Kelas 3',
-    createdAt: '2026-10-17T06:50:00.000Z',
-  },
-];
+// Initial state starts empty - all data loaded live from database
+const INITIAL_PATIENTS: Patient[] = [];
+const INITIAL_QUEUES: QueueItem[] = [];
 
-// Initial Queue Seed with fixed deterministic timestamps
-const INITIAL_QUEUES: QueueItem[] = [
-  {
-    id: 'q-1',
-    nomorAntrean: 'A-010',
-    prefix: 'A',
-    nomorUrut: 10,
-    tipePasien: 'BPJS',
-    poliKode: 'UMU',
-    poliNama: 'Poli Umum',
-    dokterNama: 'dr. Machmujur, M.Kes',
-    ruangNama: 'Ruang 01',
-    patientId: 'pat-1',
-    nik: '3201011508890001',
-    noBpjs: '0001234567890',
-    namaPasien: 'BAMBANG PAMUNGKAS',
-    status: 'DILAYANI',
-    waktuDaftar: '2026-10-17T06:00:00.000Z',
-    waktuDipanggil: '2026-10-17T06:50:00.000Z',
-    waktuMulaiLayanan: '2026-10-17T06:52:00.000Z',
-    estimasiWaktuTungguMenit: 0,
-    estimasiJamPanggil: 'SEKARANG',
-    bpjsTaskId: 5,
-    kodeBooking: 'BKJ-20261017-0010',
-    keluhan: 'Demam 3 hari disertai batuk pilek',
-    isSyncedBpjs: true,
-    panggilanKe: 1,
-  },
-  {
-    id: 'q-2',
-    nomorAntrean: 'A-011',
-    prefix: 'A',
-    nomorUrut: 11,
-    tipePasien: 'BPJS',
-    poliKode: 'UMU',
-    poliNama: 'Poli Umum',
-    dokterNama: 'dr. Machmujur, M.Kes',
-    ruangNama: 'Ruang 01',
-    patientId: 'pat-2',
-    nik: '3201022011920002',
-    noBpjs: '0002345678901',
-    namaPasien: 'SITI NURHALIZA',
-    status: 'MENUNGGU',
-    waktuDaftar: '2026-10-17T06:20:00.000Z',
-    estimasiWaktuTungguMenit: 5,
-    estimasiJamPanggil: '10:45 WIB',
-    bpjsTaskId: 3,
-    kodeBooking: 'BKJ-20261017-0011',
-    keluhan: 'Kontrol tekanan darah rutin hipertensi',
-    isSyncedBpjs: true,
-    panggilanKe: 0,
-  },
-  {
-    id: 'q-3',
-    nomorAntrean: 'A-012',
-    prefix: 'A',
-    nomorUrut: 12,
-    tipePasien: 'BPJS',
-    poliKode: 'UMU',
-    poliNama: 'Poli Umum',
-    dokterNama: 'dr. Machmujur, M.Kes',
-    ruangNama: 'Ruang 01',
-    patientId: 'pat-3',
-    nik: '3201031204850003',
-    noBpjs: '0003456789012',
-    namaPasien: 'HENDRA WIJAYA',
-    status: 'MENUNGGU',
-    waktuDaftar: '2026-10-17T06:40:00.000Z',
-    estimasiWaktuTungguMenit: 15,
-    estimasiJamPanggil: '10:55 WIB',
-    bpjsTaskId: 3,
-    kodeBooking: 'BKJ-20261017-0012',
-    keluhan: 'Nyeri lambung dan perut kembung',
-    isSyncedBpjs: true,
-    panggilanKe: 0,
-  },
-  {
-    id: 'q-4',
-    nomorAntrean: 'B-004',
-    prefix: 'B',
-    nomorUrut: 4,
-    tipePasien: 'BPJS',
-    poliKode: 'GIG',
-    poliNama: 'Poli Gigi & Mulut',
-    dokterNama: 'drg. Siti Sarah Amanda',
-    ruangNama: 'Ruang 02',
-    patientId: 'pat-4',
-    nik: '3201042509980004',
-    noBpjs: '0004567890123',
-    namaPasien: 'NURUL HIDAYAH',
-    status: 'DIPANGGIL',
-    waktuDaftar: '2026-10-17T06:35:00.000Z',
-    waktuDipanggil: '2026-10-17T06:58:00.000Z',
-    estimasiWaktuTungguMenit: 0,
-    estimasiJamPanggil: 'SEKARANG',
-    bpjsTaskId: 4,
-    kodeBooking: 'BKJ-20261017-0004',
-    keluhan: 'Pembersihan karang gigi & tambal sementara',
-    isSyncedBpjs: true,
-    panggilanKe: 1,
-  },
-  {
-    id: 'q-5',
-    nomorAntrean: 'F-007',
-    prefix: 'F',
-    nomorUrut: 7,
-    tipePasien: 'BPJS',
-    poliKode: 'FAR',
-    poliNama: 'Apotek & Farmasi',
-    dokterNama: 'Apt. Farhan Maulana, S.Farm',
-    ruangNama: 'Loket Farmasi',
-    patientId: 'pat-1',
-    nik: '3201011508890001',
-    noBpjs: '0001234567890',
-    namaPasien: 'BAMBANG PAMUNGKAS',
-    status: 'MENUNGGU',
-    waktuDaftar: '2026-10-17T06:55:00.000Z',
-    estimasiWaktuTungguMenit: 6,
-    estimasiJamPanggil: '10:48 WIB',
-    bpjsTaskId: 6,
-    kodeBooking: 'BKJ-20261017-0007',
-    keluhan: 'Resep obat poli umum',
-    isSyncedBpjs: true,
-    panggilanKe: 0,
-  },
-];
-
-// Initial Security Logs Seed defined outside component
+// Initial Security Logs Seed
 const INITIAL_SECURITY_LOGS: AuditSecurityLog[] = [
   {
-    id: 'sec-1',
-    timestamp: '2026-10-17T06:30:00.000Z',
-    actor: 'Sistem Kriptografi TPMD',
+    id: 'sec-init',
+    timestamp: '2026-10-23T00:00:00.000Z',
+    actor: 'Sistem Database RME',
     action: 'KEY_ROTATE',
     status: 'SUCCESS',
-    details: 'Inisialisasi Master Key AES-256-GCM Faskes 019U901 berhasil (PBKDF2 SHA-256).',
-  },
-  {
-    id: 'sec-2',
-    timestamp: '2026-10-17T07:00:00.000Z',
-    actor: 'Loket Pendaftaran',
-    action: 'ENCRYPT',
-    status: 'SUCCESS',
-    details: 'Enkripsi PII Pasien NIK 320101******0001 tersimpan di database aman.',
+    details: 'Basis data terhubung live. Seluruh antrean dan pasien tersimpan ke database.',
   },
 ];
 
@@ -265,25 +70,65 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [bpjsConfig, setBpjsConfig] = useState<BpjsBridgingConfig>(DEFAULT_BPJS_CONFIG);
   const [bridgingLogs, setBridgingLogs] = useState<BridgingLog[]>([]);
   const [securityLogs, setSecurityLogs] = useState<AuditSecurityLog[]>(INITIAL_SECURITY_LOGS);
-  const [currentCalled, setCurrentCalled] = useState<QueueItem | null>(INITIAL_QUEUES[3]); // B-004
+  const [currentCalled, setCurrentCalled] = useState<QueueItem | null>(null);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
 
-  // Load from localStorage asynchronously after mount to prevent hydration mismatch and cascading renders
+  // Synchronize state with Server Database on mount and live polling
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let isMounted = true;
+
+    // Purge legacy dummy data from localStorage if present
+    try {
+      const savedQueues = localStorage.getItem('tpmd_queues');
+      if (savedQueues && (savedQueues.includes('pat-1') || savedQueues.includes('A-010') || savedQueues.includes('BAMBANG'))) {
+        localStorage.removeItem('tpmd_queues');
+        localStorage.removeItem('tpmd_patients');
+      }
+    } catch {}
+
+    const fetchServerDb = async () => {
       try {
-        const savedQueues = localStorage.getItem('tpmd_queues');
-        if (savedQueues) setQueues(JSON.parse(savedQueues));
-        const savedPatients = localStorage.getItem('tpmd_patients');
-        if (savedPatients) setPatients(JSON.parse(savedPatients));
-        const savedConfig = localStorage.getItem('tpmd_bpjs_config');
-        if (savedConfig) setBpjsConfig(JSON.parse(savedConfig));
-      } catch {}
-    }, 0);
-    return () => clearTimeout(timer);
+        const res = await fetch('/api/db');
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data && isMounted) {
+            setQueues(json.data.queues || []);
+            setPatients(json.data.patients || []);
+            if (json.data.config) setBpjsConfig(json.data.config);
+            if (json.data.securityLogs) setSecurityLogs(json.data.securityLogs);
+            if (json.data.bridgingLogs) setBridgingLogs(json.data.bridgingLogs);
+
+            // Find currently called queue for TV display sync
+            const activeCall = (json.data.queues || []).find(
+              (q: QueueItem) => q.status === 'DIPANGGIL'
+            );
+            setCurrentCalled(activeCall || null);
+          }
+        }
+      } catch (err) {
+        // Fallback to local storage if offline
+        try {
+          const savedQueues = localStorage.getItem('tpmd_queues');
+          if (savedQueues && isMounted) setQueues(JSON.parse(savedQueues));
+          const savedPatients = localStorage.getItem('tpmd_patients');
+          if (savedPatients && isMounted) setPatients(JSON.parse(savedPatients));
+        } catch {}
+      }
+    };
+
+    // Initial fetch
+    fetchServerDb();
+
+    // Live sync polling every 3.5 seconds across all clinic screens (Kiosk, Loket, TV Display)
+    const syncInterval = setInterval(fetchServerDb, 3500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(syncInterval);
+    };
   }, []);
 
-  // Save changes
+  // Save changes locally for offline resilience
   useEffect(() => {
     try {
       localStorage.setItem('tpmd_queues', JSON.stringify(queues));
@@ -467,6 +312,22 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setPatients((prev) => [newPatient, ...prev]);
     setQueues((prev) => [...prev, newQueueItem]);
 
+    // Persist to Server Database
+    try {
+      await fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_patient', payload: newPatient }),
+      });
+      await fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_queue', payload: newQueueItem }),
+      });
+    } catch (err) {
+      console.warn('Gagal sync ke server db:', err);
+    }
+
     return newQueueItem;
   };
 
@@ -474,14 +335,18 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const item = queues.find((q) => q.id === id);
     if (!item) return;
 
+    const waktuDipanggil = new Date().toISOString();
+    const panggilanKe = (item.panggilanKe || 0) + 1;
+    const bpjsTaskId = 4;
+
     const updatedQueues = queues.map((q) => {
       if (q.id === id) {
         return {
           ...q,
           status: 'DIPANGGIL' as const,
-          waktuDipanggil: new Date().toISOString(),
-          panggilanKe: (q.panggilanKe || 0) + 1,
-          bpjsTaskId: 4, // Task 4: Panggil Poli
+          waktuDipanggil,
+          panggilanKe,
+          bpjsTaskId,
         };
       }
       return q;
@@ -490,6 +355,26 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setQueues(updatedQueues);
     const updatedItem = updatedQueues.find((q) => q.id === id) || item;
     setCurrentCalled(updatedItem);
+
+    // Persist to Server Database
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_queue',
+          payload: {
+            id,
+            updates: {
+              status: 'DIPANGGIL',
+              waktuDipanggil,
+              panggilanKe,
+              bpjsTaskId,
+            },
+          },
+        }),
+      });
+    } catch {}
 
     // Announce with Hospital Chime + Indonesian TTS
     if (audioEnabled) {
@@ -522,19 +407,41 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const startService = async (id: string) => {
+    const waktuMulaiLayanan = new Date().toISOString();
+    const bpjsTaskId = 5;
+
     const updatedQueues = queues.map((q) => {
       if (q.id === id) {
         return {
           ...q,
           status: 'DILAYANI' as const,
-          waktuMulaiLayanan: new Date().toISOString(),
-          bpjsTaskId: 5, // Task 5: Mulai Pelayanan
+          waktuMulaiLayanan,
+          bpjsTaskId,
         };
       }
       return q;
     });
 
     setQueues(updatedQueues);
+
+    // Persist to Server Database
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_queue',
+          payload: {
+            id,
+            updates: {
+              status: 'DILAYANI',
+              waktuMulaiLayanan,
+              bpjsTaskId,
+            },
+          },
+        }),
+      });
+    } catch {}
 
     const item = updatedQueues.find((q) => q.id === id);
     if (item) {
@@ -560,19 +467,42 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const finishQueue = async (id: string) => {
+    const waktuSelesai = new Date().toISOString();
+    let bpjsTaskId = 6;
+
     const updatedQueues = queues.map((q) => {
       if (q.id === id) {
+        bpjsTaskId = q.poliKode === 'FAR' ? 7 : 6;
         return {
           ...q,
           status: 'SELESAI' as const,
-          waktuSelesai: new Date().toISOString(),
-          bpjsTaskId: q.poliKode === 'FAR' ? 7 : 6,
+          waktuSelesai,
+          bpjsTaskId,
         };
       }
       return q;
     });
 
     setQueues(updatedQueues);
+
+    // Persist to Server Database
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_queue',
+          payload: {
+            id,
+            updates: {
+              status: 'SELESAI',
+              waktuSelesai,
+              bpjsTaskId,
+            },
+          },
+        }),
+      });
+    } catch {}
 
     const item = updatedQueues.find((q) => q.id === id);
     if (item) {
@@ -601,6 +531,17 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setQueues((prev) =>
       prev.map((q) => (q.id === id ? { ...q, status: 'DILEWATI' as const } : q))
     );
+
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_queue',
+          payload: { id, updates: { status: 'DILEWATI' } },
+        }),
+      });
+    } catch {}
   };
 
   const cancelQueue = async (id: string) => {
@@ -608,6 +549,17 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setQueues((prev) =>
       prev.map((q) => (q.id === id ? { ...q, status: 'BATAL' as const } : q))
     );
+
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_queue',
+          payload: { id, updates: { status: 'BATAL' } },
+        }),
+      });
+    } catch {}
 
     if (item) {
       const headers = await getBpjsHeaders(bpjsConfig);
@@ -669,12 +621,29 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     setQueues((prev) => [...prev, farItem]);
+
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_queue', payload: farItem }),
+      });
+    } catch {}
+
     return farItem;
   };
 
   const updateBpjsConfig = (newConfig: Partial<BpjsBridgingConfig>) => {
     setBpjsConfig((prev) => ({ ...prev, ...newConfig }));
     addSecurityLog('KEY_ROTATE', 'Konfigurasi kredensial BPJS Bridging diperbarui oleh admin.');
+
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_config', payload: newConfig }),
+      });
+    } catch {}
   };
 
   const testBridgingPing = async () => {
@@ -719,10 +688,19 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const resetToSampleData = () => {
     setQueues(INITIAL_QUEUES);
     setPatients(INITIAL_PATIENTS);
+    setCurrentCalled(null);
     setBpjsConfig(DEFAULT_BPJS_CONFIG);
     localStorage.removeItem('tpmd_queues');
     localStorage.removeItem('tpmd_patients');
     localStorage.removeItem('tpmd_bpjs_config');
+
+    try {
+      fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' }),
+      });
+    } catch {}
   };
 
   return (

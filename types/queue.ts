@@ -99,9 +99,28 @@ export interface AuditSecurityLog {
   id: string;
   timestamp: string;
   actor: string;
-  action: 'ENCRYPT' | 'DECRYPT' | 'EXPORT' | 'KEY_ROTATE' | 'ACCESS_RECORD';
+  action: 'ENCRYPT' | 'DECRYPT' | 'EXPORT' | 'KEY_ROTATE' | 'ACCESS_RECORD' | 'LOGIN' | 'LOGOUT';
   targetPatientId?: string;
   status: 'SUCCESS' | 'DENIED';
   ipAddress?: string;
   details: string;
+}
+
+export type UserRole =
+  | 'ADMIN_BRIDGING'
+  | 'ADMIN_RME'
+  | 'DOKTER'
+  | 'PETUGAS_LOKET'
+  | 'PETUGAS_FARMASI';
+
+export interface UserAccount {
+  id: string;
+  username: string;
+  namaLengkap: string;
+  role: UserRole;
+  nip?: string;
+  kdFaskes: string;
+  isActive: boolean;
+  lastLogin?: string;
+  mustChangePassword?: boolean;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { QueueItem } from '@/types/queue';
 import { Printer, X, QrCode, CheckCircle2 } from 'lucide-react';
 
@@ -47,10 +48,20 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
         {/* Printable Thermal Receipt Container */}
         <div id="printable-ticket" className="border border-dashed border-slate-300 rounded-lg p-5 bg-amber-50/20 font-mono text-center text-xs space-y-3">
           {/* Header */}
-          <div className="border-b border-dashed border-slate-300 pb-3">
-            <h2 className="font-bold text-sm tracking-wide text-slate-900">TPMD DR. MACHMUJUR</h2>
+          <div className="border-b border-dashed border-slate-300 pb-3 flex flex-col items-center">
+            <div className="w-10 h-10 mb-1 relative">
+              <Image
+                src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+                alt="Logo Somban Medika"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <h2 className="font-bold text-sm tracking-wide text-slate-900">KLINIK SOMBAN MEDIKA</h2>
             <p className="text-[10px] text-slate-600">Kode Faskes: 019U901 · Bridging BPJS</p>
-            <p className="text-[10px] text-slate-500">Jl. Raya Faskes No. 91 · Telp: (021) 8899-721</p>
+            <p className="text-[10px] text-slate-500">Layanan Antrean Pasien Terpadu</p>
           </div>
 
           {/* Ticket Body */}
