@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="kliniksombanmedika" src="/assets/images/logo.jpeg" />
+<img width="1200" height="475" alt="kliniksombanmedika" src="/raw/main/assets/images/logo.jpeg" />
 </div>
 
 **Prerequisites:**  Node.js
