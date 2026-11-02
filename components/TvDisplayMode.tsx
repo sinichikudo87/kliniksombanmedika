@@ -98,7 +98,7 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
         <div className="relative w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] lg:w-[920px] lg:h-[920px] opacity-[0.04] grayscale transform -rotate-12">
           <Image
-            src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+            src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
             alt="Watermark Logo Somban Medika"
             fill
             className="object-contain"
@@ -113,7 +113,7 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
         <div className="flex items-center gap-4">
           <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
             <Image
-              src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+              src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
               alt="Logo Somban Medika"
               width={48}
               height={48}
@@ -251,7 +251,7 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
               <div className="mt-4 pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-600">
                 <span className="flex items-center gap-1.5">
                   <Stethoscope className="w-4 h-4 text-emerald-600" />
-                  Dokter: <strong className="text-slate-900 font-bold">{currentCalled?.dokterNama || 'dr. Machmujur'}</strong>
+                  <span>{currentCalled?.dokterNama ? `Dokter: ${currentCalled.dokterNama}` : 'Layanan Dokter Bertugas'}</span>
                 </span>
                 <span className="text-emerald-700 font-bold">
                   {currentCalled?.panggilanKe ? `Panggilan Ke-${currentCalled.panggilanKe}` : 'Panggilan Pertama'}
@@ -298,7 +298,9 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
                       </div>
                       <div>
                         <h3 className="font-extrabold text-slate-900 text-sm">{poli.nama}</h3>
-                        <p className="text-[11px] text-slate-500 font-medium">{poli.dokter}</p>
+                        {poli.dokter ? (
+                          <p className="text-[11px] text-slate-500 font-medium">{poli.dokter}</p>
+                        ) : null}
                       </div>
                     </div>
                     <span className="text-[11px] font-bold text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">

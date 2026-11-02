@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { mySqlDb } from '@/lib/mysql-db';
 
 export async function POST(req: NextRequest) {
@@ -24,6 +25,19 @@ export async function POST(req: NextRequest) {
         },
         { status: 401 }
       );
+    }
+
+    // Set server session cookie (no client localStorage needed)
+    try {
+      const cookieStore = await cookies();
+      cookieStore.set('tpmd_session_username', authResult.user.username, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+      });
+    } catch (cookieErr) {
+      console.warn('Gagal set session cookie:', cookieErr);
     }
 
     return NextResponse.json({

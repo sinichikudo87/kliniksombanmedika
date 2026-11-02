@@ -7,9 +7,10 @@ interface AuthContextType {
   user: UserAccount | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isAuthLoaded: boolean;
   lastLoginSource: 'MYSQL' | 'LOCAL_SERVER_STORE' | null;
   login: (username: string, password: string) => Promise<{ success: boolean; message: string; mustChangePassword?: boolean }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoginModalOpen: boolean;
   setIsLoginModalOpen: (open: boolean) => void;
   isChangePasswordModalOpen: boolean;
@@ -20,33 +21,52 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Initial state is null so Login Form displays first on load
+  // Pure in-memory state; data sourced live from MySQL database
   const [user, setUser] = useState<UserAccount | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [lastLoginSource, setLastLoginSource] = useState<'MYSQL' | 'LOCAL_SERVER_STORE' | null>(null);
+  const [isAuthLoaded, setIsAuthLoaded] = useState<boolean>(false);
+  const [lastLoginSource, setLastLoginSource] = useState<'MYSQL' | 'LOCAL_SERVER_STORE' | null>('MYSQL');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
 
-  // Restore saved session from localStorage on client mount
+  // Restore saved session from MySQL server endpoint & clear all localStorage
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let isMounted = true;
+
+    // Purge browser localStorage completely - no client storage used
+    if (typeof window !== 'undefined') {
       try {
-        const savedUser = localStorage.getItem('tpmd_current_user');
-        const savedSource = localStorage.getItem('tpmd_auth_source');
-        if (savedUser) {
-          const parsed: UserAccount = JSON.parse(savedUser);
-          setUser(parsed);
-          if (parsed.mustChangePassword) {
-            setIsChangePasswordModalOpen(true);
+        window.localStorage.clear();
+      } catch {}
+    }
+
+    const restoreSession = async () => {
+      try {
+        const res = await fetch('/api/auth/session');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.authenticated && data.user) {
+            setUser(data.user);
+            setLastLoginSource(data.source || 'MYSQL');
+            if (data.user.mustChangePassword) {
+              setIsChangePasswordModalOpen(true);
+            }
           }
         }
-        if (savedSource === 'MYSQL' || savedSource === 'LOCAL_SERVER_STORE') {
-          setLastLoginSource(savedSource);
+      } catch {
+        // server session lookup error
+      } finally {
+        if (isMounted) {
+          setIsAuthLoaded(true);
         }
-      } catch {}
-    }, 0);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = async (username: string, password: string): Promise<{ success: boolean; message: string; mustChangePassword?: boolean }> => {
@@ -61,7 +81,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const data = await response.json();
 
       if (data.success && data.user) {
-        // Deteksi jika password adalah password awal '000000'
         const mustChange = Boolean(password === '000000' || data.mustChangePassword || data.user.mustChangePassword);
         const updatedUser: UserAccount = {
           ...data.user,
@@ -70,12 +89,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         setUser(updatedUser);
         setLastLoginSource(data.source || 'MYSQL');
-        try {
-          localStorage.setItem('tpmd_current_user', JSON.stringify(updatedUser));
-          localStorage.setItem('tpmd_auth_source', data.source || 'MYSQL');
-        } catch {}
-
         setIsLoginModalOpen(false);
+
+        // Ensure localStorage remains empty
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.clear();
+          } catch {}
+        }
 
         if (mustChange) {
           setIsChangePasswordModalOpen(true);
@@ -129,13 +150,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           mustChangePassword: false,
         };
         setUser(updatedUser);
-        try {
-          localStorage.setItem('tpmd_current_user', JSON.stringify(updatedUser));
-        } catch {}
         setIsChangePasswordModalOpen(false);
+
+        // Ensure localStorage remains empty
+        if (typeof window !== 'undefined') {
+          try {
+            window.localStorage.clear();
+          } catch {}
+        }
+
         return {
           success: true,
-          message: data.message || 'Password baru berhasil disimpan di database.',
+          message: data.message || 'Password baru berhasil disimpan di MySQL database.',
         };
       } else {
         return {
@@ -153,14 +179,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+
     setUser(null);
     setLastLoginSource(null);
     setIsChangePasswordModalOpen(false);
-    try {
-      localStorage.removeItem('tpmd_current_user');
-      localStorage.removeItem('tpmd_auth_source');
-    } catch {}
+
+    // Completely clear any localStorage keys
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.clear();
+      } catch {}
+    }
   };
 
   return (
@@ -169,6 +202,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         user,
         isAuthenticated: !!user,
         isLoading,
+        isAuthLoaded,
         lastLoginSource,
         login,
         logout,

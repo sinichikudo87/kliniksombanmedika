@@ -19,7 +19,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'standalone',
   serverExternalPackages: ['mysql2'],
   transpilePackages: ['motion'],
   webpack: (config, {dev}) => {

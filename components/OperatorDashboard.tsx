@@ -5,6 +5,7 @@ import { useQueue } from '@/lib/queue-context';
 import { maskSensitive } from '@/lib/encrypted-db';
 import { BPJS_TASK_NAMES } from '@/lib/bpjs-bridging';
 import { QueueItem } from '@/types/queue';
+import { showSwalSuccess, showSwalAlert } from '@/lib/swal';
 import {
   Users,
   Clock,
@@ -91,21 +92,24 @@ export const OperatorDashboard: React.FC = () => {
   const handleCallNext = async () => {
     if (nextWaiting) {
       await callQueue(nextWaiting.id);
+      showSwalSuccess(`Memanggil pasien antrean ${nextWaiting.nomorAntrean} (${nextWaiting.namaPasien})`, 'Panggilan Antrean');
     }
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualNama) return;
+    if (!manualNama.trim()) return;
 
     await addQueue({
-      namaPasien: manualNama,
+      namaPasien: manualNama.trim(),
       nik: manualNik || '3201019900001235',
       noBpjs: manualNoBpjs,
       poliKode: manualPoli,
       tipePasien: manualTipe,
       keluhan: manualKeluhan,
     });
+
+    showSwalSuccess(`Pasien ${manualNama.trim()} berhasil didaftarkan ke antrean faskes!`, 'Pendaftaran Berhasil');
 
     setManualNama('');
     setManualNik('');
@@ -167,7 +171,7 @@ export const OperatorDashboard: React.FC = () => {
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span className="font-semibold">VClaim Aktif</span>
             <span className="text-emerald-300">·</span>
-            <span className="font-mono text-emerald-900">CID: {bpjsConfig.consId}</span>
+            <span className="font-mono text-emerald-900">CID: ******</span>
           </div>
 
           <button
@@ -238,8 +242,12 @@ export const OperatorDashboard: React.FC = () => {
               <span className="font-bold uppercase tracking-wider text-emerald-400">
                 Konsol Panggilan · {selectedPoliKode === 'ALL' ? 'Poli Umum' : currentPoli.nama}
               </span>
-              <span className="text-slate-600">·</span>
-              <span className="text-slate-300 font-medium">{currentPoli.dokter}</span>
+              {currentPoli.dokter && (
+                <>
+                  <span className="text-slate-600">·</span>
+                  <span className="text-slate-300 font-medium">{currentPoli.dokter}</span>
+                </>
+              )}
             </div>
 
             {activeServing ? (
@@ -291,8 +299,11 @@ export const OperatorDashboard: React.FC = () => {
             {activeServing && (
               <>
                 <button
-                  onClick={() => callQueue(activeServing.id)}
-                  className="h-10 flex items-center gap-1.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition-colors"
+                  onClick={async () => {
+                    await callQueue(activeServing.id);
+                    showSwalSuccess(`Memanggil ulang nomor ${activeServing.nomorAntrean} (${activeServing.namaPasien})`, 'Panggil Ulang');
+                  }}
+                  className="h-10 flex items-center gap-1.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
                   title="Panggil Ulang Pasien dengan TTS"
                 >
                   <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -301,8 +312,11 @@ export const OperatorDashboard: React.FC = () => {
 
                 {activeServing.status === 'DIPANGGIL' && (
                   <button
-                    onClick={() => startService(activeServing.id)}
-                    className="h-10 flex items-center gap-1.5 px-3.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold transition-colors"
+                    onClick={async () => {
+                      await startService(activeServing.id);
+                      showSwalSuccess(`Pelayanan periksa dimulai untuk ${activeServing.nomorAntrean}`, 'Pelayanan Dimulai');
+                    }}
+                    className="h-10 flex items-center gap-1.5 px-3.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <Play className="w-3.5 h-3.5" />
                     <span>Mulai</span>
@@ -310,8 +324,11 @@ export const OperatorDashboard: React.FC = () => {
                 )}
 
                 <button
-                  onClick={() => finishQueue(activeServing.id)}
-                  className="h-10 flex items-center gap-1.5 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-colors"
+                  onClick={async () => {
+                    await finishQueue(activeServing.id);
+                    showSwalSuccess(`Pelayanan antrean ${activeServing.nomorAntrean} selesai. Data tersinkron ke BPJS!`, 'Pelayanan Selesai');
+                  }}
+                  className="h-10 flex items-center gap-1.5 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Selesai</span>
@@ -319,8 +336,11 @@ export const OperatorDashboard: React.FC = () => {
 
                 {activeServing.poliKode !== 'FAR' && (
                   <button
-                    onClick={() => transferToPharmacy(activeServing.id)}
-                    className="h-10 flex items-center gap-1.5 px-3.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition-colors"
+                    onClick={async () => {
+                      await transferToPharmacy(activeServing.id);
+                      showSwalSuccess(`Resep obat untuk ${activeServing.namaPasien} berhasil diteruskan ke Loket Farmasi!`, 'Resep Obat Terkirim');
+                    }}
+                    className="h-10 flex items-center gap-1.5 px-3.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                     title="Buat tiket resep obat ke Farmasi"
                   >
                     <Pill className="w-3.5 h-3.5" />
@@ -329,8 +349,11 @@ export const OperatorDashboard: React.FC = () => {
                 )}
 
                 <button
-                  onClick={() => skipQueue(activeServing.id)}
-                  className="h-10 flex items-center gap-1.5 px-3 bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 rounded-xl text-xs font-semibold border border-slate-700 hover:border-rose-800/40 transition-colors"
+                  onClick={async () => {
+                    await skipQueue(activeServing.id);
+                    showSwalAlert(`Pasien antrean ${activeServing.nomorAntrean} dilewati.`, { title: 'Antrean Dilewati', icon: 'info', timer: 2000 });
+                  }}
+                  className="h-10 flex items-center gap-1.5 px-3 bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 rounded-xl text-xs font-semibold border border-slate-700 hover:border-rose-800/40 transition-colors cursor-pointer"
                   title="Lewati Pasien"
                 >
                   <SkipForward className="w-3.5 h-3.5" />
@@ -500,31 +523,43 @@ export const OperatorDashboard: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           {item.status === 'MENUNGGU' && (
                             <button
-                              onClick={() => callQueue(item.id)}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition-colors"
+                              onClick={async () => {
+                                await callQueue(item.id);
+                                showSwalSuccess(`Memanggil antrean ${item.nomorAntrean} (${item.namaPasien})`, 'Panggilan Antrean');
+                              }}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
                             >
                               Panggil
                             </button>
                           )}
                           {item.status === 'DIPANGGIL' && (
                             <button
-                              onClick={() => startService(item.id)}
-                              className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[11px] font-semibold transition-colors"
+                              onClick={async () => {
+                                await startService(item.id);
+                                showSwalSuccess(`Pelayanan periksa dimulai untuk ${item.nomorAntrean}`, 'Pelayanan Dimulai');
+                              }}
+                              className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
                             >
                               Mulai
                             </button>
                           )}
                           {item.status === 'DILAYANI' && (
                             <button
-                              onClick={() => finishQueue(item.id)}
-                              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold transition-colors"
+                              onClick={async () => {
+                                await finishQueue(item.id);
+                                showSwalSuccess(`Pelayanan ${item.nomorAntrean} (${item.namaPasien}) selesai!`, 'Pelayanan Selesai');
+                              }}
+                              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
                             >
                               Selesai
                             </button>
                           )}
                           <button
-                            onClick={() => cancelQueue(item.id)}
-                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                            onClick={async () => {
+                              await cancelQueue(item.id);
+                              showSwalAlert(`Antrean ${item.nomorAntrean} dibatalkan.`, { title: 'Antrean Dibatalkan', icon: 'info', timer: 2000 });
+                            }}
+                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                             title="Batalkan Antrean"
                           >
                             <AlertTriangle className="w-3.5 h-3.5" />
@@ -627,7 +662,7 @@ export const OperatorDashboard: React.FC = () => {
                 >
                   {poliList.map((p) => (
                     <option key={p.kode} value={p.kode}>
-                      {p.nama} ({p.dokter})
+                      {p.nama} {p.dokter ? `(${p.dokter})` : ''}
                     </option>
                   ))}
                 </select>

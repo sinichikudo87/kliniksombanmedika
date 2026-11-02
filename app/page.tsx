@@ -12,16 +12,86 @@ import { BridgingSettingsModal } from '@/components/BridgingSettingsModal';
 import { InitialLoginView } from '@/components/InitialLoginView';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import Image from 'next/image';
-import { ShieldCheck, ArrowRight, HeartPulse, Sparkles, Building2, Phone, Mail, Lock } from 'lucide-react';
+import {
+  ShieldCheck,
+  ArrowRight,
+  HeartPulse,
+  Sparkles,
+  Building2,
+  Phone,
+  Mail,
+  Lock,
+  FileSpreadsheet,
+  Download,
+  RefreshCw,
+  Wifi,
+  WifiOff,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
+import { showSwalSuccess, showSwalError } from '@/lib/swal';
+import { exportWsFktpExcel } from '@/lib/client-excel-export';
 
 function MainApp() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAuthLoaded } = useAuth();
   const [currentTab, setCurrentTab] = useState<'KIOSK' | 'OPERATOR' | 'SECURITY' | 'TV'>('KIOSK');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPatientBypass, setIsPatientBypass] = useState(false);
-  const { bpjsConfig } = useQueue();
+  const { bpjsConfig, updateBpjsConfig, testBridgingPing } = useQueue();
+  const [isPinging, setIsPinging] = useState(false);
+  const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
+
+  const isBridgingConnected = bpjsConfig.isOnline === true;
+
+  const handleTestPingFromFooter = async () => {
+    setIsPinging(true);
+    try {
+      const res = await testBridgingPing();
+      if (res && res.success && res.isWhitelisted) {
+        showSwalSuccess(`Tes koneksi ke Web Service BPJS terverifikasi terhubung (${res.latencyMs} ms).`, 'Bridging Terhubung');
+      } else {
+        showSwalError(
+          res.message || 'Koneksi ke endpoint BPJS belum terbuka. IP server faskes belum selesai di-whitelist oleh tim BPJS Kesehatan.',
+          'Belum Di-Whitelist BPJS'
+        );
+      }
+    } catch (err: any) {
+      showSwalError('Koneksi BPJS gagal: ' + (err.message || 'Handshake timeout / IP Belum Di-Whitelist'), 'Belum Di-Whitelist');
+    } finally {
+      setIsPinging(false);
+    }
+  };
+
+  const handleDownloadExcel = () => {
+    setIsDownloadingExcel(true);
+    try {
+      const defaultDomain = typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'https://kliniksombanmedika.id';
+
+      const ok = exportWsFktpExcel({
+        customBaseUrl: defaultDomain,
+        namaFaskes: bpjsConfig.namaFaskes,
+        kdFaskes: bpjsConfig.kdFaskes,
+      });
+      if (ok) {
+        showSwalSuccess('File Excel resmi BPJS (URL WS FKTP Production) berhasil diunduh ke komputer Anda.', 'Download Berhasil');
+      } else {
+        showSwalError('Gagal menyiapkan file Excel.', 'Download Gagal');
+      }
+    } catch (err: any) {
+      showSwalError('Terjadi kendala saat download Excel: ' + (err?.message || ''), 'Download Gagal');
+    } finally {
+      setIsDownloadingExcel(false);
+    }
+  };
 
   const isRmeAdmin = Boolean(user && user.role === 'ADMIN_RME');
+  const isAdministrator = Boolean(
+    isAuthenticated &&
+    user &&
+    (user.role === 'ADMIN_BRIDGING' || user.role === 'ADMIN_RME' || user.role.toUpperCase().includes('ADMIN'))
+  );
 
   const prevAuthRef = useRef(isAuthenticated);
   useEffect(() => {
@@ -31,6 +101,29 @@ function MainApp() {
     }
     prevAuthRef.current = isAuthenticated;
   }, [isAuthenticated]);
+
+  // Loading state during initial client hydration to ensure SSR and Client match
+  if (!isAuthLoaded) {
+    return (
+      <div className="relative min-h-screen bg-slate-900 flex items-center justify-center p-4 overflow-hidden">
+        <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
+          <div className="relative w-[360px] h-[360px] opacity-[0.05] grayscale transform -rotate-12">
+            <Image
+              src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
+              alt="Watermark Logo Somban Medika"
+              fill
+              className="object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        </div>
+        <div className="relative z-10 flex flex-col items-center gap-4 text-slate-300">
+          <div className="w-10 h-10 border-4 border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+          <p className="text-sm font-medium tracking-wide text-slate-400">Memuat Sistem Antrean Klinik Somban Medika...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Initial Screen: Display Login Form first if not logged in
   if (!isAuthenticated && !isPatientBypass) {
@@ -52,7 +145,7 @@ function MainApp() {
         <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
           <div className="relative w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] opacity-[0.06] grayscale transform -rotate-12">
             <Image
-              src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+              src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
               alt="Watermark Logo Somban Medika"
               fill
               className="object-contain"
@@ -87,12 +180,12 @@ function MainApp() {
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-100/70 text-slate-900 flex flex-col justify-between font-sans overflow-hidden">
+    <div className="relative min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between font-sans overflow-hidden">
       {/* Large Transparent Background Watermark Logo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
         <div className="relative w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] lg:w-[880px] lg:h-[880px] opacity-[0.035] grayscale transform -rotate-12">
           <Image
-            src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+            src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
             alt="Watermark Logo Somban Medika"
             fill
             className="object-contain"
@@ -133,7 +226,7 @@ function MainApp() {
       <footer className="relative z-10 bg-white border-t border-slate-200/80 mt-12 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 text-xs text-slate-500">
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2.5 md:col-span-2">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-slate-900 text-sm">
                   {bpjsConfig.namaFaskes}
@@ -147,19 +240,82 @@ function MainApp() {
                 Mendukung estimasi otomatis waktu tunggu pasien, Text-to-Speech (TTS) Indonesia,
                 display TV ruang tunggu, dan penyimpanan rekam medis terenkripsi AES-256-GCM.
               </p>
+
+              {/* Direct Excel Download Action in Footer - Hanya tampil jika sudah login */}
+              {isAuthenticated && (
+                <div className="pt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={handleDownloadExcel}
+                    disabled={isDownloadingExcel}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
+                    title="Download File Dokumen Excel Format BPJS Kesehatan (.xlsx)"
+                  >
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+                    <span>{isDownloadingExcel ? 'Menyiapkan File...' : 'Download Excel WS FKTP (.xlsx)'}</span>
+                    <Download className="w-3.5 h-3.5 ml-0.5" />
+                  </button>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-[11px] font-medium bg-emerald-50">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Format Resmi BPJS KC Sidoarjo
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div>
-              <p className="font-bold text-slate-800 mb-2 uppercase tracking-wider text-[11px]">
-                Kredensial Bridging Terverifikasi
-              </p>
-              <ul className="space-y-1.5 text-slate-600">
-                <li>Consumer ID: <strong className="font-mono text-slate-900">{bpjsConfig.consId}</strong></li>
-                <li>User Key: <strong className="font-mono text-slate-900">4a1a8423...</strong></li>
-                <li>User Dev: <strong className="font-mono text-slate-900">{bpjsConfig.userPcareDev}</strong></li>
-                <li>Status: <span className="text-emerald-700 font-semibold">Bridging Terhubung</span></li>
-              </ul>
-            </div>
+            {/* Kredensial & Status Bridging - Hanya tampil jika sudah login */}
+            {isAuthenticated ? (
+              <div>
+                <p className="font-bold text-slate-800 mb-2 uppercase tracking-wider text-[11px]">
+                  Kredensial Bridging Terverifikasi
+                </p>
+                <ul className="space-y-1.5 text-slate-600">
+                  <li>Consumer ID: <strong className="font-mono text-slate-900">******</strong></li>
+                  <li>User Key: <strong className="font-mono text-slate-900">4a1a8423...</strong></li>
+                  <li>User Dev: <strong className="font-mono text-slate-900">{bpjsConfig.userPcareDev}</strong></li>
+                  <li className="pt-1">
+                    <div className="flex flex-col gap-1.5">
+                      <span className="font-semibold text-slate-700">Status Bridging:</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isBridgingConnected ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-300 shadow-2xs">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>Bridging Terhubung (Live)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs" title="IP Server faskes belum di-whitelist oleh tim TI BPJS">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                            <span>Menunggu Whitelist IP BPJS</span>
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-1">
+                        <button
+                          onClick={handleTestPingFromFooter}
+                          disabled={isPinging}
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded border border-slate-200 transition-colors cursor-pointer"
+                          title="Uji koneksi ping handshake ke BPJS"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isPinging ? 'animate-spin text-emerald-600' : ''}`} />
+                          <span>{isPinging ? 'Menguji...' : 'Uji Ping BPJS'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            ) : (
+              <div>
+                <p className="font-bold text-slate-800 mb-2 uppercase tracking-wider text-[11px]">
+                  Layanan Antrean & RME
+                </p>
+                <ul className="space-y-1.5 text-slate-600">
+                  <li>Klinik Somban Medika</li>
+                  <li>Poli Umum, Gigi, KIA & Laboratorium</li>
+                  <li className="text-emerald-700 font-medium">Terintegrasi Sistem BPJS Kesehatan</li>
+                </ul>
+              </div>
+            )}
 
             <div>
               <p className="font-bold text-slate-800 mb-2 uppercase tracking-wider text-[11px]">
@@ -189,7 +345,9 @@ function MainApp() {
         </div>
       </footer>
 
-      <BridgingSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {isAdministrator && (
+        <BridgingSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      )}
     </div>
   );
 }

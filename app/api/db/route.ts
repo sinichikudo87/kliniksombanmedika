@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { serverDb } from '@/lib/server-db';
 import { mySqlDb, testMySqlConnection, executeQuery, initMySqlSchema } from '@/lib/mysql-db';
 
 export const dynamic = 'force-dynamic';
@@ -9,12 +8,14 @@ export async function GET() {
     const data = await mySqlDb.getAllData();
     const mysqlStatus = mySqlDb.getStatus();
     const users = await mySqlDb.getUsers();
+    const poliList = await mySqlDb.getPoliList();
 
     return NextResponse.json({
       success: true,
       data: {
         ...data,
         users,
+        poliList,
       },
       mysql: mysqlStatus,
     });
@@ -47,6 +48,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(result);
       }
 
+      case 'update_user': {
+        const { id, namaLengkap, nip, role, isActive } = payload || {};
+        if (!id) {
+          return NextResponse.json({ success: false, message: 'ID akun wajib ditentukan' }, { status: 400 });
+        }
+        const result = await mySqlDb.updateUser(id, { namaLengkap, nip, role, isActive });
+        return NextResponse.json(result);
+      }
+
+      case 'update_poli': {
+        const { kode, updates } = payload || {};
+        if (!kode) {
+          return NextResponse.json({ success: false, message: 'Kode poli wajib ditentukan' }, { status: 400 });
+        }
+        const result = await mySqlDb.updatePoli(kode, updates || {});
+        return NextResponse.json(result);
+      }
+
       case 'add_queue': {
         const item = await mySqlDb.addQueue(payload);
         return NextResponse.json({ success: true, item });
@@ -64,8 +83,8 @@ export async function POST(req: NextRequest) {
       }
 
       case 'update_config': {
-        const config = serverDb.updateConfig(payload);
-        return NextResponse.json({ success: true, config });
+        await mySqlDb.updateConfig(payload);
+        return NextResponse.json({ success: true, message: 'Konfigurasi faskes berhasil diperbarui di MySQL' });
       }
 
       case 'add_security_log': {
@@ -74,7 +93,7 @@ export async function POST(req: NextRequest) {
       }
 
       case 'add_bridging_log': {
-        serverDb.addBridgingLog(payload);
+        await mySqlDb.addBridgingLog(payload);
         return NextResponse.json({ success: true });
       }
 
@@ -100,13 +119,8 @@ export async function POST(req: NextRequest) {
 
       case 'export_table': {
         const { table } = payload || {};
-        const sql = mySqlDb.exportTableSql(table || 'queues');
+        const sql = await mySqlDb.exportTableSql(table || 'queues');
         return NextResponse.json({ success: true, table, sql });
-      }
-
-      case 'export_full_dump': {
-        const sql = mySqlDb.exportFullDumpSql();
-        return NextResponse.json({ success: true, sql });
       }
 
       case 'get_schema': {
@@ -120,8 +134,8 @@ export async function POST(req: NextRequest) {
       }
 
       case 'reset': {
-        serverDb.reset();
-        return NextResponse.json({ success: true, data: serverDb.getAll() });
+        const data = await mySqlDb.getAllData();
+        return NextResponse.json({ success: true, data });
       }
 
       default:

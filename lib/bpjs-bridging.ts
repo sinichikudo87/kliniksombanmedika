@@ -13,7 +13,7 @@ export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
   emailFaskes: "sombanmedika@gmail.com",
   environment: "tester",
   baseUrl: "https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev",
-  isOnline: true,
+  isOnline: false, // Menunggu proses whitelist IP faskes oleh BPJS Kesehatan
   lastSyncTimestamp: new Date().toISOString(),
 };
 
@@ -85,149 +85,55 @@ export async function verifyBpjsParticipant(query: string, config: BpjsBridgingC
     };
   }
 
-  // Sample database of BPJS patients registered or referenceable
-  const sampleDatabase: Record<string, any> = {
-    "3201011508890001": {
-      nik: "3201011508890001",
-      noBpjs: "0001234567890",
-      nama: "BAMBANG PAMUNGKAS",
-      tglLahir: "1989-08-15",
-      jenisKelamin: "L",
-      noHp: "081298765432",
-      alamat: "Jl. Merdeka No. 45, RT 02/05",
-      statusBpjs: "AKTIF",
-      jenisPeserta: "PBI APBN (Penerima Bantuan Iuran)",
-      faskesTingkat1: "019U901 - TPMD DR MACHMUJUR",
-      kelasRawat: "Kelas 3",
-      hakKelas: "3",
-      umur: "37 tahun",
-      tglMulaiAktif: "2018-01-01",
-      kunjunganTerakhir: "2026-09-12",
-    },
-    "0001234567890": {
-      nik: "3201011508890001",
-      noBpjs: "0001234567890",
-      nama: "BAMBANG PAMUNGKAS",
-      tglLahir: "1989-08-15",
-      jenisKelamin: "L",
-      noHp: "081298765432",
-      alamat: "Jl. Merdeka No. 45, RT 02/05",
-      statusBpjs: "AKTIF",
-      jenisPeserta: "PBI APBN (Penerima Bantuan Iuran)",
-      faskesTingkat1: "019U901 - TPMD DR MACHMUJUR",
-      kelasRawat: "Kelas 3",
-      hakKelas: "3",
-      umur: "37 tahun",
-      tglMulaiAktif: "2018-01-01",
-      kunjunganTerakhir: "2026-09-12",
-    },
-    "3201022011920002": {
-      nik: "3201022011920002",
-      noBpjs: "0002345678901",
-      nama: "SITI NURHALIZA",
-      tglLahir: "1992-11-20",
-      jenisKelamin: "P",
-      noHp: "085712345678",
-      alamat: "Perum Graha Asri Blok B3 No. 12",
-      statusBpjs: "AKTIF",
-      jenisPeserta: "Pekerja Penerima Upah (PPU BUMN)",
-      faskesTingkat1: "019U901 - TPMD DR MACHMUJUR",
-      kelasRawat: "Kelas 1",
-      hakKelas: "1",
-      umur: "34 tahun",
-      tglMulaiAktif: "2019-06-15",
-      kunjunganTerakhir: "2026-08-04",
-    },
-    "0002345678901": {
-      nik: "3201022011920002",
-      noBpjs: "0002345678901",
-      nama: "SITI NURHALIZA",
-      tglLahir: "1992-11-20",
-      jenisKelamin: "P",
-      noHp: "085712345678",
-      alamat: "Perum Graha Asri Blok B3 No. 12",
-      statusBpjs: "AKTIF",
-      jenisPeserta: "Pekerja Penerima Upah (PPU BUMN)",
-      faskesTingkat1: "019U901 - TPMD DR MACHMUJUR",
-      kelasRawat: "Kelas 1",
-      hakKelas: "1",
-      umur: "34 tahun",
-      tglMulaiAktif: "2019-06-15",
-      kunjunganTerakhir: "2026-08-04",
-    },
-    "3201031204850003": {
-      nik: "3201031204850003",
-      noBpjs: "0003456789012",
-      nama: "HENDRA WIJAYA",
-      tglLahir: "1985-04-12",
-      jenisKelamin: "L",
-      noHp: "081345678901",
-      alamat: "Kp. Melati RT 01/RW 03",
-      statusBpjs: "AKTIF",
-      jenisPeserta: "PBPU / Mandiri",
-      faskesTingkat1: "019U901 - TPMD DR MACHMUJUR",
-      kelasRawat: "Kelas 2",
-      hakKelas: "2",
-      umur: "41 tahun",
-      tglMulaiAktif: "2017-03-20",
-      kunjunganTerakhir: "2026-10-01",
-    },
-    "0003456789012": {
-      nik: "3201031204850003",
-      noBpjs: "0003456789012",
-      nama: "HENDRA WIJAYA",
-      tglLahir: "1985-04-12",
-      jenisKelamin: "L",
-      noHp: "081345678901",
-      alamat: "Kp. Melati RT 01/RW 03",
-      statusBpjs: "AKTIF",
-      jenisPeserta: "PBPU / Mandiri",
-      faskesTingkat1: "019U901 - TPMD DR MACHMUJUR",
-      kelasRawat: "Kelas 2",
-      hakKelas: "2",
-      umur: "41 tahun",
-      tglMulaiAktif: "2017-03-20",
-      kunjunganTerakhir: "2026-10-01",
-    },
-  };
+  try {
+    const res = await fetch('/api/bpjs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'verify_peserta',
+        consId: config.consId,
+        secretKey: config.secretKey,
+        userKey: config.userKey,
+        kdFaskes: config.kdFaskes,
+        payload: { query: cleanQuery },
+      }),
+    });
 
-  const found = sampleDatabase[cleanQuery];
+    const json = await res.json();
+    if (json.metaData && json.metaData.code === 200 && json.response?.peserta) {
+      const p = json.response.peserta;
+      return {
+        success: true,
+        message: `Peserta BPJS Ditemukan: ${p.nama} (${p.statusPeserta?.keterangan || 'AKTIF'})`,
+        data: {
+          nik: p.nik,
+          noBpjs: p.noKartu,
+          nama: p.nama,
+          tglLahir: p.tglLahir || '1990-01-01',
+          jenisKelamin: p.jenisKelamin || 'L',
+          noHp: p.noHp || '',
+          alamat: p.alamat || '',
+          statusBpjs: p.statusPeserta?.keterangan || 'AKTIF',
+          jenisPeserta: p.jenisPeserta || 'Peserta BPJS',
+          faskesTingkat1: p.provUmum?.nmProvider || config.namaFaskes,
+          kelasRawat: p.kelasRawat || 'Kelas 3',
+        },
+        bridgingHeaders: json.headers || headers,
+      };
+    }
 
-  if (found) {
     return {
-      success: true,
-      message: `Peserta BPJS Ditemukan: ${found.nama} (${found.statusBpjs})`,
-      data: found,
+      success: false,
+      message: json.metaData?.message || 'Nomor NIK/BPJS tidak ditemukan di basis data pasien MySQL.',
+      bridgingHeaders: json.headers || headers,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: 'Gagal menghubungi server database: ' + (err?.message || 'Koneksi terputus'),
       bridgingHeaders: headers,
     };
   }
-
-  // Dynamic generation for any valid 16 or 13 digit input so users testing arbitrary numbers get realistic data
-  const isNik = cleanQuery.length === 16;
-  const generatedPatient = {
-    nik: isNik ? cleanQuery : `320104${cleanQuery.slice(3, 13)}`,
-    noBpjs: isNik ? `000${cleanQuery.slice(6, 16)}` : cleanQuery,
-    nama: isNik ? `PASIEN BPJS NO. ${cleanQuery.slice(-4)}` : `PESERTA BPJS #${cleanQuery.slice(-4)}`,
-    tglLahir: "1994-06-18",
-    jenisKelamin: parseInt(cleanQuery.slice(-2)) % 2 === 0 ? "P" : "L",
-    noHp: `0812${cleanQuery.slice(-8)}`,
-    alamat: `Wilayah Binaan TPMD DR MACHMUJUR RT 03/02`,
-    statusBpjs: "AKTIF",
-    jenisPeserta: "Pekerja Mandiri / PBPU",
-    faskesTingkat1: "019U901 - TPMD DR MACHMUJUR",
-    kelasRawat: "Kelas 2",
-    hakKelas: "2",
-    umur: "32 tahun",
-    tglMulaiAktif: "2020-01-01",
-    kunjunganTerakhir: "2026-09-28",
-  };
-
-  return {
-    success: true,
-    message: `Verifikasi Bridging VClaim Sukses: Peserta Aktif (${generatedPatient.faskesTingkat1})`,
-    data: generatedPatient,
-    bridgingHeaders: headers,
-  };
 }
 
 /**

@@ -4,11 +4,11 @@
 -- STANDAR: VCLAIM / PCARE TRUSTMARK BPJS KESEHATAN & UU PDP NO. 27/2022
 -- ==============================================================================
 
-CREATE DATABASE IF NOT EXISTS `antrean_bpjs_tpmd` 
+CREATE DATABASE IF NOT EXISTS `klinik_somban_medika_xx26` 
   DEFAULT CHARACTER SET utf8mb4 
   COLLATE utf8mb4_unicode_ci;
 
-USE `antrean_bpjs_tpmd`;
+USE `klinik_somban_medika_xx26`;
 
 -- ------------------------------------------------------------------------------
 -- 1. TABEL PENGGUNA / PETUGAS FASKES (users)
@@ -48,7 +48,28 @@ CREATE TABLE IF NOT EXISTS `faskes_config` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
--- 3. TABEL REKAM IDENTITAS PASIEN (patients)
+-- 3. TABEL MASTER POLIKLINIK & DOKTER (poliklinik)
+-- Menyimpan daftar poli, dokter penanggung jawab, jadwal, dan kuota antrean
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `poliklinik` (
+  `kode` VARCHAR(20) NOT NULL PRIMARY KEY,
+  `nama` VARCHAR(100) NOT NULL,
+  `prefix` VARCHAR(5) NOT NULL,
+  `dokter_nama` VARCHAR(150) NOT NULL,
+  `sip` VARCHAR(100) DEFAULT NULL,
+  `ruang` VARCHAR(100) NOT NULL,
+  `durasi_rata_rata_menit` INT DEFAULT 10,
+  `kuota_total` INT DEFAULT 50,
+  `kuota_terpakai` INT DEFAULT 0,
+  `badge_color` VARCHAR(50) DEFAULT 'emerald',
+  `icon_name` VARCHAR(50) DEFAULT 'Stethoscope',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_prefix` (`prefix`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
+-- 4. TABEL REKAM IDENTITAS PASIEN (patients)
 -- Dilengkapi kolom data terenkripsi AES-256-GCM sesuai regulasi privasi PII
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `patients` (
@@ -149,9 +170,9 @@ INSERT INTO `users` (`id`, `username`, `password_hash`, `nama_lengkap`, `role`, 
 VALUES
   ('usr-1', '0195U091-dev', '000000', 'Operator Bridging BPJS (VClaim)', 'ADMIN_BRIDGING', '198805122010011001', '019U901', 1),
   ('usr-2', 'admin', '000000', 'Administrator Rekam Medis (RME)', 'ADMIN_RME', '199003202015022002', '019U901', 1),
-  ('usr-3', 'dr.machmujur', '000000', 'dr. Machmujur, M.Kes', 'DOKTER', '197508152002121003', '019U901', 1),
+  ('usr-3', 'dr.machmujur', '000000', 'Dokter Pemeriksa', 'DOKTER', '197508152002121003', '019U901', 1),
   ('usr-4', 'loket01', '000000', 'Petugas Pendaftaran Loket 01', 'PETUGAS_LOKET', '199511252019032004', '019U901', 1),
-  ('usr-5', 'farmasi01', '000000', 'Apt. Farhan Maulana, S.Farm', 'PETUGAS_FARMASI', '199204102017011005', '019U901', 1)
+  ('usr-5', 'farmasi01', '000000', 'Petugas Farmasi & Apotek', 'PETUGAS_FARMASI', '199204102017011005', '019U901', 1)
 ON DUPLICATE KEY UPDATE `nama_lengkap` = VALUES(`nama_lengkap`), `role` = VALUES(`role`), `password_hash` = VALUES(`password_hash`);
 
 -- ------------------------------------------------------------------------------
@@ -170,3 +191,18 @@ VALUES (
   'tester',
   'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev'
 ) ON DUPLICATE KEY UPDATE `kd_faskes` = VALUES(`kd_faskes`);
+
+-- ------------------------------------------------------------------------------
+-- SEED DATA AWAL: MASTER POLIKLINIK & DOKTER (poliklinik)
+-- ------------------------------------------------------------------------------
+INSERT INTO `poliklinik` (`kode`, `nama`, `prefix`, `dokter_nama`, `sip`, `ruang`, `durasi_rata_rata_menit`, `kuota_total`, `kuota_terpakai`, `badge_color`, `icon_name`)
+VALUES
+  ('UMU', 'Poli Umum', 'A', '', '', 'Ruang 01 (Lantai 1)', 10, 60, 0, 'emerald', 'Stethoscope'),
+  ('GIG', 'Poli Gigi & Mulut', 'B', '', '', 'Ruang 02 (Lantai 1)', 15, 30, 0, 'blue', 'Smile'),
+  ('KIA', 'Poli KIA & KB', 'C', '', '', 'Ruang 03 (Lantai 1)', 12, 40, 0, 'purple', 'HeartPulse'),
+  ('FAR', 'Apotek & Farmasi', 'F', '', '', 'Loket Farmasi Utama', 6, 100, 0, 'amber', 'Pill')
+ON DUPLICATE KEY UPDATE 
+  `dokter_nama` = VALUES(`dokter_nama`), 
+  `nama` = VALUES(`nama`), 
+  `sip` = VALUES(`sip`), 
+  `ruang` = VALUES(`ruang`);

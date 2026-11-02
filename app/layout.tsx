@@ -6,11 +6,11 @@ export const metadata: Metadata = {
   description: 'Sistem antrean online bridging BPJS VClaim & PCare terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
   icons: {
     icon: [
-      { url: '/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg' },
+      { url: '/assets/images/Logo-01.jpg_cdb7cbc6.jpeg' },
       { url: '/favicon.ico' },
     ],
-    shortcut: '/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg',
-    apple: '/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg',
+    shortcut: '/assets/images/Logo-01.jpg_cdb7cbc6.jpeg',
+    apple: '/assets/images/Logo-01.jpg_cdb7cbc6.jpeg',
   },
   openGraph: {
     title: 'Antrean Online Bridging BPJS - TPMD Dr. Machmujur',
@@ -26,8 +26,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en">
-      <body suppressHydrationWarning>{children}</body>
+    <html lang="id" className="h-full">
+      <body
+        suppressHydrationWarning
+        className="min-h-screen bg-white text-slate-900 antialiased selection:bg-emerald-600 selection:text-white"
+      >
+        {children}
+      </body>
     </html>
   );
 }

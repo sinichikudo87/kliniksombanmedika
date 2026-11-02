@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
+import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
   KeyRound,
   Lock,
@@ -38,6 +40,11 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   if (!isOpen) return null;
 
@@ -50,27 +57,32 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
     if (!newPassword.trim()) {
       setErrorMessage('Password baru tidak boleh kosong');
+      showSwalError('Password baru tidak boleh kosong', 'Form Tidak Lengkap');
       return;
     }
 
     if (newPassword.trim().length < 6) {
       setErrorMessage('Password baru minimal 6 karakter demi keamanan');
+      showSwalError('Password baru minimal 6 karakter demi keamanan faskes', 'Password Terlalu Pendek');
       return;
     }
 
     if (newPassword.trim() === '000000') {
       setErrorMessage('Password baru tidak boleh menggunakan password awal default (000000)');
+      showSwalError('Password baru tidak boleh menggunakan password awal default (000000)', 'Password Tidak Valid');
       return;
     }
 
     if (newPassword !== confirmPassword) {
       setErrorMessage('Konfirmasi password tidak cocok');
+      showSwalError('Konfirmasi password tidak cocok dengan password baru', 'Password Tidak Cocok');
       return;
     }
 
     const result = await changePassword(newPassword.trim(), oldPassword.trim() || '000000');
     if (result.success) {
       setSuccessMessage(result.message);
+      showSwalSuccess('Password akun berhasil diperbarui!', 'Password Diperbarui');
       setTimeout(() => {
         onClose();
         setNewPassword('');
@@ -79,12 +91,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
       }, 900);
     } else {
       setErrorMessage(result.message);
+      showSwalError(result.message, 'Gagal Ubah Password');
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+  const modalContent = (
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex min-h-screen items-center justify-center p-3 sm:p-4 md:p-6">
+      <div className="relative w-full max-w-lg my-auto bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 sm:p-6 relative">
           {!mustChange && (
@@ -99,7 +112,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           <div className="flex items-center gap-3.5">
             <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-white/10 border border-white/20 p-1 flex items-center justify-center shrink-0">
               <Image
-                src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+                src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
                 alt="Logo Somban Medika"
                 width={44}
                 height={44}
@@ -119,7 +132,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-300">
-                Akun: <strong className="text-white font-mono">{user?.username}</strong> ({user?.namaLengkap})
+                Akun: <strong className="text-white font-mono">{user?.username}</strong> ({user?.namaLengkap || (user as any)?.nama_lengkap || user?.username})
               </p>
             </div>
           </div>
@@ -232,7 +245,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 {isLoading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Menyimpan ke Database...</span>
+                    <span>Menyimpan Perubahan...</span>
                   </>
                 ) : (
                   <>
@@ -258,11 +271,17 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
           {/* Footer Security Note */}
           <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-400 flex items-center justify-between font-mono">
-            <span>Enkripsi Database Faskes</span>
+            <span>Standar Keamanan Akun Faskes</span>
             <span>019U901 - TPMD DR MACHMUJUR</span>
           </div>
         </div>
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(modalContent, document.body);
 };

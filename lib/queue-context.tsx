@@ -40,7 +40,7 @@ interface QueueContextType {
   cancelQueue: (id: string) => Promise<void>;
   transferToPharmacy: (id: string) => Promise<QueueItem>;
   updateBpjsConfig: (newConfig: Partial<BpjsBridgingConfig>) => void;
-  testBridgingPing: () => Promise<{ success: boolean; latencyMs: number; details: any }>;
+  testBridgingPing: () => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any }>;
   addSecurityLog: (action: AuditSecurityLog['action'], details: string, status?: 'SUCCESS' | 'DENIED') => void;
   resetToSampleData: () => void;
 }
@@ -66,7 +66,7 @@ const INITIAL_SECURITY_LOGS: AuditSecurityLog[] = [
 export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [queues, setQueues] = useState<QueueItem[]>(INITIAL_QUEUES);
   const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
-  const [poliList] = useState<PoliInfo[]>(DEFAULT_POLI_LIST);
+  const [poliList, setPoliList] = useState<PoliInfo[]>(DEFAULT_POLI_LIST);
   const [bpjsConfig, setBpjsConfig] = useState<BpjsBridgingConfig>(DEFAULT_BPJS_CONFIG);
   const [bridgingLogs, setBridgingLogs] = useState<BridgingLog[]>([]);
   const [securityLogs, setSecurityLogs] = useState<AuditSecurityLog[]>(INITIAL_SECURITY_LOGS);
@@ -77,14 +77,12 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     let isMounted = true;
 
-    // Purge legacy dummy data from localStorage if present
-    try {
-      const savedQueues = localStorage.getItem('tpmd_queues');
-      if (savedQueues && (savedQueues.includes('pat-1') || savedQueues.includes('A-010') || savedQueues.includes('BAMBANG'))) {
-        localStorage.removeItem('tpmd_queues');
-        localStorage.removeItem('tpmd_patients');
-      }
-    } catch {}
+    // Purge browser local storage completely - all data comes from MySQL
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.clear();
+      } catch {}
+    }
 
     const fetchServerDb = async () => {
       try {
@@ -94,6 +92,9 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           if (json.success && json.data && isMounted) {
             setQueues(json.data.queues || []);
             setPatients(json.data.patients || []);
+            if (json.data.poliList && Array.isArray(json.data.poliList) && json.data.poliList.length > 0) {
+              setPoliList(json.data.poliList);
+            }
             if (json.data.config) setBpjsConfig(json.data.config);
             if (json.data.securityLogs) setSecurityLogs(json.data.securityLogs);
             if (json.data.bridgingLogs) setBridgingLogs(json.data.bridgingLogs);
@@ -106,13 +107,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           }
         }
       } catch (err) {
-        // Fallback to local storage if offline
-        try {
-          const savedQueues = localStorage.getItem('tpmd_queues');
-          if (savedQueues && isMounted) setQueues(JSON.parse(savedQueues));
-          const savedPatients = localStorage.getItem('tpmd_patients');
-          if (savedPatients && isMounted) setPatients(JSON.parse(savedPatients));
-        } catch {}
+        console.warn('Gagal membaca data dari server database:', err);
       }
     };
 
@@ -128,32 +123,13 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, []);
 
-  // Save changes locally for offline resilience
-  useEffect(() => {
-    try {
-      localStorage.setItem('tpmd_queues', JSON.stringify(queues));
-    } catch {}
-  }, [queues]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('tpmd_patients', JSON.stringify(patients));
-    } catch {}
-  }, [patients]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('tpmd_bpjs_config', JSON.stringify(bpjsConfig));
-    } catch {}
-  }, [bpjsConfig]);
-
   // Recalculate dynamic wait times whenever queues change or on interval
   useEffect(() => {
     const interval = setInterval(() => {
       setQueues((prev) =>
         prev.map((item) => {
           if (item.status === 'MENUNGGU') {
-            const poli = DEFAULT_POLI_LIST.find((p) => p.kode === item.poliKode);
+            const poli = poliList.find((p) => p.kode === item.poliKode);
             const est = calculateEstimatedWaitTime(item, prev, poli);
             return {
               ...item,
@@ -167,7 +143,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, 15000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [poliList]);
 
   const addSecurityLog = (
     action: AuditSecurityLog['action'],
@@ -202,7 +178,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     keluhan?: string;
     noHp?: string;
   }): Promise<QueueItem> => {
-    const poli = DEFAULT_POLI_LIST.find((p) => p.kode === data.poliKode) || DEFAULT_POLI_LIST[0];
+    const poli = poliList.find((p) => p.kode === data.poliKode) || poliList[0] || DEFAULT_POLI_LIST[0];
     const prefix = poli.prefix;
 
     // Find highest number for this prefix today
@@ -590,7 +566,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     await finishQueue(id);
 
     // Create Pharmacy queue
-    const farmasiPoli = DEFAULT_POLI_LIST.find((p) => p.kode === 'FAR') || DEFAULT_POLI_LIST[3];
+    const farmasiPoli = poliList.find((p) => p.kode === 'FAR') || poliList[3] || DEFAULT_POLI_LIST[3];
     const existingFar = queues.filter((q) => q.prefix === 'F');
     const nextNumber = existingFar.length > 0 ? Math.max(...existingFar.map((q) => q.nomorUrut)) + 1 : 1;
     const nomorAntrean = `F-${nextNumber.toString().padStart(3, '0')}`;
@@ -649,58 +625,72 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const testBridgingPing = async () => {
     const start = performance.now();
     const headers = await getBpjsHeaders(bpjsConfig);
-    const latencyMs = Math.round(performance.now() - start + 45); // simulated network handshake
-
-    addBridgingLog({
-      timestamp: new Date().toISOString(),
-      endpoint: '/ref/poli',
-      method: 'GET',
-      requestHeader: headers,
-      responseStatus: 200,
-      responsePayload: {
-        metaData: {
-          code: 200,
-          message: 'OK',
-        },
-        response: {
-          faskes: bpjsConfig.namaFaskes,
-          kdFaskes: bpjsConfig.kdFaskes,
-          statusBridging: 'CONNECTED_VCLAIM_PCARE',
-          consId: bpjsConfig.consId,
-          userKeyActive: true,
-          mode: bpjsConfig.environment.toUpperCase(),
-        },
-      },
-      durationMs: latencyMs,
-    });
-
-    return {
-      success: true,
-      latencyMs,
-      details: {
-        consId: bpjsConfig.consId,
-        faskes: bpjsConfig.namaFaskes,
-        headers,
-      },
-    };
-  };
-
-  const resetToSampleData = () => {
-    setQueues(INITIAL_QUEUES);
-    setPatients(INITIAL_PATIENTS);
-    setCurrentCalled(null);
-    setBpjsConfig(DEFAULT_BPJS_CONFIG);
-    localStorage.removeItem('tpmd_queues');
-    localStorage.removeItem('tpmd_patients');
-    localStorage.removeItem('tpmd_bpjs_config');
 
     try {
-      fetch('/api/db', {
+      const res = await fetch('/api/bpjs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset' }),
+        body: JSON.stringify({
+          action: 'ping',
+          consId: bpjsConfig.consId,
+          secretKey: bpjsConfig.secretKey,
+          userKey: bpjsConfig.userKey,
+          kdFaskes: bpjsConfig.kdFaskes,
+          baseUrl: bpjsConfig.baseUrl,
+        }),
       });
-    } catch {}
+
+      const json = await res.json().catch(() => ({}));
+      const latencyMs = Math.round(performance.now() - start);
+      const isWhitelisted = json.metaData?.code === 200 && json.response?.isWhitelisted === true;
+
+      addBridgingLog({
+        timestamp: new Date().toISOString(),
+        endpoint: '/ref/poli (Ping BPJS)',
+        method: 'GET',
+        requestHeader: headers,
+        responseStatus: json.metaData?.code || res.status,
+        responsePayload: json,
+        durationMs: latencyMs,
+      });
+
+      // Update state isOnline sesuai hasil respon nyata dari server BPJS
+      updateBpjsConfig({ isOnline: isWhitelisted });
+
+      return {
+        success: isWhitelisted,
+        isWhitelisted,
+        latencyMs,
+        message: json.metaData?.message || (isWhitelisted ? 'Terhubung ke BPJS' : 'Belum di-whitelist oleh BPJS'),
+        details: json.response || json,
+      };
+    } catch (err: any) {
+      const latencyMs = Math.round(performance.now() - start);
+      updateBpjsConfig({ isOnline: false });
+      return {
+        success: false,
+        isWhitelisted: false,
+        latencyMs,
+        message: 'Koneksi ke endpoint BPJS ditolak / belum di-whitelist: ' + err.message,
+      };
+    }
+  };
+
+  const resetToSampleData = async () => {
+    try {
+      const res = await fetch('/api/db');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setQueues(json.data.queues || []);
+          setPatients(json.data.patients || []);
+          if (json.data.config) setBpjsConfig(json.data.config);
+          if (json.data.poliList) setPoliList(json.data.poliList);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal memuat ulang data dari database:', e);
+    }
   };
 
   return (

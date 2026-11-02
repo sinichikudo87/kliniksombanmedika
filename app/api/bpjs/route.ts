@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { getMySqlPool } from '@/lib/mysql-db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,37 +29,116 @@ export async function POST(req: NextRequest) {
     };
 
     if (action === 'ping') {
-      return NextResponse.json({
-        metaData: {
-          code: 200,
-          message: 'Koneksi ke Web Service BPJS Trustmark (VClaim & PCare) Berhasil Terhubung',
-        },
-        response: {
-          faskes: 'TPMD DR MACHMUJUR',
-          kdFaskes: kdFaskes || '019U901',
-          consId: actualConsId,
-          timestamp,
-          signature,
-          mode: 'Development / Tester',
-          status: 'ACTIVE_BRIDGED',
-        },
-        headers,
-      });
+      const targetBaseUrl = body.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev';
+      const pingUrl = `${targetBaseUrl.replace(/\/+$/, '')}/ref/poli`;
+      
+      try {
+        const bpjsRes = await fetch(pingUrl, {
+          method: 'GET',
+          headers,
+          signal: AbortSignal.timeout(4000),
+        });
+
+        if (bpjsRes.ok) {
+          const bpjsData = await bpjsRes.json().catch(() => ({}));
+          return NextResponse.json({
+            metaData: {
+              code: 200,
+              message: 'Koneksi ke Web Service BPJS Trustmark (VClaim & PCare) Berhasil Terhubung',
+            },
+            response: {
+              faskes: 'KLINIK SOMBAN MEDIKA',
+              kdFaskes: kdFaskes || '019U901',
+              consId: actualConsId,
+              timestamp,
+              signature,
+              mode: 'Production / Online',
+              status: 'ACTIVE_BRIDGED',
+              isWhitelisted: true,
+              raw: bpjsData,
+            },
+            headers,
+          });
+        } else {
+          return NextResponse.json({
+            metaData: {
+              code: bpjsRes.status,
+              message: `Server BPJS merespon HTTP ${bpjsRes.status} (Belum Whitelist IP / Akses Ditolak)`,
+            },
+            response: {
+              faskes: 'KLINIK SOMBAN MEDIKA',
+              kdFaskes: kdFaskes || '019U901',
+              status: 'PENDING_WHITELIST',
+              isWhitelisted: false,
+              note: 'IP Server Faskes belum selesai di-whitelist oleh tim TI BPJS Kesehatan.',
+            },
+            headers,
+          });
+        }
+      } catch (pingErr: any) {
+        return NextResponse.json({
+          metaData: {
+            code: 403,
+            message: 'Belum Terhubung ke BPJS: IP Server Faskes belum di-whitelist oleh BPJS Kesehatan (Koneksi Ditolak/Timeout).',
+          },
+          response: {
+            faskes: 'KLINIK SOMBAN MEDIKA',
+            kdFaskes: kdFaskes || '019U901',
+            status: 'PENDING_WHITELIST',
+            isWhitelisted: false,
+            errorDetail: pingErr.message,
+            note: 'Harap ajukan permohonan pembukaan IP Whitelist ke Kantor Cabang / Helpdesk BPJS Kesehatan terkait.',
+          },
+          headers,
+        });
+      }
     }
 
     if (action === 'verify_peserta') {
       const { query } = payload || {};
+      const cleanQuery = (query || '').trim().replace(/\D/g, '');
+
+      // Query langsung ke tabel patients di MySQL
+      try {
+        const pool = getMySqlPool();
+        const [rows]: [any, any] = await pool.query(
+          'SELECT * FROM patients WHERE nik = ? OR no_bpjs = ? LIMIT 1',
+          [cleanQuery, cleanQuery]
+        );
+
+        if (rows && rows.length > 0) {
+          const p = rows[0];
+          return NextResponse.json({
+            metaData: { code: 200, message: 'Peserta BPJS Ditemukan di MySQL' },
+            response: {
+              peserta: {
+                nik: p.nik,
+                noKartu: p.no_bpjs,
+                nama: p.nama,
+                tglLahir: p.tgl_lahir,
+                jenisKelamin: p.jenis_kelamin,
+                noHp: p.no_hp,
+                alamat: p.alamat,
+                statusPeserta: { keterangan: p.status_bpjs || 'AKTIF' },
+                provUmum: { kdProvider: kdFaskes || '019U901', nmProvider: 'KLINIK SOMBAN MEDIKA' },
+                jenisPeserta: p.jenis_peserta,
+                kelasRawat: p.kelas_rawat,
+              },
+            },
+            headers,
+          });
+        }
+      } catch (dbErr: any) {
+        console.error('MySQL patients query error:', dbErr?.message);
+      }
+
+      // Jika nomor NIK/BPJS belum terdaftar di tabel patients MySQL
       return NextResponse.json({
-        metaData: { code: 200, message: 'OK' },
-        response: {
-          peserta: {
-            nik: query || '3201011508890001',
-            noKartu: '0001234567890',
-            nama: 'BAMBANG PAMUNGKAS',
-            statusPeserta: { keterangan: 'AKTIF' },
-            provUmum: { kdProvider: '019U901', nmProvider: 'TPMD DR MACHMUJUR' },
-          },
+        metaData: {
+          code: 404,
+          message: `Nomor NIK/BPJS ${cleanQuery} belum terdaftar di basis data pasien MySQL. Silakan daftarkan melalui loket admisi.`,
         },
+        response: null,
         headers,
       });
     }

@@ -3,7 +3,7 @@
 -- FASKES: TPMD DR MACHMUJUR (KODE FASKES: 019U901)
 -- ==============================================================================
 
-USE `antrean_bpjs_tpmd`;
+USE `klinik_somban_medika_xx26`;
 
 DELIMITER $$
 

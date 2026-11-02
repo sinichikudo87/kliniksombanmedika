@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
 import { useQueue } from '@/lib/queue-context';
+import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
   Lock,
   User,
@@ -40,24 +41,27 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
 
     if (!username.trim() || !password.trim()) {
       setErrorMessage('Harap masukkan username dan password');
+      showSwalError('Harap masukkan username dan password', 'Form Belum Lengkap');
       return;
     }
 
     const result = await login(username.trim(), password.trim());
     if (result.success) {
       setSuccessMessage(result.message);
+      showSwalSuccess(result.message, 'Login Berhasil');
     } else {
       setErrorMessage(result.message);
+      showSwalError(result.message, 'Gagal Masuk');
     }
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-b from-slate-100 via-white to-slate-100 text-slate-800 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-800 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans overflow-hidden">
       {/* Large Transparent Background Watermark Logo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
         <div className="relative w-[500px] h-[500px] sm:w-[680px] sm:h-[680px] lg:w-[850px] lg:h-[850px] opacity-[0.045] grayscale transform -rotate-12">
           <Image
-            src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+            src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
             alt="Watermark Logo Somban Medika"
             fill
             className="object-contain"
@@ -73,7 +77,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
           <div className="flex items-center gap-3.5">
             <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
               <Image
-                src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+                src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
                 alt="Logo Somban Medika"
                 width={44}
                 height={44}
@@ -101,7 +105,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
               Bridging BPJS Aktif
             </span>
             <span className="flex items-center gap-1.5 bg-slate-50 text-slate-600 border border-slate-200 px-3 py-1.5 rounded-xl font-mono text-[11px]">
-              ConsID: {bpjsConfig.consId}
+              ConsID: ******
             </span>
           </div>
         </div>
@@ -145,7 +149,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Database & Keamanan RME</span>
+                <span>Rekam Medis & Keamanan</span>
               </div>
             </div>
           </div>
@@ -166,8 +170,16 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
 
         {/* Right Column: Public Login Form Card */}
         <div className="lg:col-span-6">
-          <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200 text-slate-900 relative">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200 text-slate-900 relative overflow-hidden">
+            {/* Background Large Transparent Watermark Icon */}
+            <div
+              className="absolute -right-8 -bottom-10 pointer-events-none select-none text-emerald-600/[0.08] z-0"
+              aria-hidden="true"
+            >
+              <ShieldCheck className="w-64 h-64 sm:w-72 sm:h-72 transform -rotate-12" strokeWidth={1.2} />
+            </div>
+
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6 relative z-10">
               <div>
                 <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Formulir Login Petugas</h3>
                 <p className="text-xs text-slate-500 mt-0.5">Masukkan identitas akun petugas faskes terdaftar</p>
@@ -199,7 +211,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
               {/* Username Input */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">

@@ -51,7 +51,7 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
           <div className="border-b border-dashed border-slate-300 pb-3 flex flex-col items-center">
             <div className="w-10 h-10 mb-1 relative">
               <Image
-                src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+                src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
                 alt="Logo Somban Medika"
                 width={40}
                 height={40}

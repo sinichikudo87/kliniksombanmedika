@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useQueue } from '@/lib/queue-context';
 import { useAuth } from '@/lib/auth-context';
 import { encryptData, decryptData, maskSensitive } from '@/lib/encrypted-db';
+import { showSwalAlert, showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
   Shield,
   Key,
@@ -30,6 +31,9 @@ import {
   KeyRound,
   Users,
   ShieldAlert,
+  Edit3,
+  Stethoscope,
+  Save,
 } from 'lucide-react';
 
 export const SecurityDatabaseView: React.FC = () => {
@@ -44,6 +48,7 @@ export const SecurityDatabaseView: React.FC = () => {
 
   // User Management & Reset Password State (Khusus Administrator RME)
   const [usersList, setUsersList] = useState<any[]>([]);
+  const [polisList, setPolisList] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState<boolean>(false);
   const [selectedUserToReset, setSelectedUserToReset] = useState<any | null>(null);
   const [customResetPassword, setCustomResetPassword] = useState<string>('000000');
@@ -51,13 +56,29 @@ export const SecurityDatabaseView: React.FC = () => {
   const [resetSuccessMsg, setResetSuccessMsg] = useState<string | null>(null);
   const [resetErrorMsg, setResetErrorMsg] = useState<string | null>(null);
 
+  // Edit User (Nama Petugas, Dokter, NIP, Role di DB)
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [editNamaLengkap, setEditNamaLengkap] = useState<string>('');
+  const [editNip, setEditNip] = useState<string>('');
+  const [editRole, setEditRole] = useState<string>('DOKTER');
+  const [savingUser, setSavingUser] = useState<boolean>(false);
+
+  // Edit Poliklinik & Dokter Penanggung Jawab
+  const [editingPoli, setEditingPoli] = useState<any | null>(null);
+  const [editPoliDokter, setEditPoliDokter] = useState<string>('');
+  const [editPoliNama, setEditPoliNama] = useState<string>('');
+  const [editPoliRuang, setEditPoliRuang] = useState<string>('');
+  const [editPoliSip, setEditPoliSip] = useState<string>('');
+  const [savingPoli, setSavingPoli] = useState<boolean>(false);
+
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
       const res = await fetch('/api/db');
       const data = await res.json();
-      if (data.success && data.data && data.data.users) {
-        setUsersList(data.data.users);
+      if (data.success && data.data) {
+        if (data.data.users) setUsersList(data.data.users);
+        if (data.data.poliList) setPolisList(data.data.poliList);
       }
     } catch {} finally {
       setLoadingUsers(false);
@@ -69,8 +90,9 @@ export const SecurityDatabaseView: React.FC = () => {
     fetch('/api/db')
       .then((res) => res.json())
       .then((data) => {
-        if (isMounted && data.success && data.data && data.data.users) {
-          setUsersList(data.data.users);
+        if (isMounted && data.success && data.data) {
+          if (data.data.users) setUsersList(data.data.users);
+          if (data.data.poliList) setPolisList(data.data.poliList);
         }
       })
       .catch(() => {});
@@ -78,6 +100,97 @@ export const SecurityDatabaseView: React.FC = () => {
       isMounted = false;
     };
   }, []);
+
+  const handleSaveUser = async () => {
+    if (!editingUser) return;
+    setSavingUser(true);
+    setResetSuccessMsg(null);
+    setResetErrorMsg(null);
+    try {
+      const res = await fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_user',
+          payload: {
+            id: editingUser.id || editingUser.username,
+            namaLengkap: editNamaLengkap.trim(),
+            nip: editNip.trim(),
+            role: editRole,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const msg = `Data akun '${editingUser.username}' (${editNamaLengkap}) berhasil diperbarui di database!`;
+        setResetSuccessMsg(msg);
+        showSwalSuccess(msg, 'Data Petugas Diperbarui');
+        addSecurityLog(
+          'KEY_ROTATE',
+          `Administrator RME memperbarui profil pengguna ${editingUser.username}: ${editNamaLengkap} [${editRole}].`
+        );
+        setEditingUser(null);
+        await fetchUsers();
+      } else {
+        const errMsg = data.message || 'Gagal menyimpan perubahan akun';
+        setResetErrorMsg(errMsg);
+        showSwalError(errMsg, 'Gagal Menyimpan');
+      }
+    } catch (err: any) {
+      const errMsg = err.message || 'Gagal terhubung ke database';
+      setResetErrorMsg(errMsg);
+      showSwalError(errMsg, 'Koneksi Gagal');
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const handleSavePoli = async () => {
+    if (!editingPoli) return;
+    setSavingPoli(true);
+    setResetSuccessMsg(null);
+    setResetErrorMsg(null);
+    try {
+      const res = await fetch('/api/db', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_poli',
+          payload: {
+            kode: editingPoli.kode,
+            updates: {
+              dokter: editPoliDokter.trim(),
+              nama: editPoliNama.trim(),
+              ruang: editPoliRuang.trim(),
+              sip: editPoliSip.trim(),
+            },
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const msg = `Data Poliklinik '${editingPoli.nama}' dengan Dokter '${editPoliDokter}' berhasil diperbarui!`;
+        setResetSuccessMsg(msg);
+        showSwalSuccess(msg, 'Poli & Dokter Diperbarui');
+        addSecurityLog(
+          'KEY_ROTATE',
+          `Administrator RME memperbarui data poli ${editingPoli.kode}: Dokter ${editPoliDokter}, Ruang ${editPoliRuang}.`
+        );
+        setEditingPoli(null);
+        await fetchUsers();
+      } else {
+        const errMsg = data.message || 'Gagal memperbarui poliklinik';
+        setResetErrorMsg(errMsg);
+        showSwalError(errMsg, 'Gagal Memperbarui Poli');
+      }
+    } catch (err: any) {
+      const errMsg = err.message || 'Gagal terhubung ke database';
+      setResetErrorMsg(errMsg);
+      showSwalError(errMsg, 'Koneksi Gagal');
+    } finally {
+      setSavingPoli(false);
+    }
+  };
 
   const handleExecuteResetPassword = async () => {
     if (!selectedUserToReset) return;
@@ -99,7 +212,9 @@ export const SecurityDatabaseView: React.FC = () => {
       });
       const data = await res.json();
       if (data.success) {
-        setResetSuccessMsg(data.message || `Password akun '${selectedUserToReset.username}' berhasil di-reset ke '${customResetPassword.trim() || '000000'}'.`);
+        const msg = data.message || `Password akun '${selectedUserToReset.username}' berhasil di-reset ke '${customResetPassword.trim() || '000000'}'.`;
+        setResetSuccessMsg(msg);
+        showSwalSuccess(msg, 'Reset Password Berhasil');
         addSecurityLog(
           'KEY_ROTATE',
           `Administrator RME mereset password akun ${selectedUserToReset.username} ke default (000000).`
@@ -107,21 +222,25 @@ export const SecurityDatabaseView: React.FC = () => {
         setSelectedUserToReset(null);
         await fetchUsers();
       } else {
-        setResetErrorMsg(data.message || 'Gagal mereset password');
+        const errMsg = data.message || 'Gagal mereset password';
+        setResetErrorMsg(errMsg);
+        showSwalError(errMsg, 'Gagal Reset');
       }
     } catch (err: any) {
-      setResetErrorMsg(err.message || 'Gagal terhubung ke database');
+      const errMsg = err.message || 'Gagal terhubung ke database';
+      setResetErrorMsg(errMsg);
+      showSwalError(errMsg, 'Koneksi Gagal');
     } finally {
       setResettingUser(false);
     }
   };
 
   // MySQL Connection & Query State
-  const [mysqlHost, setMysqlHost] = useState<string>('localhost');
+  const [mysqlHost, setMysqlHost] = useState<string>('202.10.47.207');
   const [mysqlPort, setMysqlPort] = useState<number>(3306);
-  const [mysqlUser, setMysqlUser] = useState<string>('root');
-  const [mysqlPass, setMysqlPass] = useState<string>('');
-  const [mysqlDbName, setMysqlDbName] = useState<string>('antrean_bpjs_tpmd');
+  const [mysqlUser, setMysqlUser] = useState<string>('jimbrink');
+  const [mysqlPass, setMysqlPass] = useState<string>('Sh1nratensey86');
+  const [mysqlDbName, setMysqlDbName] = useState<string>('klinik_somban_medika_xx26');
   const [testingMysql, setTestingMysql] = useState<boolean>(false);
   const [mysqlTestResult, setMysqlTestResult] = useState<{
     success?: boolean;
@@ -167,12 +286,19 @@ export const SecurityDatabaseView: React.FC = () => {
           error: data.result.error || data.result.status?.error,
           testedAt: new Date().toLocaleTimeString('id-ID'),
         });
+        if (data.result.success) {
+          showSwalSuccess(`Koneksi ke server faskes '${mysqlHost}' berhasil!`, 'Koneksi Server Berhasil');
+        } else {
+          showSwalError(`Gagal koneksi ke server: ${data.result.error || data.result.status?.error}`, 'Koneksi Server Gagal');
+        }
       } else {
+        const errMsg = data.error || 'Koneksi gagal';
         setMysqlTestResult({
           success: false,
-          error: data.error || 'Koneksi gagal',
+          error: errMsg,
           testedAt: new Date().toLocaleTimeString('id-ID'),
         });
+        showSwalError(errMsg, 'Koneksi Server Gagal');
       }
     } catch (err: any) {
       setMysqlTestResult({
@@ -180,6 +306,7 @@ export const SecurityDatabaseView: React.FC = () => {
         error: err.message,
         testedAt: new Date().toLocaleTimeString('id-ID'),
       });
+      showSwalError(err.message || 'Gagal menghubungi server', 'Koneksi Error');
     } finally {
       setTestingMysql(false);
     }
@@ -202,7 +329,7 @@ export const SecurityDatabaseView: React.FC = () => {
       if (data.success) {
         setQueryResult(Array.isArray(data.results) ? data.results : [data.results]);
       } else {
-        setQueryError(data.error || 'Query gagal dieksekusi');
+        setQueryError(data.error || 'Perintah gagal diproses');
         setQueryResult(null);
       }
     } catch (err: any) {
@@ -223,7 +350,7 @@ export const SecurityDatabaseView: React.FC = () => {
         body: JSON.stringify({ action: 'init_schema' }),
       });
       const data = await res.json();
-      setSchemaInitMsg(data.message || (data.success ? 'Skema tabel MySQL berhasil dibuat!' : 'Gagal membuat skema'));
+      setSchemaInitMsg(data.message || (data.success ? 'Struktur data faskes berhasil diperbarui!' : 'Gagal memperbarui data'));
     } catch (err: any) {
       setSchemaInitMsg('Error: ' + err.message);
     } finally {
@@ -260,12 +387,12 @@ export const SecurityDatabaseView: React.FC = () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `table_${tableName}_${bpjsConfig.kdFaskes}_${Date.now()}.sql`;
+        a.download = `data_${tableName}_${bpjsConfig.kdFaskes}_${Date.now()}.sql`;
         a.click();
         URL.revokeObjectURL(url);
       }
     } catch (err: any) {
-      alert('Gagal download tabel: ' + err.message);
+      showSwalError('Gagal ekspor data: ' + err.message);
     } finally {
       setDownloadingTable(null);
     }
@@ -279,7 +406,7 @@ export const SecurityDatabaseView: React.FC = () => {
     else if (tableName === 'bridging_logs') rows = bridgingLogs;
 
     if (rows.length === 0) {
-      alert(`Tabel ${tableName} tidak memiliki data untuk diekspor ke CSV`);
+      showSwalAlert(`Data ${tableName} belum memiliki rekaman untuk diekspor ke CSV`, { title: 'Data Kosong', icon: 'info' });
       return;
     }
 
@@ -300,7 +427,7 @@ export const SecurityDatabaseView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tabel_${tableName}_${bpjsConfig.kdFaskes}.csv`;
+    a.download = `data_${tableName}_${bpjsConfig.kdFaskes}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -323,7 +450,7 @@ export const SecurityDatabaseView: React.FC = () => {
         URL.revokeObjectURL(url);
       }
     } catch (err: any) {
-      alert('Gagal download skema: ' + err.message);
+      showSwalError('Gagal download skema: ' + err.message);
     }
   };
 
@@ -345,7 +472,7 @@ export const SecurityDatabaseView: React.FC = () => {
         URL.revokeObjectURL(url);
       }
     } catch (err: any) {
-      alert('Gagal download procedures: ' + err.message);
+      showSwalError('Gagal download procedures: ' + err.message);
     }
   };
 
@@ -367,7 +494,7 @@ export const SecurityDatabaseView: React.FC = () => {
         URL.revokeObjectURL(url);
       }
     } catch (err: any) {
-      alert('Gagal download full dump: ' + err.message);
+      showSwalError('Gagal download full dump: ' + err.message);
     }
   };
 
@@ -383,7 +510,7 @@ export const SecurityDatabaseView: React.FC = () => {
       setEncryptedOutput(cipher);
       addSecurityLog('ENCRYPT', `Pengujian enkripsi manual string (${plainInput.length} karakter) berhasil.`);
     } catch (e: any) {
-      alert('Gagal mengenkripsi: ' + e.message);
+      showSwalError('Gagal mengenkripsi: ' + e.message);
     }
   };
 
@@ -394,7 +521,7 @@ export const SecurityDatabaseView: React.FC = () => {
       setDecryptedOutput(plain);
       addSecurityLog('DECRYPT', `Pengujian dekripsi manual string berhasil diverifikasi.`);
     } catch (e: any) {
-      alert('Gagal mendekripsi: ' + e.message);
+      showSwalError('Gagal mendekripsi: ' + e.message);
     }
   };
 
@@ -434,16 +561,16 @@ export const SecurityDatabaseView: React.FC = () => {
         </div>
         <div className="space-y-2">
           <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-            Akses Database Khusus Administrator RME
+            Akses Khusus Administrator RME
           </h2>
           <p className="text-sm text-slate-600 max-w-md mx-auto leading-relaxed">
-            Formulir koneksi database MySQL, konsol query SQL, dan unduh skema tabel serta prosedur hanya dapat diakses oleh akun dengan peran <strong>Administrator RME (ADMIN_RME)</strong>.
+            Konfigurasi server terpusat, konsol penelusuran data faskes, dan ekspor data operasional hanya dapat diakses oleh akun dengan peran <strong>Administrator RME (ADMIN_RME)</strong>.
           </p>
         </div>
         <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-600 max-w-md mx-auto space-y-1.5 text-left">
           <div className="flex justify-between">
             <span className="text-slate-500">Akun Petugas Aktif:</span>
-            <strong className="text-slate-800">{user ? user.namaLengkap : 'Tamu / Pasien'}</strong>
+            <strong className="text-slate-800">{user ? (user.namaLengkap || (user as any).nama_lengkap || user.username) : 'Tamu / Pasien'}</strong>
           </div>
           <div className="flex justify-between">
             <span className="text-slate-500">Peran Saat Ini:</span>
@@ -478,7 +605,7 @@ export const SecurityDatabaseView: React.FC = () => {
               <span className="text-slate-400 font-normal">UU PDP No. 27/2022 & Permenkes RME</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
-              Sistem Manajemen Basis Data Pasien Terenkripsi
+              Sistem Manajemen Data Pasien Terenkripsi
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
               Seluruh data identitas pasien (PII), nomor rekam medis, keluhan, dan rekam kunjungan disimpan
@@ -558,7 +685,7 @@ export const SecurityDatabaseView: React.FC = () => {
               }`}
             >
               <Database className="w-3.5 h-3.5 text-blue-200" />
-              <span>Database MySQL & Query</span>
+              <span>Pusat Data Server</span>
             </button>
 
             <button
@@ -570,7 +697,7 @@ export const SecurityDatabaseView: React.FC = () => {
               }`}
             >
               <Server className="w-3.5 h-3.5" />
-              <span>Lokasi & Arsitektur DB</span>
+              <span>Status Integrasi Sistem</span>
             </button>
 
             <button
@@ -616,7 +743,7 @@ export const SecurityDatabaseView: React.FC = () => {
               className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
             >
               <Download className="w-3.5 h-3.5 text-blue-400" />
-              <span>Unduh schema.sql</span>
+              <span>Arsip Data (.sql)</span>
             </button>
 
             <button
@@ -648,7 +775,7 @@ export const SecurityDatabaseView: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-1">
-                    Kontrol akses resmi petugas klinik yang tersimpan di tabel <code>users</code> database. Anda dapat mereset password akun petugas ke nilai awal default (<code className="font-bold">000000</code>).
+                    Kontrol akses resmi petugas dan dokter faskes. Anda dapat mereset kata sandi akun petugas ke nilai awal default (<code className="font-bold">000000</code>).
                   </p>
                 </div>
               </div>
@@ -696,9 +823,9 @@ export const SecurityDatabaseView: React.FC = () => {
               <div>
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                   <Users className="w-4 h-4 text-slate-600" />
-                  <span>Daftar Akun Petugas Terdaftar di Database ({usersList.length || 5})</span>
+                  <span>Daftar Akun Petugas Terdaftar ({usersList.length || 5})</span>
                 </h4>
-                <p className="text-xs text-slate-500 mt-0.5">Tabel <code>users</code> · Terverifikasi Database Faskes</p>
+                <p className="text-xs text-slate-500 mt-0.5">Akun Petugas Terverifikasi Sistem Faskes</p>
               </div>
             </div>
 
@@ -754,20 +881,39 @@ export const SecurityDatabaseView: React.FC = () => {
                             {u.last_login || u.lastLogin ? new Date(u.last_login || u.lastLogin).toLocaleString('id-ID') : 'Belum pernah'}
                           </td>
                           <td className="py-3.5 px-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedUserToReset(u);
-                                setCustomResetPassword('000000');
-                                setResetSuccessMsg(null);
-                                setResetErrorMsg(null);
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
-                              title={`Reset password akun ${u.username} ke 000000`}
-                            >
-                              <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Reset Password</span>
-                            </button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingUser(u);
+                                  setEditNamaLengkap(u.nama_lengkap || u.namaLengkap || '');
+                                  setEditNip(u.nip || '');
+                                  setEditRole(u.role || 'DOKTER');
+                                  setResetSuccessMsg(null);
+                                  setResetErrorMsg(null);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                                title={`Ubah profil akun ${u.username}`}
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Edit Profil</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedUserToReset(u);
+                                  setCustomResetPassword('000000');
+                                  setResetSuccessMsg(null);
+                                  setResetErrorMsg(null);
+                                }}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                                title={`Reset password akun ${u.username} ke 000000`}
+                              >
+                                <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Reset Password</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -775,7 +921,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   ) : (
                     <tr>
                       <td colSpan={7} className="text-center py-8 text-slate-400">
-                        {loadingUsers ? 'Memuat data pengguna dari database...' : 'Tidak ada pengguna ditemukan'}
+                        {loadingUsers ? 'Memuat data pengguna...' : 'Tidak ada pengguna ditemukan'}
                       </td>
                     </tr>
                   )}
@@ -783,6 +929,289 @@ export const SecurityDatabaseView: React.FC = () => {
               </table>
             </div>
           </div>
+
+          {/* TABLE MASTER POLIKLINIK & DOKTER DI DATABASE */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Stethoscope className="w-4 h-4 text-emerald-600" />
+                  <span>Master Poliklinik & Dokter Penanggung Jawab</span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Seluruh nama dokter, poliklinik, dan ruangan terintegrasi dinamis dalam sistem faskes.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 border-b border-slate-200 font-bold uppercase text-[10px] text-slate-500 tracking-wider">
+                  <tr>
+                    <th className="py-3 px-4">Poli & Prefix</th>
+                    <th className="py-3 px-4">Dokter Penanggung Jawab</th>
+                    <th className="py-3 px-4">SIP / Lisensi Praktik</th>
+                    <th className="py-3 px-4">Ruangan / Loket</th>
+                    <th className="py-3 px-4">Durasi Layanan</th>
+                    <th className="py-3 px-4 text-center">Aksi Administrator</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {polisList.length > 0 ? (
+                    polisList.map((p: any) => (
+                      <tr key={p.kode} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center font-mono text-xs">
+                              {p.prefix}
+                            </span>
+                            <div>
+                              <div className="font-bold text-slate-900">{p.nama}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">Kode: {p.kode}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                          {p.dokter}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                          {p.sip || '-'}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-700 font-medium">
+                          {p.ruang}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          ±{p.durasiRataRataMenit || 10} menit / pasien
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPoli(p);
+                              setEditPoliDokter(p.dokter || '');
+                              setEditPoliNama(p.nama || '');
+                              setEditPoliRuang(p.ruang || '');
+                              setEditPoliSip(p.sip || '');
+                              setResetSuccessMsg(null);
+                              setResetErrorMsg(null);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Ubah Dokter / Poli</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="text-center py-6 text-slate-400">
+                        Memuat data poliklinik dari database...
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Edit User Modal */}
+          {editingUser && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+              <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
+                    <Edit3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base">Edit Profil Petugas</h3>
+                    <p className="text-xs text-slate-500">Data Petugas & Dokter Faskes</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3.5 text-xs text-slate-700">
+                  <div>
+                    <label className="block text-slate-500 mb-1">Username (ID Akun - Permanen)</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={editingUser.username}
+                      className="w-full py-2 px-3 rounded-xl border border-slate-200 font-mono text-slate-500 bg-slate-100 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Nama Lengkap & Gelar Petugas / Dokter</label>
+                    <input
+                      type="text"
+                      value={editNamaLengkap}
+                      onChange={(e) => setEditNamaLengkap(e.target.value)}
+                      placeholder="Contoh: dr. Machmujur, M.Kes"
+                      className="w-full py-2 px-3 rounded-xl border border-slate-300 font-medium text-slate-900 text-xs focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Nama ini akan tampil di seluruh layar (Kios, TV Display, Loket, & RME).</p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">NIP / Nomor Identitas Pegawai</label>
+                    <input
+                      type="text"
+                      value={editNip}
+                      onChange={(e) => setEditNip(e.target.value)}
+                      placeholder="Nomor NIP..."
+                      className="w-full py-2 px-3 rounded-xl border border-slate-300 font-mono text-slate-900 text-xs focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Peran / Hak Akses (Role)</label>
+                    <select
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value)}
+                      className="w-full py-2 px-3 rounded-xl border border-slate-300 font-medium text-slate-900 text-xs focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      <option value="DOKTER">DOKTER (Poli Umum / Gigi)</option>
+                      <option value="PETUGAS_LOKET">PETUGAS_LOKET (Pendaftaran)</option>
+                      <option value="PETUGAS_FARMASI">PETUGAS_FARMASI (Apotek)</option>
+                      <option value="ADMIN_RME">ADMIN_RME (Administrator Rekam Medis)</option>
+                      <option value="ADMIN_BRIDGING">ADMIN_BRIDGING (Operator BPJS)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(null)}
+                    disabled={savingUser}
+                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveUser}
+                    disabled={savingUser}
+                    className="flex-1 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {savingUser ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Simpan Perubahan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Poli & Dokter Modal */}
+          {editingPoli && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+              <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4">
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                    <Stethoscope className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-slate-900 text-base">Ubah Dokter & Poliklinik</h3>
+                    <p className="text-xs text-slate-500">Informasi Layanan & Dokter Penanggung Jawab</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3.5 text-xs text-slate-700">
+                  <div>
+                    <label className="block text-slate-500 mb-1">Kode Poli (Prefix: {editingPoli.prefix})</label>
+                    <input
+                      type="text"
+                      disabled
+                      value={editingPoli.kode}
+                      className="w-full py-2 px-3 rounded-xl border border-slate-200 font-mono text-slate-500 bg-slate-100 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Nama Poliklinik</label>
+                    <input
+                      type="text"
+                      value={editPoliNama}
+                      onChange={(e) => setEditPoliNama(e.target.value)}
+                      placeholder="Nama Poli..."
+                      className="w-full py-2 px-3 rounded-xl border border-slate-300 font-medium text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Dokter Penanggung Jawab</label>
+                    <input
+                      type="text"
+                      value={editPoliDokter}
+                      onChange={(e) => setEditPoliDokter(e.target.value)}
+                      placeholder="Nama Dokter..."
+                      className="w-full py-2 px-3 rounded-xl border border-slate-300 font-medium text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">SIP / Nomor Izin Praktik</label>
+                    <input
+                      type="text"
+                      value={editPoliSip}
+                      onChange={(e) => setEditPoliSip(e.target.value)}
+                      placeholder="Contoh: 446/102/SIP-D/2024"
+                      className="w-full py-2 px-3 rounded-xl border border-slate-300 font-mono text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Ruangan / Loket</label>
+                    <input
+                      type="text"
+                      value={editPoliRuang}
+                      onChange={(e) => setEditPoliRuang(e.target.value)}
+                      placeholder="Contoh: Ruang 01 (Lantai 1)"
+                      className="w-full py-2 px-3 rounded-xl border border-slate-300 font-medium text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditingPoli(null)}
+                    disabled={savingPoli}
+                    className="flex-1 py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSavePoli}
+                    disabled={savingPoli}
+                    className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {savingPoli ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Menyimpan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Simpan Perubahan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Reset Confirmation Modal */}
           {selectedUserToReset && (
@@ -868,7 +1297,7 @@ export const SecurityDatabaseView: React.FC = () => {
       {/* TAB: MYSQL DATABASE ENGINE & CONSOLE */}
       {activeTab === 'MYSQL' && (
         <div className="space-y-6">
-          {/* MySQL Banner & Overview */}
+          {/* Koneksi Server & Overview */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
               <div className="flex items-start gap-3.5">
@@ -877,27 +1306,27 @@ export const SecurityDatabaseView: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-base">MySQL / MariaDB Relational Database</h3>
+                    <h3 className="font-bold text-slate-900 text-base">Konfigurasi Server Terpusat</h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                      RDBMS MySQL 8.x
+                      Aktif & Terhubung
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-1">
-                    Basis data relasional terstruktur untuk data antrean online bridging BPJS (VClaim / PCare) dan rekam medis pasien terenkripsi.
+                    Pusat penyimpanan data untuk operasional antrean, bridging BPJS, dan rekam medis faskes.
                   </p>
                 </div>
               </div>
 
               {/* Status Badge */}
               <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
-                <span className="text-[11px] font-semibold text-slate-600">Engine Node:</span>
+                <span className="text-[11px] font-semibold text-slate-600">Status:</span>
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-emerald-100 text-emerald-800">
-                  mysql2/promise
+                  Terintegrasi
                 </span>
                 <span className="text-slate-300">|</span>
-                <span className="text-[11px] font-semibold text-slate-600">Katalog DB:</span>
+                <span className="text-[11px] font-semibold text-slate-600">ID Faskes:</span>
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-blue-100 text-blue-800">
-                  {mysqlDbName}
+                  {bpjsConfig.kdFaskes}
                 </span>
               </div>
             </div>
@@ -905,12 +1334,12 @@ export const SecurityDatabaseView: React.FC = () => {
             {/* Connection Form & Diagnostics */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-1">
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Host MySQL</label>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Host Server</label>
                 <input
                   type="text"
                   value={mysqlHost}
                   onChange={(e) => setMysqlHost(e.target.value)}
-                  placeholder="localhost / IP Server"
+                  placeholder="IP Server"
                   className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
                 />
               </div>
@@ -927,34 +1356,34 @@ export const SecurityDatabaseView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">User</label>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">User Akun</label>
                 <input
                   type="text"
                   value={mysqlUser}
                   onChange={(e) => setMysqlUser(e.target.value)}
-                  placeholder="root"
+                  placeholder="Username"
                   className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Password</label>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Kata Sandi</label>
                 <input
                   type="password"
                   value={mysqlPass}
                   onChange={(e) => setMysqlPass(e.target.value)}
-                  placeholder="Password DB"
+                  placeholder="Kata Sandi"
                   className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Nama Database</label>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Katalog Data</label>
                 <input
                   type="text"
                   value={mysqlDbName}
                   onChange={(e) => setMysqlDbName(e.target.value)}
-                  placeholder="antrean_bpjs_tpmd"
+                  placeholder="Nama Katalog"
                   className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
                 />
               </div>
@@ -966,24 +1395,15 @@ export const SecurityDatabaseView: React.FC = () => {
                 <button
                   onClick={handleTestMysql}
                   disabled={testingMysql}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${testingMysql ? 'animate-spin' : ''}`} />
-                  <span>{testingMysql ? 'Menguji Koneksi...' : 'Uji Koneksi MySQL'}</span>
-                </button>
-
-                <button
-                  onClick={handleInitSchema}
-                  disabled={schemaInitLoading}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5"
-                >
-                  <Code2 className="w-3.5 h-3.5 text-blue-400" />
-                  <span>{schemaInitLoading ? 'Memproses Skema...' : 'Migrasi Skema (schema.sql)'}</span>
+                  <span>{testingMysql ? 'Menguji Koneksi...' : 'Uji Koneksi Server'}</span>
                 </button>
               </div>
 
               <div className="text-[11px] text-slate-500 font-mono">
-                Environment: .env.example / process.env.MYSQL_*
+                Koneksi Server Terpusat Faskes
               </div>
             </div>
 
@@ -1004,15 +1424,15 @@ export const SecurityDatabaseView: React.FC = () => {
                 <div className="space-y-1">
                   <div className="font-bold">
                     {mysqlTestResult.success
-                      ? `Koneksi MySQL Sukses (${mysqlTestResult.latencyMs} ms)`
-                      : 'Koneksi MySQL Gagal / Dalam Mode Siaga (Fallback Otomatis Aktif)'}
+                      ? `Koneksi Server Berhasil Terhubung (${mysqlTestResult.latencyMs} ms)`
+                      : 'Koneksi Server Belum Terjangkau'}
                   </div>
                   <div className="text-[11px]">
                     {mysqlTestResult.success ? (
-                      <span>Server MySQL terdeteksi versi <strong>{mysqlTestResult.version}</strong> pada database <strong>{mysqlDbName}</strong>. Data siap ditransaksikan.</span>
+                      <span>Server utama faskes terverifikasi online dan siap melayani seluruh transaksi antrean & rekam medis.</span>
                     ) : (
                       <span>
-                        Pesan: {mysqlTestResult.error}. Sistem tetap 100% beroperasi normal dengan dual-storage layer terstruktur. Untuk menghubungkan MySQL lokal (XAMPP / Laragon / Cloud SQL), pastikan service MySQL menyala di port {mysqlPort} dan database <code>{mysqlDbName}</code> telah dibuat.
+                        Keterangan: {mysqlTestResult.error}. Pastikan konfigurasi alamat server dan kredensial akses telah sesuai.
                       </span>
                     )}
                   </div>
@@ -1027,16 +1447,16 @@ export const SecurityDatabaseView: React.FC = () => {
             )}
           </div>
 
-          {/* Interactive SQL Query Console */}
+          {/* Interactive Query Console */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                   <Terminal className="w-4 h-4 text-blue-600" />
-                  <span>Konsol Query Interaktif MySQL</span>
+                  <span>Konsol Pencarian Data Faskes</span>
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Jalankan perintah SQL langsung terhadap basis data MySQL / dual-engine.
+                  Lakukan penelusuran data antrean, pasien, dan log sistem secara langsung.
                 </p>
               </div>
 
@@ -1046,39 +1466,25 @@ export const SecurityDatabaseView: React.FC = () => {
                   onClick={() =>
                     setSqlQuery('SELECT nomor_antrean, tipe_pasien, poli_nama, nama_pasien, status, estimasi_jam_panggil FROM queues ORDER BY nomor_urut ASC LIMIT 10;')
                   }
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono"
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono cursor-pointer"
                 >
-                  queues
+                  Antrean Hari Ini
                 </button>
                 <button
                   onClick={() =>
                     setSqlQuery('SELECT id, nik, no_bpjs, nama, status_bpjs, jenis_peserta, faskes_tingkat_1 FROM patients LIMIT 10;')
                   }
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono"
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono cursor-pointer"
                 >
-                  patients
-                </button>
-                <button
-                  onClick={() =>
-                    setSqlQuery('SELECT kd_faskes, nama_faskes, cons_id, environment, base_url FROM faskes_config;')
-                  }
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono"
-                >
-                  faskes_config
+                  Data Pasien
                 </button>
                 <button
                   onClick={() =>
                     setSqlQuery('SELECT id, timestamp, actor, action, status, details FROM security_logs ORDER BY timestamp DESC LIMIT 10;')
                   }
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono"
+                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono cursor-pointer"
                 >
-                  security_logs
-                </button>
-                <button
-                  onClick={() => setSqlQuery('SHOW TABLES;')}
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono"
-                >
-                  SHOW TABLES
+                  Log Keamanan
                 </button>
               </div>
             </div>
@@ -1090,7 +1496,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   value={sqlQuery}
                   onChange={(e) => setSqlQuery(e.target.value)}
                   rows={3}
-                  placeholder="Tulis perintah SQL: SELECT * FROM queues WHERE status = 'MENUNGGU'..."
+                  placeholder="Ketik kriteria pencarian data faskes..."
                   className="w-full p-3.5 bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl font-mono text-xs focus:border-blue-500 focus:outline-none"
                 />
               </div>
@@ -1099,14 +1505,14 @@ export const SecurityDatabaseView: React.FC = () => {
                 <button
                   onClick={handleRunQuery}
                   disabled={runningQuery}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Play className={`w-3.5 h-3.5 ${runningQuery ? 'animate-spin' : ''}`} />
-                  <span>{runningQuery ? 'Mengeksekusi...' : 'Jalankan Query SQL'}</span>
+                  <span>{runningQuery ? 'Mengeksekusi...' : 'Jalankan Perintah'}</span>
                 </button>
 
                 <span className="text-[11px] text-slate-500">
-                  Didukung: SELECT, INSERT, UPDATE, SHOW TABLES, DESCRIBE
+                  Operasi: SELECT, INSERT, UPDATE
                 </span>
               </div>
             </div>
@@ -1114,7 +1520,7 @@ export const SecurityDatabaseView: React.FC = () => {
             {/* Query Error */}
             {queryError && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 font-mono">
-                Error SQL: {queryError}
+                Error: {queryError}
               </div>
             )}
 
@@ -1122,7 +1528,7 @@ export const SecurityDatabaseView: React.FC = () => {
             {queryResult && queryResult.length > 0 && (
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                  <span>Hasil Query ({queryResult.length} baris):</span>
+                  <span>Hasil ({queryResult.length} baris):</span>
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="w-full text-left text-xs font-mono">
@@ -1153,177 +1559,63 @@ export const SecurityDatabaseView: React.FC = () => {
 
             {queryResult && queryResult.length === 0 && (
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 text-center font-mono">
-                Query berhasil dieksekusi. Tidak ada baris yang dikembalikan (0 rows).
+                Perintah berhasil dijalankan. Tidak ada data yang ditemukan (0 rows).
               </div>
             )}
           </div>
 
-          {/* Skema Tabel MySQL DDL Preview */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Code2 className="w-4 h-4 text-blue-600" />
-                <h4 className="font-bold text-slate-900 text-sm">Struktur Skema Tabel MySQL (data/schema.sql)</h4>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const ddl = `-- SKEMA BASIS DATA MYSQL: SISTEM ANTREAN BRIDGING BPJS\n-- FASKES: TPMD DR MACHMUJUR (019U901)\n-- Lokasi File: /data/schema.sql\n\nCREATE DATABASE IF NOT EXISTS \`antrean_bpjs_tpmd\` DEFAULT CHARACTER SET utf8mb4;\nUSE \`antrean_bpjs_tpmd\`;\n\n-- Tabel faskes_config, patients, queues, security_logs, bridging_logs...`;
-                    navigator.clipboard.writeText(ddl);
-                    setSqlCopied(true);
-                    setTimeout(() => setSqlCopied(false), 2000);
-                  }}
-                  className="px-3 py-1.5 border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1"
-                >
-                  {sqlCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{sqlCopied ? 'Tersalin!' : 'Salin DDL SQL'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
-                <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
-                  <Table className="w-3.5 h-3.5 text-blue-600" />
-                  <span>1. `queues` (Tabel Antrean)</span>
-                </div>
-                <div className="text-[11px] text-slate-600 font-mono space-y-0.5">
-                  <div>· id (VARCHAR PRIMARY KEY)</div>
-                  <div>· nomor_antrean, prefix, nomor_urut</div>
-                  <div>· tipe_pasien (BPJS | UMUM)</div>
-                  <div>· poli_kode, poli_nama, dokter_nama</div>
-                  <div>· status (MENUNGGU, DIPANGGIL...)</div>
-                  <div>· bpjs_task_id (Task 1 s.d. 7)</div>
-                  <div>· kode_booking, keluhan, estimasi</div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
-                <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
-                  <Table className="w-3.5 h-3.5 text-blue-600" />
-                  <span>2. `patients` (Tabel Pasien)</span>
-                </div>
-                <div className="text-[11px] text-slate-600 font-mono space-y-0.5">
-                  <div>· id (VARCHAR PRIMARY KEY)</div>
-                  <div>· nik (VARCHAR(16) INDEX)</div>
-                  <div>· no_bpjs (VARCHAR(20))</div>
-                  <div>· nama (VARCHAR(150))</div>
-                  <div>· tgl_lahir, jenis_kelamin, no_hp</div>
-                  <div>· status_bpjs, faskes_tingkat_1</div>
-                  <div>· encrypted_data (AES-256 PII)</div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
-                <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
-                  <Table className="w-3.5 h-3.5 text-blue-600" />
-                  <span>3. `faskes_config` (Kredensial)</span>
-                </div>
-                <div className="text-[11px] text-slate-600 font-mono space-y-0.5">
-                  <div>· id (VARCHAR PRIMARY KEY)</div>
-                  <div>· kd_faskes (019U901)</div>
-                  <div>· cons_id (11495)</div>
-                  <div>· secret_key, user_key</div>
-                  <div>· dev_user, dev_pass</div>
-                  <div>· environment (tester / prod)</div>
-                  <div>· base_url (API VClaim BPJS)</div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
-                <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
-                  <Table className="w-3.5 h-3.5 text-blue-600" />
-                  <span>4. `security_logs` (Audit RME)</span>
-                </div>
-                <div className="text-[11px] text-slate-600 font-mono space-y-0.5">
-                  <div>· id, timestamp, actor</div>
-                  <div>· action (ENCRYPT, DECRYPT, KEY_ROTATE)</div>
-                  <div>· status (SUCCESS, DENIED)</div>
-                  <div>· details (Keterangan Audit RME)</div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-1.5">
-                <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
-                  <Table className="w-3.5 h-3.5 text-blue-600" />
-                  <span>5. `bridging_logs` (API BPJS)</span>
-                </div>
-                <div className="text-[11px] text-slate-600 font-mono space-y-0.5">
-                  <div>· id, timestamp, endpoint, method</div>
-                  <div>· request_header, request_payload (JSON)</div>
-                  <div>· response_status, response_payload</div>
-                  <div>· duration_ms (Latency Jaringan)</div>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 space-y-1.5 flex flex-col justify-center">
-                <div className="font-bold text-blue-900 text-xs flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Kompatibilitas Tools RDBMS</span>
-                </div>
-                <div className="text-[11px] text-blue-800 leading-relaxed">
-                  Skema DDL kompatibel dengan phpMyAdmin, MySQL Workbench, DBeaver, Navicat, serta Cloud SQL MySQL GCP dan AWS RDS.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION: DOWNLOAD TABEL & STORED PROCEDURES */}
+          {/* SECTION: EKSPOR DATA OPERASIONAL */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
               <div>
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                   <Download className="w-4 h-4 text-emerald-600" />
-                  <span>Unduh Data Tabel & Stored Procedures MySQL</span>
+                  <span>Ekspor Data Operasional Faskes</span>
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Ekspor data tabel secara terpisah atau unduh paket lengkap Stored Procedures dan database dump.
+                  Unduh data antrean, rekam medis pasien, dan riwayat audit untuk arsip faskes.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleDownloadFullDump}
-                  className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+                  className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Unduh Full MySQL Dump (.sql)</span>
+                  <span>Cadangkan Seluruh Data (.sql)</span>
                 </button>
               </div>
             </div>
 
-            {/* Grid Tabel Download */}
+            {/* Grid Download */}
             <div>
-              <div className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
-                1. Ekspor Data Per Tabel (Format .SQL Dump / .CSV)
-              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                {/* queues */}
+                {/* Antrean */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
                   <div>
                     <div className="font-bold text-slate-900 flex items-center justify-between">
-                      <span className="font-mono">tabel `queues`</span>
+                      <span>Data Antrean</span>
                       <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                        {queues.length} baris
+                        {queues.length} data
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Data antrean poli, loket, farmasi, kode booking, dan status task BPJS.
+                      Data nomor antrean poli, loket, farmasi, dan waktu panggil.
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
                       onClick={() => handleDownloadTableSql('queues')}
                       disabled={downloadingTable === 'queues'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs"
+                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>{downloadingTable === 'queues' ? '...' : '.SQL'}</span>
                     </button>
                     <button
                       onClick={() => handleDownloadTableCsv('queues')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1"
+                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>.CSV</span>
@@ -1331,31 +1623,31 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* patients */}
+                {/* Pasien */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
                   <div>
                     <div className="font-bold text-slate-900 flex items-center justify-between">
-                      <span className="font-mono">tabel `patients`</span>
+                      <span>Data Pasien</span>
                       <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
                         {patients.length} rekam
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Rekam identitas pasien, NIK, No. BPJS, dan PII terenkripsi AES-256.
+                      Data identitas pasien, NIK, No. BPJS, dan status kepesertaan.
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
                       onClick={() => handleDownloadTableSql('patients')}
                       disabled={downloadingTable === 'patients'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs"
+                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>{downloadingTable === 'patients' ? '...' : '.SQL'}</span>
                     </button>
                     <button
                       onClick={() => handleDownloadTableCsv('patients')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1"
+                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>.CSV</span>
@@ -1363,24 +1655,24 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* users */}
+                {/* Petugas */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
                   <div>
                     <div className="font-bold text-slate-900 flex items-center justify-between">
-                      <span className="font-mono">tabel `users`</span>
+                      <span>Akun Petugas</span>
                       <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
-                        5 akun
+                        {usersList.length || 5} akun
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Data petugas (Dokter, Loket, Farmasi, Admin Bridging, Admin RME).
+                      Daftar akun dokter, petugas loket, apotek, dan admin.
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
                       onClick={() => handleDownloadTableSql('users')}
                       disabled={downloadingTable === 'users'}
-                      className="w-full py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs"
+                      className="w-full py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>{downloadingTable === 'users' ? '...' : 'Unduh .SQL'}</span>
@@ -1388,56 +1680,31 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* faskes_config */}
+                {/* Log Audit */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
                   <div>
                     <div className="font-bold text-slate-900 flex items-center justify-between">
-                      <span className="font-mono">tabel `faskes_config`</span>
-                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
-                        019U901
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Kredensial bridging VClaim / PCare TPMD DR MACHMUJUR.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
-                    <button
-                      onClick={() => handleDownloadTableSql('faskes_config')}
-                      disabled={downloadingTable === 'faskes_config'}
-                      className="w-full py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>{downloadingTable === 'faskes_config' ? '...' : 'Unduh .SQL'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* security_logs */}
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
-                  <div>
-                    <div className="font-bold text-slate-900 flex items-center justify-between">
-                      <span className="font-mono">tabel `security_logs`</span>
+                      <span>Log Audit Keamanan</span>
                       <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">
                         {securityLogs.length} audit
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Log audit trail login, autentikasi, enkripsi, dan dekripsi rekam medis.
+                      Catatan akses, login petugas, dan pengubahan password.
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
                       onClick={() => handleDownloadTableSql('security_logs')}
                       disabled={downloadingTable === 'security_logs'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs"
+                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>{downloadingTable === 'security_logs' ? '...' : '.SQL'}</span>
                     </button>
                     <button
                       onClick={() => handleDownloadTableCsv('security_logs')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1"
+                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>.CSV</span>
@@ -1445,61 +1712,36 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* bridging_logs */}
+                {/* Log Bridging */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
                   <div>
                     <div className="font-bold text-slate-900 flex items-center justify-between">
-                      <span className="font-mono">tabel `bridging_logs`</span>
+                      <span>Log Bridging BPJS</span>
                       <span className="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-[10px] font-bold">
                         {bridgingLogs.length} request
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">
-                      Log transmisi payload HTTP, HMAC-SHA256, dan respon BPJS.
+                      Riwayat transmisi data bridging dan status respon.
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
                       onClick={() => handleDownloadTableSql('bridging_logs')}
                       disabled={downloadingTable === 'bridging_logs'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs"
+                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>{downloadingTable === 'bridging_logs' ? '...' : '.SQL'}</span>
                     </button>
                     <button
                       onClick={() => handleDownloadTableCsv('bridging_logs')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1"
+                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
                       <span>.CSV</span>
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Stored Procedures Download Box */}
-            <div className="pt-2 border-t border-slate-100">
-              <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
-                    <Code2 className="w-4 h-4 text-blue-600" />
-                    <span>2. Stored Procedures MySQL (procedures.sql)</span>
-                  </div>
-                  <p className="text-[11px] text-blue-900 leading-relaxed">
-                    Berisi 6 prosedur tersimpan: <code>sp_otentikasi_petugas</code>, <code>sp_buat_antrean_baru</code>, <code>sp_panggil_antrean</code>, <code>sp_mulai_layanan_dokter</code>, <code>sp_selesai_layanan</code>, dan <code>sp_catat_audit_keamanan</code>.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={handleDownloadProcedures}
-                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Unduh procedures.sql</span>
-                  </button>
                 </div>
               </div>
             </div>
@@ -1517,11 +1759,11 @@ export const SecurityDatabaseView: React.FC = () => {
                 <HardDrive className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">File Database Fisik</div>
-                <div className="text-xs font-mono font-bold text-slate-900 mt-1 truncate">/data/faskes_antrean.json</div>
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Penyimpanan Data</div>
+                <div className="text-xs font-mono font-bold text-slate-900 mt-1 truncate">Server Terpusat: Aktif</div>
                 <div className="flex items-center gap-1.5 mt-1 text-[11px] text-emerald-600 font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Aktif Tersimpan di Server</span>
+                  <span>Layanan Data Terhubung</span>
                 </div>
               </div>
             </div>
@@ -1531,9 +1773,9 @@ export const SecurityDatabaseView: React.FC = () => {
                 <Server className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">API Database Server</div>
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Layanan Integrasi Data</div>
                 <div className="text-xs font-mono font-bold text-slate-900 mt-1">/api/db (GET/POST)</div>
-                <div className="text-[11px] text-slate-500 mt-1">Next.js API Handler Autentik</div>
+                <div className="text-[11px] text-slate-500 mt-1">Layanan Sinkronisasi Autentik</div>
               </div>
             </div>
 
@@ -1560,16 +1802,16 @@ export const SecurityDatabaseView: React.FC = () => {
             </div>
           </div>
 
-          {/* Database Architecture & Structure Explanation */}
+          {/* Architecture & Structure Explanation */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
                   <Database className="w-4 h-4 text-emerald-600" />
-                  <span>Struktur Koleksi Database TPMD DR. MACHMUJUR</span>
+                  <span>Struktur Layanan Data TPMD DR. MACHMUJUR</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Basis data tersimpan secara terstruktur dan terotomatisasi di server lokal dan sinkron ke seluruh antarmuka klinik.
+                  Data faskes tersimpan secara terstruktur, terotomatisasi, dan tersinkron ke seluruh antarmuka klinik.
                 </p>
               </div>
 
@@ -1580,7 +1822,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${loadingRaw ? 'animate-spin' : ''}`} />
-                  <span>{loadingRaw ? 'Mengambil Data...' : 'Inspeksi Raw Server DB'}</span>
+                  <span>{loadingRaw ? 'Mengambil Data...' : 'Ringkasan Data Sistem'}</span>
                 </button>
               </div>
             </div>
@@ -1589,7 +1831,7 @@ export const SecurityDatabaseView: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 font-mono">1. collections.queues</span>
+                  <span className="font-bold text-slate-900">1. Layanan Antrean Pasien</span>
                   <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
                     {queues.length} Antrean
                   </span>
@@ -1601,7 +1843,7 @@ export const SecurityDatabaseView: React.FC = () => {
 
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 font-mono">2. collections.patients</span>
+                  <span className="font-bold text-slate-900">2. Rekam Medis Pasien</span>
                   <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
                     {patients.length} Rekam Medis
                   </span>
@@ -1613,7 +1855,7 @@ export const SecurityDatabaseView: React.FC = () => {
 
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 font-mono">3. collections.config</span>
+                  <span className="font-bold text-slate-900">3. Konfigurasi Sistem & BPJS</span>
                   <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">
                     KD 019U901
                   </span>
@@ -1625,7 +1867,7 @@ export const SecurityDatabaseView: React.FC = () => {
 
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 font-mono">4. collections.securityLogs</span>
+                  <span className="font-bold text-slate-900">4. Catatan Audit Keamanan</span>
                   <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-bold">
                     {securityLogs.length} Audit
                   </span>
@@ -1637,7 +1879,7 @@ export const SecurityDatabaseView: React.FC = () => {
 
               <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 font-mono">5. collections.bridgingLogs</span>
+                  <span className="font-bold text-slate-900">5. Riwayat Integrasi BPJS</span>
                   <span className="px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 text-[10px] font-bold">
                     {bridgingLogs.length} Log API
                   </span>
@@ -1650,10 +1892,10 @@ export const SecurityDatabaseView: React.FC = () => {
               <div className="p-4 rounded-xl border border-dashed border-emerald-300 bg-emerald-50/40 space-y-1.5 flex flex-col justify-center">
                 <span className="font-bold text-emerald-950 text-xs flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Dukungan Database Relasional (SQL)</span>
+                  <span>Dukungan Server Terpusat</span>
                 </span>
                 <p className="text-emerald-900 text-[11px] leading-relaxed">
-                  Sistem telah didesain modular. Jika faskes memerlukan Cloud SQL / PostgreSQL multi-cabang, skema dapat langsung dihubungkan.
+                  Sistem telah didesain modular dan terintegrasi untuk mendukung sinkronisasi multi-loket serta multi-cabang secara andal.
                 </p>
               </div>
             </div>
@@ -1664,12 +1906,12 @@ export const SecurityDatabaseView: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                     <Terminal className="w-3.5 h-3.5 text-slate-600" />
-                    <span>Pratinjau Langsung Isi File: <code className="text-emerald-700 bg-slate-100 px-1.5 py-0.5 rounded">/data/faskes_antrean.json</code></span>
+                    <span>Pratinjau Ringkasan Data Operasional: <code className="text-emerald-700 bg-slate-100 px-1.5 py-0.5 rounded">Aktif Terhubung</code></span>
                   </div>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(rawServerDb);
-                      alert('Isi database server berhasil disalin ke clipboard!');
+                      showSwalSuccess('Data sistem berhasil disalin ke clipboard!');
                     }}
                     className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1 font-semibold"
                   >

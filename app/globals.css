@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+body {
+  min-height: 100vh;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
 @keyframes marquee {
   0% { transform: translateX(100%); }
   100% { transform: translateX(-100%); }
@@ -30,3 +36,62 @@
     color: black !important;
   }
 }
+
+/* SweetAlert2 Green Gradient Theme with Crisp White Typography */
+.swal2-popup.swal-gradient-popup {
+  background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%) !important;
+  color: #ffffff !important;
+  font-family: inherit;
+  border: 1px solid rgba(167, 243, 208, 0.3) !important;
+  box-shadow: 0 25px 50px -12px rgba(6, 78, 59, 0.45) !important;
+  border-radius: 1.25rem !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-html-container {
+  color: #f0fdf4 !important;
+  font-weight: 500 !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-timer-progress-bar {
+  background: rgba(255, 255, 255, 0.75) !important;
+  height: 0.3rem !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-icon.swal2-success {
+  border-color: #a7f3d0 !important;
+  color: #a7f3d0 !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-icon.swal2-success .swal2-success-ring {
+  border: 0.25em solid rgba(167, 243, 208, 0.35) !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-icon.swal2-success [class^='swal2-success-line'] {
+  background-color: #ffffff !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-icon.swal2-warning {
+  border-color: #fef08a !important;
+  color: #fef08a !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-icon.swal2-error {
+  border-color: #fecaca !important;
+  color: #fecaca !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-icon.swal2-error [class^='swal2-x-mark-line'] {
+  background-color: #ffffff !important;
+}
+
+.swal2-popup.swal-gradient-popup .swal2-icon.swal2-info {
+  border-color: #bae6fd !important;
+  color: #bae6fd !important;
+}
+

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useQueue } from '@/lib/queue-context';
 import { verifyBpjsParticipant } from '@/lib/bpjs-bridging';
 import { ThermalTicketModal } from './ThermalTicketModal';
+import { showSwalAlert, showSwalSuccess, showSwalError } from '@/lib/swal';
 import { QueueItem, PoliInfo } from '@/types/queue';
 import {
   CreditCard,
@@ -57,6 +58,7 @@ export const KioskMode: React.FC = () => {
   const handleVerifyBpjs = async () => {
     if (!idInput || (idInput.length !== 13 && idInput.length !== 16)) {
       setVerifyError('Harap masukkan 16 digit NIK atau 13 digit No. Kartu BPJS');
+      showSwalError('Harap masukkan 16 digit NIK atau 13 digit No. Kartu BPJS', 'Data Belum Lengkap');
       return;
     }
 
@@ -68,11 +70,14 @@ export const KioskMode: React.FC = () => {
       if (res.success && res.data) {
         setVerifiedPatient(res.data);
         setStep('SELECT_POLI');
+        showSwalSuccess(`Peserta BPJS ${res.data.nama} terverifikasi aktif!`, 'Bridging Terhubung');
       } else {
         setVerifyError(res.message || 'Data peserta BPJS tidak ditemukan');
+        showSwalError(res.message || 'Data peserta BPJS tidak ditemukan pada server bridging.', 'Peserta Tidak Ditemukan');
       }
-    } catch (err: any) {
+    } catch {
       setVerifyError('Gagal menghubungi server Bridging BPJS. Silakan coba kembali.');
+      showSwalError('Gagal menghubungi server Bridging BPJS.', 'Koneksi Gagal');
     } finally {
       setIsVerifying(false);
     }
@@ -107,6 +112,7 @@ export const KioskMode: React.FC = () => {
       });
 
       setPrintedItem(createdItem);
+      showSwalSuccess(`Nomor Antrean ${createdItem.nomorAntrean} berhasil dicetak! Silakan ambil tiket di bawah.`, 'Pendaftaran Sukses');
 
       // Reset state for next kiosk user
       setStep('TYPE');
@@ -118,6 +124,7 @@ export const KioskMode: React.FC = () => {
       setVerifiedPatient(null);
     } catch (error) {
       console.error('Error generating queue:', error);
+      showSwalError('Gagal memproses pendaftaran antrean. Silakan coba kembali.', 'Pendaftaran Gagal');
     }
   };
 
@@ -130,7 +137,7 @@ export const KioskMode: React.FC = () => {
           <div className="flex items-center gap-4">
             <div className="relative w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-md border border-white/20 flex items-center justify-center shrink-0">
               <Image
-                src="/assets/aistudio/Logo-01.jpg_cdb7cbc6.jpeg"
+                src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
                 alt="Logo Somban Medika"
                 width={56}
                 height={56}
@@ -284,35 +291,6 @@ export const KioskMode: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Sample Selector for Demo Testing */}
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-              <p className="text-[11px] text-slate-500 font-medium mb-1.5 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Coba Cepat Data Peserta Contoh:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIdInput('3201011508890001')}
-                  className="px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg hover:border-emerald-500 text-slate-700 transition-colors"
-                >
-                  Bambang (PBI APBN)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIdInput('3201022011920002')}
-                  className="px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg hover:border-emerald-500 text-slate-700 transition-colors"
-                >
-                  Siti (PPU BUMN)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIdInput('3201031204850003')}
-                  className="px-2.5 py-1 text-xs bg-white border border-slate-200 rounded-lg hover:border-emerald-500 text-slate-700 transition-colors"
-                >
-                  Hendra (Mandiri)
-                </button>
-              </div>
-            </div>
 
             {/* Touchscreen Virtual Keypad */}
             <div className="grid grid-cols-3 gap-2 pt-2">
@@ -423,7 +401,7 @@ export const KioskMode: React.FC = () => {
             <button
               onClick={() => {
                 if (!generalName.trim()) {
-                  alert('Harap isi nama pasien terlebih dahulu.');
+                  showSwalAlert('Harap isi nama pasien terlebih dahulu.', { title: 'Data Belum Lengkap', icon: 'warning' });
                   return;
                 }
                 setStep('SELECT_POLI');
@@ -523,7 +501,9 @@ export const KioskMode: React.FC = () => {
                         <h4 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-emerald-700 transition-colors">
                           {poli.nama}
                         </h4>
-                        <p className="text-xs font-medium text-slate-600 mt-1">{poli.dokter}</p>
+                        {poli.dokter ? (
+                          <p className="text-xs font-medium text-slate-600 mt-1">{poli.dokter}</p>
+                        ) : null}
                         <p className="text-[11px] text-slate-400">{poli.ruang}</p>
                       </div>
 
