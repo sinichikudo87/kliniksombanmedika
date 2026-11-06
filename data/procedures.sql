@@ -156,7 +156,7 @@ BEGIN
     'POST',
     JSON_OBJECT('taskid', 4, 'queue_id', p_queue_id, 'caller', p_caller),
     200,
-    JSON_OBJECT('metaData', JSON_OBJECT('code', 200, 'message', 'Task 4 (Panggil Pasien) Berhasil Disinkronkan ke VClaim')),
+    JSON_OBJECT('metaData', JSON_OBJECT('code', 200, 'message', 'Task 4 (Panggil Pasien) Berhasil Disinkronkan ke BPJS Antrean Online')),
     65
   );
 

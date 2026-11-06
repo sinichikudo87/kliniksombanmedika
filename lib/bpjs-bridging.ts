@@ -4,7 +4,7 @@ import { BpjsBridgingConfig, BridgingLog } from '@/types/queue';
 export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
   kdFaskes: "019U901",
   namaFaskes: "KLINIK SOMBAN MEDIKA",
-  jenisBridging: "Pcare (Eclaim) & Antrean Online",
+  jenisBridging: "Antrean Online FKTP (Mobile JKN) & PCare",
   consId: "11495",
   secretKey: "4xHABA0A84",
   userKey: "4a1a84234ffc19f0c77750cebfa2444e",
@@ -12,7 +12,7 @@ export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
   passPcareDev: "Dev1234#",
   emailFaskes: "sombanmedika@gmail.com",
   environment: "tester",
-  baseUrl: "https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev",
+  baseUrl: "https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev",
   isOnline: true, // Domain resmi https://kliniksombanmedika.id/ telah terdaftar dan di-whitelist oleh BPJS Kesehatan
   lastSyncTimestamp: new Date().toISOString(),
 };

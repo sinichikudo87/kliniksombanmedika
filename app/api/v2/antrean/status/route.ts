@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         kuotajkn: kuotaTotal,
         sisakuotanonjkn: 20,
         kuotanonjkn: 20,
-        keterangan: 'Pelayanan poli terhubung live ke database MySQL',
+        keterangan: 'Pelayanan poli terhubung aktif',
       },
       metadata: {
         code: 200,
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ metadata: { code: 500, message: 'MySQL Error: ' + err.message } }, { status: 500 });
+    return NextResponse.json({ metadata: { code: 500, message: 'Server Error: ' + err.message } }, { status: 500 });
   }
 }
 

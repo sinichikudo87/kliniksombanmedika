@@ -21,6 +21,13 @@ import {
   Globe,
   FileCode,
   AlertTriangle,
+  ArrowRight,
+  UserCheck,
+  Stethoscope,
+  Pill,
+  Smartphone,
+  Layers,
+  Info,
 } from 'lucide-react';
 import { WS_FKTP_ENDPOINTS } from '@/types/queue';
 import { exportWsFktpExcel } from '@/lib/client-excel-export';
@@ -43,8 +50,9 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   const [emailFaskes, setEmailFaskes] = useState(bpjsConfig.emailFaskes);
   const [environment, setEnvironment] = useState<'tester' | 'production'>(bpjsConfig.environment);
   const [isOnline, setIsOnline] = useState<boolean>(bpjsConfig.isOnline !== false);
+  const [baseUrl, setBaseUrl] = useState<string>(bpjsConfig.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev');
 
-  const [activeTab, setActiveTab] = useState<'CREDENTIALS' | 'WS_FKTP' | 'SANDBOX' | 'LOGS'>('CREDENTIALS');
+  const [activeTab, setActiveTab] = useState<'CREDENTIALS' | 'ALUR_ANTREAN' | 'WS_FKTP' | 'SANDBOX' | 'LOGS'>('CREDENTIALS');
   const [customWsDomain, setCustomWsDomain] = useState('https://kliniksombanmedika.id');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [selectedEndpointDetail, setSelectedEndpointDetail] = useState<number | null>(null);
@@ -66,9 +74,10 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
       passPcareDev,
       emailFaskes,
       environment,
+      baseUrl,
       isOnline,
     });
-    showSwalSuccess('Konfigurasi Bridging BPJS dan status koneksi berhasil diperbarui.');
+    showSwalSuccess('Konfigurasi Bridging Antrean Online BPJS berhasil diperbarui.');
   };
 
   const handleDownloadExcel = () => {
@@ -137,10 +146,10 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-              Konfigurasi Bridging BPJS (VClaim & PCare)
+              Konfigurasi Bridging Antrean Online BPJS (Mobile JKN & FKTP)
             </h2>
             <p className="text-xs text-slate-500">
-              Kredensial Trustmark & Integrasi Web Service Antrean Faskes
+              Integrasi Antrean 2 Arah, Kredensial Trustmark, 7 Task ID & 9 WS FKTP
             </p>
           </div>
         </div>
@@ -155,21 +164,29 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Kredensial Faskes
+            Kredensial & Base URL
+          </button>
+          <button
+            onClick={() => setActiveTab('ALUR_ANTREAN')}
+            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
+              activeTab === 'ALUR_ANTREAN'
+                ? 'bg-emerald-600 text-white shadow-xs font-bold'
+                : 'text-slate-700 hover:text-slate-900 bg-emerald-50/60 border border-emerald-200/60'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            <span>Alur Antrean & 7 Task ID</span>
           </button>
           <button
             onClick={() => setActiveTab('WS_FKTP')}
             className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'WS_FKTP'
-                ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                : 'text-slate-700 hover:text-slate-900 bg-emerald-50/60 border border-emerald-200/60'
+                ? 'bg-white text-emerald-900 shadow-xs ring-1 ring-slate-900/5'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>WS FKTP Production & Excel</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'WS_FKTP' ? 'bg-white text-emerald-800' : 'bg-emerald-200 text-emerald-900'}`}>
-              V2 (.xlsx)
-            </span>
+            <span>9 WS FKTP Excel (.xlsx)</span>
           </button>
           <button
             onClick={() => {
@@ -284,7 +301,15 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                 <label className="block font-bold text-slate-700 mb-1">Lingkungan (Environment)</label>
                 <select
                   value={environment}
-                  onChange={(e: any) => setEnvironment(e.target.value)}
+                  onChange={(e: any) => {
+                    const newEnv = e.target.value as 'tester' | 'production';
+                    setEnvironment(newEnv);
+                    if (newEnv === 'production') {
+                      setBaseUrl('https://apijkn.bpjs-kesehatan.go.id/antreanfktp');
+                    } else {
+                      setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev');
+                    }
+                  }}
                   className="w-full py-2 px-3 border border-slate-300 rounded-xl"
                 >
                   <option value="tester">Development / Tester (Trustmark Dev)</option>
@@ -292,7 +317,56 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                 </select>
               </div>
 
-              <div className="space-y-1.5">
+              {/* Endpoint Base URL & Presets */}
+              <div className="sm:col-span-2 space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-800">Base URL Web Service BPJS (Antrean Online FKTP)</label>
+                  <span className="text-[10px] text-emerald-700 font-semibold font-mono">Mobile JKN / FKTP</span>
+                </div>
+                <input
+                  type="text"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder="https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev"
+                  className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono text-[11px] bg-white focus:border-emerald-600"
+                />
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] text-slate-400 font-semibold">Preset Endpoint:</span>
+                  <button
+                    type="button"
+                    onClick={() => setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev')}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 cursor-pointer"
+                  >
+                    Antrean FKTP Dev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBaseUrl('https://apijkn.bpjs-kesehatan.go.id/antreanfktp')}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 cursor-pointer"
+                  >
+                    Antrean FKTP Prod
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/pcare-rest-dev')}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300 cursor-pointer"
+                  >
+                    PCare Dev
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/pcare-rest')}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300 cursor-pointer"
+                  >
+                    PCare Prod
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  Untuk Fasilitas Kesehatan Tingkat Pertama (Klinik Pratama &amp; TPMD), gunakan endpoint <strong>antreanfktp</strong>.
+                </p>
+              </div>
+
+              <div className="space-y-1.5 sm:col-span-2">
                 <label className="block font-bold text-slate-700">Status Whitelist Domain & Koneksi BPJS</label>
                 <select
                   value={isOnline ? 'online' : 'pending'}
@@ -366,6 +440,267 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                   )}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab: ALUR ANTREAN ONLINE & 7 TASK ID */}
+        {activeTab === 'ALUR_ANTREAN' && (
+          <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+            {/* Banner Arsitektur Antrean Online FKTP & PCare */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 text-white shadow-sm border border-emerald-800/40">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 shrink-0">
+                  <Zap className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 font-bold text-[10px] uppercase tracking-wider">
+                      Arsitektur Bridging FKTP
+                    </span>
+                    <span className="text-emerald-300 text-xs font-mono">Mobile JKN v2.0</span>
+                  </div>
+                  <h3 className="text-base font-bold text-white">
+                    Alur Antrean Online FKTP (Mobile JKN) &amp; 7 Task ID
+                  </h3>
+                  <p className="text-xs text-emerald-100/80 leading-relaxed">
+                    Klinik Pratama &amp; Dokter Praktik Mandiri (FKTP) menggunakan integrasi <strong>Antrean Online FKTP (Mobile JKN)</strong> dan <strong>PCare</strong> untuk pelayanan pasien faskes tingkat pertama secara terpadu.
+                  </p>
+                </div>
+              </div>
+
+              {/* 3 Komponen Inti Bridging FKTP */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-emerald-700/40 text-[11px]">
+                <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
+                  <div className="font-bold text-emerald-300 flex items-center gap-1.5 mb-1">
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Antrean Online (Mobile JKN)</span>
+                  </div>
+                  <p className="text-emerald-100/90 text-[10.5px] leading-relaxed">
+                    Wajib di FKTP. Pasien mengambil antrean via Mobile JKN dan sistem klinik mengirim waktu layanan (7 Task ID).
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
+                  <div className="font-bold text-teal-300 flex items-center gap-1.5 mb-1">
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>PCare (Primary Care)</span>
+                  </div>
+                  <p className="text-teal-100/90 text-[10.5px] leading-relaxed">
+                    Wajib di FKTP. Rekam medis, diagnosa ICD-10, tindakan klinis, dan rujukan peserta BPJS ke faskes rujukan.
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/10">
+                  <div className="font-bold text-sky-300 flex items-center gap-1.5 mb-1">
+                    <Server className="w-3.5 h-3.5" />
+                    <span>9 WS FKTP BPJS (WS Antrean)</span>
+                  </div>
+                  <p className="text-sky-100/90 text-[10.5px] leading-relaxed">
+                    9 Endpoint web service faskes untuk melayani permintaan kuota, jadwal poli, dan booking antrean dari Mobile JKN.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Skema 2 Arah Antrean Online */}
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
+                <ArrowRight className="w-4 h-4 text-emerald-600" />
+                <span>Bagaimana Antrean Online 2 Arah Bekerja di Klinik Somban Medika?</span>
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
+                {/* Arah 1: BPJS -> Faskes */}
+                <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-[10px]">1</span>
+                      Arah Masuk: Dari Mobile JKN ke Klinik
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900">Inbound (9 WS FKTP)</span>
+                  </div>
+                  <p className="text-slate-700 leading-relaxed text-[11px]">
+                    Ketika pasien membuka aplikasi <strong>Mobile JKN</strong> di smartphone dan memilih <strong>Klinik Somban Medika</strong>:
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1 text-slate-600 text-[10.5px]">
+                    <li>Server BPJS memanggil <code>/api/antrean/status</code> untuk melihat sisa kuota poli.</li>
+                    <li>Pasien klik <em>Ambil Antrean</em>, BPJS memanggil <code>/api/antrean/ambil</code> ke server klinik.</li>
+                    <li>Sistem klinik menerbitkan kode booking otomatis dan mengembalikan estimasi jam dilayani.</li>
+                  </ul>
+                </div>
+
+                {/* Arah 2: Faskes -> BPJS */}
+                <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200/80 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-900 flex items-center gap-1.5">
+                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-[10px]">2</span>
+                      Arah Keluar: Dari Klinik ke Server BPJS
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-200 text-blue-900">Outbound (7 Task ID)</span>
+                  </div>
+                  <p className="text-slate-700 leading-relaxed text-[11px]">
+                    Setiap pasien berobat di klinik dan petugas mengoperasikan sistem antrean:
+                  </p>
+                  <ul className="list-disc pl-4 space-y-1 text-slate-600 text-[10.5px]">
+                    <li>Pasien check-in di <strong>Kios Mandiri</strong> &rarr; Sistem kirim <strong>Task 1</strong>.</li>
+                    <li>Petugas loket memanggil pasien &rarr; Sistem kirim <strong>Task 2 &amp; 3</strong>.</li>
+                    <li>Dokter memanggil di ruang periksa &rarr; Sistem kirim <strong>Task 4 &amp; 5</strong>.</li>
+                    <li>Farmasi meracik dan menyerahkan obat &rarr; Sistem kirim <strong>Task 6 &amp; 7</strong>.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Visualisasi 7 Task ID Resmi BPJS Kesehatan */}
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-emerald-600" />
+                  <h4 className="font-bold text-slate-900 text-xs">
+                    7 Tahapan Waktu Antrean (Task ID 1 s/d 7) BPJS Kesehatan
+                  </h4>
+                </div>
+                <span className="text-[10px] text-slate-500 font-mono">Endpoint: /antrean/updatewaktu</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+                {/* Task 1 */}
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-emerald-700 text-[11px]">Task 1</span>
+                      <span className="text-[9px] px-1 bg-emerald-100 text-emerald-800 rounded font-bold">Kios</span>
+                    </div>
+                    <strong className="block text-slate-900 text-[11px] font-bold">Check-in / Ambil Tiket</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Pasien datang ke faskes dan check-in di Kios Mandiri atau ambil nomor antrean.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 text-[9px] font-mono text-slate-400">
+                    Waktu Tunggu Admisi
+                  </div>
+                </div>
+
+                {/* Task 2 */}
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-blue-700 text-[11px]">Task 2</span>
+                      <span className="text-[9px] px-1 bg-blue-100 text-blue-800 rounded font-bold">Loket</span>
+                    </div>
+                    <strong className="block text-slate-900 text-[11px] font-bold">Panggil Admisi</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Petugas pendaftaran menekan tombol panggil nomor antrean admisi di loket.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 text-[9px] font-mono text-slate-400">
+                    Mulai Layanan Admisi
+                  </div>
+                </div>
+
+                {/* Task 3 */}
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-blue-700 text-[11px]">Task 3</span>
+                      <span className="text-[9px] px-1 bg-blue-100 text-blue-800 rounded font-bold">Loket</span>
+                    </div>
+                    <strong className="block text-slate-900 text-[11px] font-bold">Selesai Admisi</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Petugas selesai verifikasi berkas BPJS dan mengarahkan pasien ke ruang tunggu Poli.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 text-[9px] font-mono text-slate-400">
+                    Selesai Layanan Admisi
+                  </div>
+                </div>
+
+                {/* Task 4 */}
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-teal-700 text-[11px]">Task 4</span>
+                      <span className="text-[9px] px-1 bg-teal-100 text-teal-800 rounded font-bold">Poli</span>
+                    </div>
+                    <strong className="block text-slate-900 text-[11px] font-bold">Panggil Poli</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Dokter/perawat memanggil nomor antrean pasien ke dalam ruang periksa poli.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 text-[9px] font-mono text-slate-400">
+                    Waktu Tunggu Dokter
+                  </div>
+                </div>
+
+                {/* Task 5 */}
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-teal-700 text-[11px]">Task 5</span>
+                      <span className="text-[9px] px-1 bg-teal-100 text-teal-800 rounded font-bold">Poli</span>
+                    </div>
+                    <strong className="block text-slate-900 text-[11px] font-bold">Selesai Poli</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Pemeriksaan dokter selesai, input rekam medis &amp; resep obat diterbitkan.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 text-[9px] font-mono text-slate-400">
+                    Selesai Layanan Poli
+                  </div>
+                </div>
+
+                {/* Task 6 */}
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-indigo-700 text-[11px]">Task 6</span>
+                      <span className="text-[9px] px-1 bg-indigo-100 text-indigo-800 rounded font-bold">Farmasi</span>
+                    </div>
+                    <strong className="block text-slate-900 text-[11px] font-bold">Mulai Farmasi</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Resep diterima apoteker dan obat mulai disiapkan atau diracik di instalasi farmasi.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 text-[9px] font-mono text-slate-400">
+                    Waktu Tunggu Obat
+                  </div>
+                </div>
+
+                {/* Task 7 */}
+                <div className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono font-bold text-indigo-700 text-[11px]">Task 7</span>
+                      <span className="text-[9px] px-1 bg-indigo-100 text-indigo-800 rounded font-bold">Farmasi</span>
+                    </div>
+                    <strong className="block text-slate-900 text-[11px] font-bold">Selesai Farmasi</strong>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Obat diserahkan ke pasien dengan edukasi aturan pakai. Pasien selesai berobat.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-slate-200 text-[9px] font-mono text-slate-400">
+                    Selesai Layanan Faskes
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Otomatis di Sistem */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-slate-700">
+                    Semua Task ID di atas <strong>terpicu secara otomatis</strong> saat tombol di Kios Mandiri, Loket, Poli, atau Farmasi ditekan oleh petugas.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('WS_FKTP')}
+                  className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-[11px] shrink-0 cursor-pointer"
+                >
+                  Lihat 9 Endpoint WS FKTP &rarr;
+                </button>
+              </div>
             </div>
           </div>
         )}

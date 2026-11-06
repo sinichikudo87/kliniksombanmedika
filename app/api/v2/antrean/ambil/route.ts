@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         {
           metadata: {
             code: 404,
-            message: 'Pasien belum terdaftar di database MySQL. Daftarkan pasien baru terlebih dahulu.',
+            message: 'Pasien belum terdaftar. Silakan daftarkan pasien baru terlebih dahulu.',
           },
         },
         { status: 404 }
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
         kuotajkn: poli.kuota_total || 50,
         sisakuotanonjkn: 20,
         kuotanonjkn: 20,
-        keterangan: 'Pendaftaran antrean Versi 2 berhasil disimpan langsung ke database MySQL',
+        keterangan: 'Pendaftaran antrean Versi 2 berhasil diproses',
       },
       metadata: {
         code: 200,
@@ -125,6 +125,6 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ metadata: { code: 500, message: 'MySQL Error: ' + err.message } }, { status: 500 });
+    return NextResponse.json({ metadata: { code: 500, message: 'Server Error: ' + err.message } }, { status: 500 });
   }
 }

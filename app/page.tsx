@@ -239,7 +239,7 @@ function MainApp() {
                 </span>
               </div>
               <p className="text-slate-600 leading-relaxed max-w-md">
-                Sistem Antrean Online & Bridging Terintegrasi VClaim (Eclaim) dan PCare BPJS Kesehatan.
+                Sistem Antrean Online &amp; Bridging Terintegrasi BPJS Kesehatan (Mobile JKN &amp; PCare).
                 Mendukung estimasi otomatis waktu tunggu pasien, Text-to-Speech (TTS) Indonesia,
                 display TV ruang tunggu, dan penyimpanan rekam medis terenkripsi AES-256-GCM.
               </p>

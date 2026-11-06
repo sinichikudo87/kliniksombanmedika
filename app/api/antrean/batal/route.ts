@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     if (result.affectedRows === 0) {
       return NextResponse.json(
-        { metadata: { code: 404, message: `Antrean dengan kode booking ${kodebooking} tidak ditemukan di MySQL` } },
+        { metadata: { code: 404, message: `Antrean dengan kode booking ${kodebooking} tidak ditemukan` } },
         { status: 404 }
       );
     }
@@ -29,11 +29,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       metadata: {
         code: 200,
-        message: 'Antrean Berhasil Dibatalkan di Database MySQL',
+        message: 'Antrean Berhasil Dibatalkan',
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ metadata: { code: 500, message: 'MySQL Error: ' + err.message } }, { status: 500 });
+    return NextResponse.json({ metadata: { code: 500, message: 'Server Error: ' + err.message } }, { status: 500 });
   }
 }
 

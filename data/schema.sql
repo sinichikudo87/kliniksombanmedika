@@ -1,7 +1,7 @@
 -- ==============================================================================
 -- SKEMA BASIS DATA MYSQL: SISTEM ANTREAN BRIDGING BPJS & REKAM MEDIS
 -- FASKES TINGKAT 1: TPMD DR MACHMUJUR (KODE FASKES: 019U901)
--- STANDAR: VCLAIM / PCARE TRUSTMARK BPJS KESEHATAN & UU PDP NO. 27/2022
+-- STANDAR: ANTREAN ONLINE FKTP (MOBILE JKN) & PCARE TRUSTMARK BPJS KESEHATAN & UU PDP NO. 27/2022
 -- ==============================================================================
 
 CREATE DATABASE IF NOT EXISTS `klinik_somban_medika_xx26` 
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS `security_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
--- 6. TABEL RIWAYAT LOG BRIDGING BPJS VCLAIM / PCARE (bridging_logs)
+-- 6. TABEL RIWAYAT LOG BRIDGING BPJS ANTREAN ONLINE / PCARE (bridging_logs)
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `bridging_logs` (
   `id` VARCHAR(50) NOT NULL PRIMARY KEY,
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS `bridging_logs` (
 -- ------------------------------------------------------------------------------
 INSERT INTO `users` (`id`, `username`, `password_hash`, `nama_lengkap`, `role`, `nip`, `kd_faskes`, `is_active`)
 VALUES
-  ('usr-1', '0195U091-dev', '000000', 'Operator Bridging BPJS (VClaim)', 'ADMIN_BRIDGING', '198805122010011001', '019U901', 1),
+  ('usr-1', '0195U091-dev', '000000', 'Operator Bridging Antrean BPJS (Mobile JKN)', 'ADMIN_BRIDGING', '198805122010011001', '019U901', 1),
   ('usr-2', 'admin', '000000', 'Administrator Rekam Medis (RME)', 'ADMIN_RME', '199003202015022002', '019U901', 1),
   ('usr-3', 'dr.machmujur', '000000', 'Dokter Pemeriksa', 'DOKTER', '197508152002121003', '019U901', 1),
   ('usr-4', 'loket01', '000000', 'Petugas Pendaftaran Loket 01', 'PETUGAS_LOKET', '199511252019032004', '019U901', 1),
@@ -189,7 +189,7 @@ VALUES (
   '0195U091-dev',
   'Dev1234#',
   'tester',
-  'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev'
+  'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev'
 ) ON DUPLICATE KEY UPDATE `kd_faskes` = VALUES(`kd_faskes`);
 
 -- ------------------------------------------------------------------------------

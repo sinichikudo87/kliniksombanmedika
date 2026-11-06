@@ -169,7 +169,7 @@ export const OperatorDashboard: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <div className="flex items-center gap-2 bg-emerald-50/80 border border-emerald-200/80 px-3 py-1.5 rounded-xl text-xs text-emerald-800 font-medium">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold">VClaim Aktif</span>
+            <span className="font-semibold">Antrean BPJS Aktif</span>
             <span className="text-emerald-300">·</span>
             <span className="font-mono text-emerald-900">CID: ******</span>
           </div>

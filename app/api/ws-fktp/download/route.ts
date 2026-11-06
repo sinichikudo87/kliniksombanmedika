@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     // Sheet 2: Rincian Teknis
     const detailData = [
       ['DOKUMENTASI RINCIAN TEKNIS ENDPOINT WS FKTP BPJS KESEHATAN (ANTREAN ONLINE V2)'],
-      [`Faskes: ${namaFaskes} | Kode: ${kdFaskes} | Database: MySQL (Live)`],
+      [`Faskes: ${namaFaskes} | Kode: ${kdFaskes} | Status: Terhubung Aktif`],
       [],
       [
         'No',

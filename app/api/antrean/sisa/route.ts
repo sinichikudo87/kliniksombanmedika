@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     if (!queueRows || queueRows.length === 0) {
       return NextResponse.json(
-        { metadata: { code: 404, message: `Data antrean dengan kode ${kodebooking} tidak ditemukan di database MySQL` } },
+        { metadata: { code: 404, message: `Data antrean dengan kode ${kodebooking} tidak ditemukan` } },
         { status: 404 }
       );
     }
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ metadata: { code: 500, message: 'MySQL Error: ' + err.message } }, { status: 500 });
+    return NextResponse.json({ metadata: { code: 500, message: 'Server Error: ' + err.message } }, { status: 500 });
   }
 }
 

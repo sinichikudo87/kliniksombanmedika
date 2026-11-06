@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (action === 'ping') {
-      const targetBaseUrl = body.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev';
+      const targetBaseUrl = body.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
       const pingUrl = `${targetBaseUrl.replace(/\/+$/, '')}/ref/poli`;
       const registeredDomain = 'https://kliniksombanmedika.id';
       const isUserDeclaredWhitelisted = body.isWhitelisted !== false;
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({
             metaData: {
               code: 200,
-              message: 'Koneksi ke Web Service BPJS Trustmark (VClaim & PCare) Berhasil Terhubung',
+              message: 'Koneksi ke Web Service Antrean Online BPJS (Mobile JKN & FKTP) Berhasil Terhubung',
             },
             response: {
               faskes: 'KLINIK SOMBAN MEDIKA',
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
         if (rows && rows.length > 0) {
           const p = rows[0];
           return NextResponse.json({
-            metaData: { code: 200, message: 'Peserta BPJS Ditemukan di MySQL' },
+            metaData: { code: 200, message: 'Peserta BPJS Ditemukan' },
             response: {
               peserta: {
                 nik: p.nik,
@@ -140,15 +140,15 @@ export async function POST(req: NextRequest) {
             headers,
           });
         }
-      } catch (dbErr: any) {
-        console.error('MySQL patients query error:', dbErr?.message);
+      } catch {
+        // Patient not found or server error
       }
 
-      // Jika nomor NIK/BPJS belum terdaftar di tabel patients MySQL
+      // Jika nomor NIK/BPJS belum terdaftar
       return NextResponse.json({
         metaData: {
           code: 404,
-          message: `Nomor NIK/BPJS ${cleanQuery} belum terdaftar di basis data pasien MySQL. Silakan daftarkan melalui loket admisi.`,
+          message: `Nomor NIK/BPJS ${cleanQuery} belum terdaftar di faskes. Silakan daftarkan melalui loket pendaftaran.`,
         },
         response: null,
         headers,

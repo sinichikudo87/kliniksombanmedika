@@ -3,7 +3,7 @@ import './globals.css'; // Global styles
 
 export const metadata: Metadata = {
   title: 'Antrean Online Bridging BPJS - TPMD Dr. Machmujur',
-  description: 'Sistem antrean online bridging BPJS VClaim & PCare terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
+  description: 'Sistem antrean online bridging BPJS Kesehatan (Mobile JKN & PCare) terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
   icons: {
     icon: [
       { url: '/assets/images/Logo-01.jpg_cdb7cbc6.jpeg' },
@@ -14,13 +14,13 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'Antrean Online Bridging BPJS - TPMD Dr. Machmujur',
-    description: 'Sistem antrean online bridging BPJS VClaim & PCare terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
+    description: 'Sistem antrean online bridging BPJS Kesehatan (Mobile JKN & PCare) terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Antrean Online Bridging BPJS - TPMD Dr. Machmujur',
-    description: 'Sistem antrean online bridging BPJS VClaim & PCare terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
+    description: 'Sistem antrean online bridging BPJS Kesehatan (Mobile JKN & PCare) terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
   },
 };
 

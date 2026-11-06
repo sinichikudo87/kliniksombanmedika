@@ -126,7 +126,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               </div>
               <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-slate-500 font-medium">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="text-emerald-700 font-semibold truncate">Bridging BPJS</span>
+                <span className="text-emerald-700 font-semibold truncate">Antrean BPJS (Mobile JKN)</span>
                 <span className="hidden sm:inline text-slate-300">·</span>
                 <span className="hidden sm:inline font-mono text-slate-600">CID: {maskedConsId}</span>
               </div>
@@ -392,15 +392,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                     </div>
                     <div>
                       <div className="font-bold text-xs flex items-center gap-1.5">
-                        <span>Bridging BPJS</span>
+                        <span>Bridging Antrean BPJS</span>
                         <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
                           bpjsConfig.isOnline === true ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'
                         }`}>
-                          {bpjsConfig.isOnline === true ? 'Online' : 'Pending Whitelist'}
+                          {bpjsConfig.isOnline === true ? 'Mobile JKN Aktif' : 'Pending Whitelist'}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 font-normal mt-0.5">
-                        Kredensial ConsID, Secret, UserKey & status IP faskes
+                        Kredensial Trustmark, 7 Task ID &amp; 9 Web Service FKTP
                       </p>
                     </div>
                   </div>

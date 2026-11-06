@@ -96,7 +96,7 @@ export function exportWsFktpExcel(options?: ExportExcelOptions): boolean {
     // Sheet 2: Rincian Teknis Endpoint
     const detailData = [
       ['DOKUMENTASI RINCIAN TEKNIS ENDPOINT WS FKTP BPJS KESEHATAN (ANTREAN ONLINE V2)'],
-      [`Faskes: ${namaFaskes} | Kode: ${kdFaskes} | Database: MySQL (Live)`],
+      [`Faskes: ${namaFaskes} | Kode: ${kdFaskes} | Status: Terhubung Aktif`],
       [],
       [
         'No',

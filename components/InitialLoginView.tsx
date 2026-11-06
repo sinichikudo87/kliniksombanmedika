@@ -94,7 +94,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
                 </span>
               </h1>
               <p className="text-xs text-slate-500 font-medium">
-                Sistem Antrean Bridging BPJS Kesehatan VClaim & PCare (Trustmark API v2.0)
+                Sistem Antrean Bridging BPJS Kesehatan (Mobile JKN &amp; PCare v2.0)
               </p>
             </div>
           </div>
@@ -160,7 +160,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <p className="font-bold text-slate-800">BPJS VClaim & PCare Connected</p>
+              <p className="font-bold text-slate-800">Antrean Online &amp; PCare Connected</p>
               <p className="text-[11px] text-slate-500">
                 Pembaruan Task ID 1 s/d 7 disinkronkan langsung ke server BPJS Kesehatan.
               </p>
@@ -313,7 +313,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Terverifikasi BPJS VClaim & PCare</span>
+                <span>Terverifikasi Antrean Online &amp; PCare BPJS</span>
               </span>
               <span className="font-mono text-slate-500">KD: {bpjsConfig.kdFaskes}</span>
             </div>
@@ -324,7 +324,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
       {/* Hospital Footer */}
       <div className="relative z-10 max-w-6xl mx-auto w-full text-center py-3 text-xs text-slate-500 border-t border-slate-200/80">
         <p suppressHydrationWarning>
-          © {new Date().getFullYear()} {bpjsConfig.namaFaskes} (Kode: {bpjsConfig.kdFaskes}) · Sistem Antrean Online Terintegrasi BPJS VClaim & PCare
+          © {new Date().getFullYear()} {bpjsConfig.namaFaskes} (Kode: {bpjsConfig.kdFaskes}) · Sistem Antrean Online Terintegrasi BPJS Kesehatan (Mobile JKN &amp; PCare)
         </p>
       </div>
     </div>

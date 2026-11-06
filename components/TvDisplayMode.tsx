@@ -350,7 +350,7 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
 
         <div className="overflow-hidden whitespace-nowrap w-full">
           <div className="inline-block animate-marquee text-xs md:text-sm text-slate-200 font-medium">
-            Selamat Datang di {bpjsConfig.namaFaskes} (Kode Faskes: {bpjsConfig.kdFaskes}) · Harap perhatikan nomor antrean pada layar dan audio panggilan · Pasien BPJS Kesehatan harap menyiapkan KTP/Kartu BPJS untuk verifikasi berkas · Layanan Terhubung Langsung dengan VClaim & PCare BPJS Kesehatan · Tetap jaga protokol kesehatan di ruang tunggu.
+            Selamat Datang di {bpjsConfig.namaFaskes} (Kode Faskes: {bpjsConfig.kdFaskes}) · Harap perhatikan nomor antrean pada layar dan audio panggilan · Pasien BPJS Kesehatan harap menyiapkan KTP/Kartu BPJS untuk verifikasi berkas · Layanan Terhubung Langsung dengan Antrean Online (Mobile JKN) & PCare BPJS Kesehatan · Tetap jaga protokol kesehatan di ruang tunggu.
           </div>
         </div>
       </footer>

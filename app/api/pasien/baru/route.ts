@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
         },
         metadata: {
           code: 200,
-          message: 'Pasien sudah pernah terdaftar di database MySQL',
+          message: 'Pasien sudah terdaftar di sistem faskes',
         },
       });
     }
@@ -71,10 +71,10 @@ export async function POST(req: NextRequest) {
       },
       metadata: {
         code: 200,
-        message: 'Data Pasien Baru Berhasil Disimpan ke Database MySQL',
+        message: 'Data Pasien Baru Berhasil Disimpan',
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ metadata: { code: 500, message: 'MySQL Error: ' + err.message } }, { status: 500 });
+    return NextResponse.json({ metadata: { code: 500, message: 'Server Error: ' + err.message } }, { status: 500 });
   }
 }

@@ -285,7 +285,7 @@ export async function initMySqlSchema() {
 
     INSERT INTO users (id, username, password_hash, nama_lengkap, role, nip, kd_faskes, is_active)
     VALUES
-      ('usr-1', '0195U091-dev', '000000', 'Operator Bridging BPJS (VClaim)', 'ADMIN_BRIDGING', '198805122010011001', '019U901', 1),
+      ('usr-1', '0195U091-dev', '000000', 'Operator Bridging Antrean BPJS (Mobile JKN)', 'ADMIN_BRIDGING', '198805122010011001', '019U901', 1),
       ('usr-2', 'admin', '000000', 'Administrator Rekam Medis (RME)', 'ADMIN_RME', '199003202015022002', '019U901', 1),
       ('usr-3', 'dr.machmujur', '000000', 'Dokter Pemeriksa', 'DOKTER', '197508152002121003', '019U901', 1),
       ('usr-4', 'loket01', '000000', 'Petugas Pendaftaran Loket 01', 'PETUGAS_LOKET', '199511252019032004', '019U901', 1),
@@ -304,7 +304,7 @@ export async function initMySqlSchema() {
     VALUES (
       'cfg-default', '019U901', 'KLINIK SOMBAN MEDIKA', '11495', '4xHABA0A84',
       '4a1a84234ffc19f0c77750cebfa2444e', '0195U091-dev', 'Dev1234#', 'tester',
-      'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev'
+      'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev'
     ) ON DUPLICATE KEY UPDATE kd_faskes = VALUES(kd_faskes);
   `;
 

@@ -83,6 +83,89 @@ export const KioskMode: React.FC = () => {
     }
   };
 
+  const handleCheckInMobileJkn = async () => {
+    const clean = idInput.trim().toUpperCase();
+    if (!clean) {
+      setVerifyError('Masukkan Kode Booking (contoh: BK...) atau 16 digit NIK / 13 digit No. Kartu BPJS');
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerifyError(null);
+
+    try {
+      // 1. Cek di daftar antrean yang ada di sistem
+      const found = queues.find(
+        (q) =>
+          (q.kodeBooking && q.kodeBooking.toUpperCase() === clean) ||
+          q.nik === clean ||
+          q.noBpjs === clean ||
+          q.nomorAntrean.toUpperCase() === clean
+      );
+
+      if (found) {
+        setPrintedItem(found);
+        showSwalSuccess(
+          `Check-in Mobile JKN berhasil! Nomor antrean Anda: ${found.nomorAntrean} (${found.poliNama}). Silakan ambil tiket di bawah.`,
+          'Check-in Berhasil (Task 1)'
+        );
+        setStep('TYPE');
+        setIdInput('');
+        return;
+      }
+
+      // 2. Jika tidak ada di state lokal, periksa ke API antrean server
+      const res = await fetch('/api/antrean/sisa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kodebooking: clean }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json.response && json.response.nomorantrean) {
+          const item: QueueItem = {
+            id: `q-jkn-${Date.now()}`,
+            nomorAntrean: json.response.nomorantrean,
+            prefix: json.response.nomorantrean.charAt(0),
+            nomorUrut: 1,
+            tipePasien: 'BPJS',
+            poliKode: 'UMU',
+            poliNama: json.response.namapoli || 'Poli Umum',
+            dokterNama: 'dr. Machmujur',
+            ruangNama: 'Ruang 01',
+            patientId: clean,
+            nik: clean.length === 16 ? clean : '',
+            noBpjs: clean.length === 13 ? clean : '',
+            namaPasien: 'Pasien Mobile JKN',
+            status: 'MENUNGGU',
+            waktuDaftar: new Date().toISOString(),
+            estimasiWaktuTungguMenit: json.response.waktutunggu || 10,
+            estimasiJamPanggil: 'Sesuai Jadwal Mobile JKN',
+            bpjsTaskId: 1,
+            kodeBooking: clean,
+            isSyncedBpjs: true,
+            panggilanKe: 0,
+          };
+          setPrintedItem(item);
+          showSwalSuccess(
+            `Check-in Mobile JKN berhasil! Nomor antrean Anda: ${item.nomorAntrean}. Silakan ambil tiket di bawah.`,
+            'Check-in Berhasil (Task 1)'
+          );
+          setStep('TYPE');
+          setIdInput('');
+          return;
+        }
+      }
+
+      setVerifyError(`Reservasi dengan kode atau NIK "${clean}" belum ditemukan dalam jadwal hari ini. Jika belum reservasi, silakan pilih "Daftar Langsung di Tempat".`);
+    } catch {
+      setVerifyError('Gagal memverifikasi kode booking. Silakan coba kembali.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
   const handleSelectPoliAndSubmit = async (poli: PoliInfo) => {
     let name = '';
     let nik = '';
@@ -150,7 +233,7 @@ export const KioskMode: React.FC = () => {
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Anjungan Mandiri Pasien</span>
                 <span className="text-emerald-500">·</span>
-                <span className="text-slate-300 font-normal">Bridging BPJS VClaim & PCare</span>
+                <span className="text-slate-300 font-normal">Antrean Online BPJS (Mobile JKN)</span>
               </div>
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                 Pendaftaran & Cetak Tiket Antrean
@@ -192,7 +275,7 @@ export const KioskMode: React.FC = () => {
                 <CreditCard className="w-6 h-6" />
               </div>
               <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-1">
-                Bridging VClaim / PCare
+                Antrean BPJS (Mobile JKN) &amp; PCare
               </p>
               <h2 className="text-lg font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
                 Pasien BPJS Kesehatan
@@ -239,9 +322,11 @@ export const KioskMode: React.FC = () => {
           <button
             onClick={() => {
               setPatientType('BPJS');
-              setStep('INPUT_BPJS');
+              setStep('INPUT_BOOKING');
+              setIdInput('');
+              setVerifyError(null);
             }}
-            className="group bg-white border border-slate-200/90 hover:border-indigo-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between h-[270px]"
+            className="group bg-white border border-slate-200/90 hover:border-indigo-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between h-[270px] cursor-pointer"
           >
             <div>
               <div className="w-12 h-12 bg-indigo-50 text-indigo-700 rounded-xl flex items-center justify-center mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors shadow-2xs">
@@ -254,7 +339,7 @@ export const KioskMode: React.FC = () => {
                 Booking Mobile JKN
               </h2>
               <p className="text-slate-500 text-xs mt-1.5 leading-relaxed">
-                Sudah reservasi nomor antrean melalui aplikasi Mobile JKN? Masukkan NIK/No. Kartu untuk check-in kedatangan.
+                Sudah reservasi nomor antrean melalui aplikasi Mobile JKN? Masukkan Kode Booking atau NIK untuk cetak tiket check-in (Task 1).
               </p>
             </div>
             <div className="flex items-center justify-between text-indigo-700 font-semibold text-xs pt-3.5 border-t border-slate-100">
@@ -291,7 +376,6 @@ export const KioskMode: React.FC = () => {
               </div>
             </div>
 
-
             {/* Touchscreen Virtual Keypad */}
             <div className="grid grid-cols-3 gap-2 pt-2">
               {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
@@ -299,7 +383,7 @@ export const KioskMode: React.FC = () => {
                   key={num}
                   type="button"
                   onClick={() => handleKeypadPress(num.toString())}
-                  className="h-14 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 text-xl font-bold rounded-xl transition-colors shadow-sm"
+                  className="h-14 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 text-xl font-bold rounded-xl transition-colors shadow-sm cursor-pointer"
                 >
                   {num}
                 </button>
@@ -307,21 +391,21 @@ export const KioskMode: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('CLR')}
-                className="h-14 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 text-sm font-semibold rounded-xl transition-colors"
+                className="h-14 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
               >
                 HAPUS SEMUA
               </button>
               <button
                 type="button"
                 onClick={() => handleKeypadPress('0')}
-                className="h-14 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 text-xl font-bold rounded-xl transition-colors shadow-sm"
+                className="h-14 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 text-xl font-bold rounded-xl transition-colors shadow-sm cursor-pointer"
               >
                 0
               </button>
               <button
                 type="button"
                 onClick={() => handleKeypadPress('DEL')}
-                className="h-14 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 text-sm font-semibold rounded-xl transition-colors"
+                className="h-14 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
               >
                 ← BACKSPACE
               </button>
@@ -337,17 +421,118 @@ export const KioskMode: React.FC = () => {
             <button
               onClick={handleVerifyBpjs}
               disabled={isVerifying || idInput.length < 13}
-              className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl font-bold text-base shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2"
+              className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-2xl font-bold text-base shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
             >
               {isVerifying ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Memverifikasi Bridging VClaim...</span>
+                  <span>Memverifikasi Antrean BPJS...</span>
                 </>
               ) : (
                 <>
                   <Search className="w-5 h-5" />
                   <span>Verifikasi Data Peserta BPJS</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 2A-ALT: INPUT KODE BOOKING MOBILE JKN */}
+      {step === 'INPUT_BOOKING' && (
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+          <div className="max-w-xl mx-auto space-y-5">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-indigo-100 text-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-2">
+                <Smartphone className="w-6 h-6" />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-900">Check-In Pasien Mobile JKN</h2>
+              <p className="text-slate-500 text-xs mt-1">
+                Ketik <strong>Kode Booking</strong> dari aplikasi Mobile JKN (contoh: <code>BK...</code>) atau <strong>16 digit NIK</strong> Anda
+              </p>
+            </div>
+
+            {/* Display Input */}
+            <div className="relative">
+              <input
+                type="text"
+                value={idInput}
+                onChange={(e) => setIdInput(e.target.value.toUpperCase())}
+                placeholder="Contoh: BK202611060001 atau 3201011508890001"
+                maxLength={24}
+                className="w-full text-center font-mono text-xl sm:text-2xl font-bold py-3.5 px-4 rounded-2xl border-2 border-indigo-500/50 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 text-slate-900 tracking-wider placeholder:text-slate-300 placeholder:text-base placeholder:font-sans placeholder:font-normal uppercase"
+              />
+            </div>
+
+            {/* Touchscreen Virtual Keypad for numeric/booking */}
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => handleKeypadPress(num.toString())}
+                  className="h-14 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 text-xl font-bold rounded-xl transition-colors shadow-sm cursor-pointer"
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => handleKeypadPress('CLR')}
+                className="h-14 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                HAPUS SEMUA
+              </button>
+              <button
+                type="button"
+                onClick={() => handleKeypadPress('0')}
+                className="h-14 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-800 text-xl font-bold rounded-xl transition-colors shadow-sm cursor-pointer"
+              >
+                0
+              </button>
+              <button
+                type="button"
+                onClick={() => handleKeypadPress('DEL')}
+                className="h-14 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                ← BACKSPACE
+              </button>
+            </div>
+
+            {verifyError && (
+              <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-xs space-y-2">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>{verifyError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('INPUT_BPJS');
+                    setVerifyError(null);
+                  }}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs cursor-pointer transition-colors"
+                >
+                  Daftar Antrean Onsite (Langsung di Tempat) &rarr;
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={handleCheckInMobileJkn}
+              disabled={isVerifying || idInput.trim().length < 4}
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-2xl font-bold text-base shadow-lg transition-all active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isVerifying ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Mengecek Reservasi Mobile JKN...</span>
+                </>
+              ) : (
+                <>
+                  <Printer className="w-5 h-5" />
+                  <span>Konfirmasi Check-In &amp; Cetak Tiket (Task 1)</span>
                 </>
               )}
             </button>

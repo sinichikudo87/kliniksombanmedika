@@ -1885,7 +1885,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-slate-600 text-[11px] leading-relaxed">
-                  Merekam riwayat pertukaran data API VClaim / PCare, HMAC-SHA256 signature, latency respon, dan status Task ID.
+                  Merekam riwayat pertukaran data API Antrean Online (Mobile JKN) &amp; PCare, HMAC-SHA256 signature, latency respon, dan status Task ID.
                 </p>
               </div>
 

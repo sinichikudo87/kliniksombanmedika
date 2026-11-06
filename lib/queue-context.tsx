@@ -275,7 +275,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       responseStatus: 200,
       responsePayload: {
         metaData: { code: 200, message: 'Ok' },
-        response: { status: 'Nomor Antrean Berhasil Disinkronkan ke VClaim / PCare' },
+        response: { status: 'Nomor Antrean Berhasil Disinkronkan ke Antrean Online BPJS (Mobile JKN)' },
       },
       durationMs: 84,
     });
