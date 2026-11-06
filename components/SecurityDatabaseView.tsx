@@ -236,7 +236,7 @@ export const SecurityDatabaseView: React.FC = () => {
   };
 
   // MySQL Connection & Query State
-  const [mysqlHost, setMysqlHost] = useState<string>('202.10.47.207');
+  const [mysqlHost, setMysqlHost] = useState<string>('localhost');
   const [mysqlPort, setMysqlPort] = useState<number>(3306);
   const [mysqlUser, setMysqlUser] = useState<string>('jimbrink');
   const [mysqlPass, setMysqlPass] = useState<string>('Sh1nratensey86');
@@ -1339,7 +1339,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   type="text"
                   value={mysqlHost}
                   onChange={(e) => setMysqlHost(e.target.value)}
-                  placeholder="IP Server"
+                  placeholder="localhost"
                   className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
                 />
               </div>

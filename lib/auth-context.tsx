@@ -8,7 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isAuthLoaded: boolean;
-  lastLoginSource: 'MYSQL' | 'LOCAL_SERVER_STORE' | null;
+  lastLoginSource: 'MYSQL' | null;
   login: (username: string, password: string) => Promise<{ success: boolean; message: string; mustChangePassword?: boolean }>;
   logout: () => Promise<void>;
   isLoginModalOpen: boolean;
@@ -21,11 +21,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Pure in-memory state; data sourced live from MySQL database
+  // User authentication state - sourced live and purely from MySQL database
   const [user, setUser] = useState<UserAccount | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isAuthLoaded, setIsAuthLoaded] = useState<boolean>(false);
-  const [lastLoginSource, setLastLoginSource] = useState<'MYSQL' | 'LOCAL_SERVER_STORE' | null>('MYSQL');
+  const [lastLoginSource, setLastLoginSource] = useState<'MYSQL' | null>('MYSQL');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
 

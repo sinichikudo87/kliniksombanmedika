@@ -1,6 +1,8 @@
 <div align="center">
-<img width="1200" height="475" alt="kliniksombanmedika" src="/raw/main/assets/images/logo.jpeg" />
+<img width="1200" height="475" alt="KlinikSombanMedika" src="/assets/images/logo.jpeg" />
 </div>
+
+## Run Locally
 
 **Prerequisites:**  Node.js
 

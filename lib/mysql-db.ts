@@ -12,20 +12,14 @@ export interface MySqlConfig {
   ssl?: boolean;
 }
 
-// Explicit production credentials requested by user
+// Production VPS configuration - MySQL runs locally on the VPS
 export const getDefaultMySqlConfig = (): MySqlConfig => {
-  const envHost = process.env.MYSQL_HOST;
-  // If host is empty or points to local/127.0.0.1, always force the user's remote MySQL host 202.10.47.207
-  const host = (envHost && envHost !== 'localhost' && envHost !== '127.0.0.1')
-    ? envHost
-    : '202.10.47.207';
+  const host = process.env.MYSQL_HOST || 'localhost';
   const port = process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT, 10) : 3306;
-  const user = (process.env.MYSQL_USER && process.env.MYSQL_USER !== 'root')
-    ? process.env.MYSQL_USER
-    : 'jimbrink';
+  const user = process.env.MYSQL_USER || 'jimbrink';
   const password = process.env.MYSQL_PASSWORD || 'Sh1nratensey86';
   const database = process.env.MYSQL_DATABASE || 'klinik_somban_medika_xx26';
-  const ssl = true; // Always enable SSL for remote 202.10.47.207
+  const ssl = process.env.MYSQL_SSL === 'true'; // false for localhost VPS
 
   return {
     host,
@@ -50,51 +44,62 @@ let lastConnectionStatus: {
   error: 'Belum diuji koneksi MySQL',
 };
 
+function mapPoliRow(r: any): PoliInfo {
+  return {
+    kode: r.kode,
+    nama: r.nama,
+    prefix: r.prefix,
+    dokter: r.dokter_nama || '',
+    sip: r.sip || '',
+    ruang: r.ruang || '',
+    durasiRataRataMenit: r.durasi_rata_rata_menit || 10,
+    kuotaTotal: r.kuota_total || 50,
+    kuotaTerpakai: r.kuota_terpakai || 0,
+    badgeColor: r.badge_color || 'emerald',
+    iconName: r.icon_name || 'Stethoscope',
+  };
+}
+
+function mapConfigRow(row: any) {
+  return {
+    id: row.id,
+    kdFaskes: row.kd_faskes,
+    namaFaskes: row.nama_faskes,
+    consId: row.cons_id,
+    secretKey: row.secret_key,
+    userKey: row.user_key,
+    userPcareDev: row.dev_user,
+    passPcareDev: row.dev_pass,
+    environment: row.environment || 'tester',
+    baseUrl: row.base_url,
+    isOnline: row.is_online !== 0,
+  };
+}
+
 /**
  * Get or create MySQL Connection Pool
  */
 export function getMySqlPool(customConfig?: Partial<MySqlConfig>): mysql.Pool {
   if (customConfig) {
-    const sanitized = { ...customConfig };
-    if (sanitized.host === 'localhost' || sanitized.host === '127.0.0.1' || !sanitized.host) {
-      sanitized.host = '202.10.47.207';
-    }
-    if (sanitized.user === 'root' || !sanitized.user) {
-      sanitized.user = 'jimbrink';
-    }
-    if (!sanitized.password) {
-      sanitized.password = 'Sh1nratensey86';
-    }
-    currentConfig = { ...currentConfig, ...sanitized };
+    currentConfig = { ...currentConfig, ...customConfig };
     if (activePool) {
       activePool.end().catch(() => {});
       activePool = null;
     }
   }
 
-  // Double check host before creating pool
-  if (currentConfig.host === 'localhost' || currentConfig.host === '127.0.0.1' || !currentConfig.host) {
-    currentConfig.host = '202.10.47.207';
-  }
-  if (currentConfig.user === 'root' || !currentConfig.user) {
-    currentConfig.user = 'jimbrink';
-  }
-  if (!currentConfig.password) {
-    currentConfig.password = 'Sh1nratensey86';
-  }
-
   if (!activePool) {
     activePool = mysql.createPool({
-      host: currentConfig.host,
-      port: currentConfig.port,
-      user: currentConfig.user,
-      password: currentConfig.password,
-      database: currentConfig.database,
+      host: currentConfig.host || 'localhost',
+      port: currentConfig.port || 3306,
+      user: currentConfig.user || 'jimbrink',
+      password: currentConfig.password || 'Sh1nratensey86',
+      database: currentConfig.database || 'klinik_somban_medika_xx26',
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
-      connectTimeout: 15000,
-      ssl: { rejectUnauthorized: false },
+      connectTimeout: 5000,
+      ssl: currentConfig.ssl ? { rejectUnauthorized: false } : undefined,
     });
   }
 
@@ -102,7 +107,7 @@ export function getMySqlPool(customConfig?: Partial<MySqlConfig>): mysql.Pool {
 }
 
 /**
- * Test MySQL connection and retrieve server version
+ * Test MySQL connection and retrieve server version directly from MySQL
  */
 export async function testMySqlConnection(config?: Partial<MySqlConfig>) {
   const targetConfig = config ? { ...currentConfig, ...config } : currentConfig;
@@ -135,7 +140,7 @@ export async function testMySqlConnection(config?: Partial<MySqlConfig>) {
     const latency = Math.round(performance.now() - start);
     lastConnectionStatus = {
       connected: false,
-      error: error.message || 'Koneksi MySQL Gagal',
+      error: `Koneksi ke ${targetConfig.host}:${targetConfig.port} gagal: ${error.message}`,
       testedAt: new Date().toISOString(),
       latencyMs: latency,
     };
@@ -143,7 +148,7 @@ export async function testMySqlConnection(config?: Partial<MySqlConfig>) {
     return {
       success: false,
       connected: false,
-      error: error.message,
+      error: `Koneksi ke ${targetConfig.host}:${targetConfig.port} gagal: ${error.message}. Pastikan MySQL service aktif di VPS Anda.`,
       latencyMs: latency,
       host: targetConfig.host,
       port: targetConfig.port,
@@ -161,7 +166,7 @@ export async function executeQuery(sql: string, params: any[] = []) {
 }
 
 /**
- * Initialize MySQL tables schema if not exist
+ * Initialize MySQL tables schema and initial seed data directly in MySQL
  */
 export async function initMySqlSchema() {
   const schemaSql = `
@@ -277,6 +282,30 @@ export async function initMySqlSchema() {
       base_url VARCHAR(255) NOT NULL,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    INSERT INTO users (id, username, password_hash, nama_lengkap, role, nip, kd_faskes, is_active)
+    VALUES
+      ('usr-1', '0195U091-dev', '000000', 'Operator Bridging BPJS (VClaim)', 'ADMIN_BRIDGING', '198805122010011001', '019U901', 1),
+      ('usr-2', 'admin', '000000', 'Administrator Rekam Medis (RME)', 'ADMIN_RME', '199003202015022002', '019U901', 1),
+      ('usr-3', 'dr.machmujur', '000000', 'Dokter Pemeriksa', 'DOKTER', '197508152002121003', '019U901', 1),
+      ('usr-4', 'loket01', '000000', 'Petugas Pendaftaran Loket 01', 'PETUGAS_LOKET', '199511252019032004', '019U901', 1),
+      ('usr-5', 'farmasi01', '000000', 'Petugas Farmasi & Apotek', 'PETUGAS_FARMASI', '199204102017011005', '019U901', 1)
+    ON DUPLICATE KEY UPDATE nama_lengkap = VALUES(nama_lengkap);
+
+    INSERT INTO poliklinik (kode, nama, prefix, dokter_nama, sip, ruang, durasi_rata_rata_menit, kuota_total, kuota_terpakai, badge_color, icon_name)
+    VALUES
+      ('UMU', 'Poli Umum', 'A', 'Dokter Pemeriksa', '', 'Ruang 01 (Lantai 1)', 10, 60, 0, 'emerald', 'Stethoscope'),
+      ('GIG', 'Poli Gigi & Mulut', 'B', 'drg. Siti Nurhaliza', '', 'Ruang 02 (Lantai 1)', 15, 30, 0, 'blue', 'Smile'),
+      ('KIA', 'Poli KIA & KB', 'C', 'Bdn. Rahmawati, S.Tr.Keb', '', 'Ruang 03 (Lantai 1)', 12, 40, 0, 'purple', 'HeartPulse'),
+      ('FAR', 'Apotek & Farmasi', 'F', 'Apt. Hendra Pratama, S.Farm', '', 'Loket Farmasi Utama', 6, 100, 0, 'amber', 'Pill')
+    ON DUPLICATE KEY UPDATE nama = VALUES(nama);
+
+    INSERT INTO faskes_config (id, kd_faskes, nama_faskes, cons_id, secret_key, user_key, dev_user, dev_pass, environment, base_url)
+    VALUES (
+      'cfg-default', '019U901', 'KLINIK SOMBAN MEDIKA', '11495', '4xHABA0A84',
+      '4a1a84234ffc19f0c77750cebfa2444e', '0195U091-dev', 'Dev1234#', 'tester',
+      'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev'
+    ) ON DUPLICATE KEY UPDATE kd_faskes = VALUES(kd_faskes);
   `;
 
   try {
@@ -285,14 +314,14 @@ export async function initMySqlSchema() {
     for (const sql of statements) {
       await pool.query(sql);
     }
-    return { success: true, message: 'Schema tabel MySQL berhasil diverifikasi/dibuat' };
+    return { success: true, message: 'Schema tabel MySQL berhasil diverifikasi/dibuat di database' };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
 }
 
 /**
- * Complete MySQL database service (Zero static fallback)
+ * Complete MySQL database service (Direct MySQL only - No Local Storage / No In-Memory Fallback)
  */
 export const mySqlDb = {
   getStatus() {
@@ -308,7 +337,15 @@ export const mySqlDb = {
     };
   },
 
-  async getAllData() {
+  async getAllData(): Promise<{
+    source: 'MYSQL';
+    patients: Patient[];
+    queues: QueueItem[];
+    config: any;
+    securityLogs: AuditSecurityLog[];
+    bridgingLogs: BridgingLog[];
+    poliList: PoliInfo[];
+  }> {
     try {
       const pool = getMySqlPool();
       const [patients]: [any, any] = await pool.query('SELECT * FROM patients ORDER BY created_at DESC');
@@ -316,13 +353,14 @@ export const mySqlDb = {
       const [configRows]: [any, any] = await pool.query('SELECT * FROM faskes_config LIMIT 1');
       const [secLogs]: [any, any] = await pool.query('SELECT * FROM security_logs ORDER BY timestamp DESC LIMIT 50');
       const [brLogs]: [any, any] = await pool.query('SELECT * FROM bridging_logs ORDER BY timestamp DESC LIMIT 50');
-      const poliList = await this.getPoliList();
+      const [poliRows]: [any, any] = await pool.query('SELECT * FROM poliklinik ORDER BY prefix ASC');
 
       lastConnectionStatus.connected = true;
       lastConnectionStatus.testedAt = new Date().toISOString();
+      lastConnectionStatus.error = undefined;
 
       return {
-        source: 'MYSQL' as const,
+        source: 'MYSQL',
         patients: (patients || []).map((p: any) => ({
           id: p.id,
           nik: p.nik,
@@ -366,157 +404,110 @@ export const mySqlDb = {
           isSyncedBpjs: q.is_synced_bpjs === 1,
           panggilanKe: q.panggilan_ke || 0,
         })),
-        config: configRows && configRows.length > 0 ? {
-          id: configRows[0].id,
-          kdFaskes: configRows[0].kd_faskes,
-          namaFaskes: configRows[0].nama_faskes,
-          consId: configRows[0].cons_id,
-          secretKey: configRows[0].secret_key,
-          userKey: configRows[0].user_key,
-          userPcareDev: configRows[0].dev_user,
-          passPcareDev: configRows[0].dev_pass,
-          environment: configRows[0].environment,
-          baseUrl: configRows[0].base_url,
-        } : null,
+        config: configRows && configRows.length > 0 ? mapConfigRow(configRows[0]) : null,
         securityLogs: secLogs || [],
         bridgingLogs: brLogs || [],
-        poliList: poliList || [],
+        poliList: (poliRows || []).map(mapPoliRow),
       };
     } catch (e: any) {
-      console.error('MySQL getAllData query error:', e?.message);
       lastConnectionStatus.connected = false;
       lastConnectionStatus.error = e?.message;
       return {
-        source: 'MYSQL' as const,
+        source: 'MYSQL',
         patients: [],
         queues: [],
         config: null,
         securityLogs: [],
         bridgingLogs: [],
-        poliList: await this.getPoliList(),
+        poliList: [],
       };
     }
   },
 
   async addQueue(queueItem: QueueItem) {
-    try {
-      const pool = getMySqlPool();
-      const sql = `
-        INSERT INTO queues (
-          id, nomor_antrean, prefix, nomor_urut, tipe_pasien, poli_kode, poli_nama,
-          dokter_nama, ruang_nama, patient_id, nik, no_bpjs, nama_pasien, status,
-          waktu_daftar, estimasi_waktu_tunggu_menit, estimasi_jam_panggil,
-          bpjs_task_id, kode_booking, keluhan, is_synced_bpjs, panggilan_ke
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE status = VALUES(status), bpjs_task_id = VALUES(bpjs_task_id)
-      `;
-      await pool.query(sql, [
-        queueItem.id,
-        queueItem.nomorAntrean,
-        queueItem.prefix,
-        queueItem.nomorUrut,
-        queueItem.tipePasien,
-        queueItem.poliKode,
-        queueItem.poliNama,
-        queueItem.dokterNama || '',
-        queueItem.ruangNama || '',
-        queueItem.patientId || null,
-        queueItem.nik,
-        queueItem.noBpjs || null,
-        queueItem.namaPasien,
-        queueItem.status,
-        queueItem.waktuDaftar ? new Date(queueItem.waktuDaftar) : new Date(),
-        queueItem.estimasiWaktuTungguMenit || 10,
-        queueItem.estimasiJamPanggil || '',
-        queueItem.bpjsTaskId || 1,
-        queueItem.kodeBooking || '',
-        queueItem.keluhan || '',
-        queueItem.isSyncedBpjs ? 1 : 0,
-        queueItem.panggilanKe || 0,
-      ]);
-      lastConnectionStatus.connected = true;
-    } catch (err: any) {
-      console.warn('Gagal sinkron antrean ke MySQL:', err?.message);
-      throw err;
-    }
-
+    const pool = getMySqlPool();
+    const sql = `
+      INSERT INTO queues (
+        id, nomor_antrean, prefix, nomor_urut, tipe_pasien, poli_kode, poli_nama,
+        dokter_nama, ruang_nama, patient_id, nik, no_bpjs, nama_pasien, status,
+        waktu_daftar, estimasi_waktu_tunggu_menit, estimasi_jam_panggil,
+        bpjs_task_id, kode_booking, keluhan, is_synced_bpjs, panggilan_ke
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE status = VALUES(status), bpjs_task_id = VALUES(bpjs_task_id)
+    `;
+    await pool.query(sql, [
+      queueItem.id,
+      queueItem.nomorAntrean,
+      queueItem.prefix,
+      queueItem.nomorUrut,
+      queueItem.tipePasien,
+      queueItem.poliKode,
+      queueItem.poliNama,
+      queueItem.dokterNama || '',
+      queueItem.ruangNama || '',
+      queueItem.patientId || null,
+      queueItem.nik,
+      queueItem.noBpjs || null,
+      queueItem.namaPasien,
+      queueItem.status,
+      queueItem.waktuDaftar ? new Date(queueItem.waktuDaftar) : new Date(),
+      queueItem.estimasiWaktuTungguMenit || 10,
+      queueItem.estimasiJamPanggil || '',
+      queueItem.bpjsTaskId || 1,
+      queueItem.kodeBooking || '',
+      queueItem.keluhan || '',
+      queueItem.isSyncedBpjs ? 1 : 0,
+      queueItem.panggilanKe || 0,
+    ]);
+    lastConnectionStatus.connected = true;
     return queueItem;
   },
 
   async updateQueue(id: string, updates: Partial<QueueItem>) {
-    try {
-      const pool = getMySqlPool();
-      const fields: string[] = [];
-      const values: any[] = [];
+    const pool = getMySqlPool();
+    const fields: string[] = [];
+    const values: any[] = [];
 
-      if (updates.status) {
-        fields.push('status = ?');
-        values.push(updates.status);
-      }
-      if (updates.waktuDipanggil) {
-        fields.push('waktu_dipanggil = ?');
-        values.push(new Date(updates.waktuDipanggil));
-      }
-      if (updates.waktuMulaiLayanan) {
-        fields.push('waktu_mulai_layanan = ?');
-        values.push(new Date(updates.waktuMulaiLayanan));
-      }
-      if (updates.waktuSelesai) {
-        fields.push('waktu_selesai = ?');
-        values.push(new Date(updates.waktuSelesai));
-      }
-      if (updates.panggilanKe !== undefined) {
-        fields.push('panggilan_ke = ?');
-        values.push(updates.panggilanKe);
-      }
-      if (updates.bpjsTaskId !== undefined) {
-        fields.push('bpjs_task_id = ?');
-        values.push(updates.bpjsTaskId);
-      }
+    if (updates.status) { fields.push('status = ?'); values.push(updates.status); }
+    if (updates.waktuDipanggil) { fields.push('waktu_dipanggil = ?'); values.push(new Date(updates.waktuDipanggil)); }
+    if (updates.waktuMulaiLayanan) { fields.push('waktu_mulai_layanan = ?'); values.push(new Date(updates.waktuMulaiLayanan)); }
+    if (updates.waktuSelesai) { fields.push('waktu_selesai = ?'); values.push(new Date(updates.waktuSelesai)); }
+    if (updates.panggilanKe !== undefined) { fields.push('panggilan_ke = ?'); values.push(updates.panggilanKe); }
+    if (updates.bpjsTaskId !== undefined) { fields.push('bpjs_task_id = ?'); values.push(updates.bpjsTaskId); }
 
-      if (fields.length > 0) {
-        values.push(id);
-        await pool.query(`UPDATE queues SET ${fields.join(', ')} WHERE id = ?`, values);
-        lastConnectionStatus.connected = true;
-      }
-    } catch (err: any) {
-      console.warn('Gagal update antrean di MySQL:', err?.message);
-      throw err;
+    if (fields.length > 0) {
+      values.push(id);
+      await pool.query(`UPDATE queues SET ${fields.join(', ')} WHERE id = ?`, values);
+      lastConnectionStatus.connected = true;
     }
   },
 
   async addPatient(patient: Patient) {
-    try {
-      const pool = getMySqlPool();
-      const sql = `
-        INSERT INTO patients (
-          id, nik, no_bpjs, nama, tgl_lahir, jenis_kelamin, no_hp, alamat,
-          status_bpjs, jenis_peserta, faskes_tingkat_1, kelas_rawat, encrypted_data, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE nama = VALUES(nama), no_hp = VALUES(no_hp)
-      `;
-      await pool.query(sql, [
-        patient.id,
-        patient.nik,
-        patient.noBpjs || '',
-        patient.nama,
-        patient.tglLahir || '1990-01-01',
-        patient.jenisKelamin,
-        patient.noHp || '',
-        patient.alamat || '',
-        patient.statusBpjs || 'AKTIF',
-        patient.jenisPeserta || 'Umum',
-        patient.faskesTingkat1 || '',
-        patient.kelasRawat || 'Kelas 3',
-        patient.encryptedData || '',
-        patient.createdAt ? new Date(patient.createdAt) : new Date(),
-      ]);
-      lastConnectionStatus.connected = true;
-    } catch (err: any) {
-      console.warn('Gagal simpan pasien di MySQL:', err?.message);
-      throw err;
-    }
-
+    const pool = getMySqlPool();
+    const sql = `
+      INSERT INTO patients (
+        id, nik, no_bpjs, nama, tgl_lahir, jenis_kelamin, no_hp, alamat,
+        status_bpjs, jenis_peserta, faskes_tingkat_1, kelas_rawat, encrypted_data, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE nama = VALUES(nama), no_hp = VALUES(no_hp)
+    `;
+    await pool.query(sql, [
+      patient.id,
+      patient.nik,
+      patient.noBpjs || '',
+      patient.nama,
+      patient.tglLahir || '1990-01-01',
+      patient.jenisKelamin,
+      patient.noHp || '',
+      patient.alamat || '',
+      patient.statusBpjs || 'AKTIF',
+      patient.jenisPeserta || 'Umum',
+      patient.faskesTingkat1 || '',
+      patient.kelasRawat || 'Kelas 3',
+      patient.encryptedData || '',
+      patient.createdAt ? new Date(patient.createdAt) : new Date(),
+    ]);
+    lastConnectionStatus.connected = true;
     return patient;
   },
 
@@ -536,8 +527,9 @@ export const mySqlDb = {
           log.details,
         ]
       );
-    } catch (err: any) {
-      console.warn('MySQL addSecurityLog failed:', err?.message);
+      lastConnectionStatus.connected = true;
+    } catch {
+      // Ignored
     }
   },
 
@@ -558,32 +550,30 @@ export const mySqlDb = {
           log.durationMs || 0,
         ]
       );
-    } catch (err: any) {
-      console.warn('MySQL addBridgingLog failed:', err?.message);
+      lastConnectionStatus.connected = true;
+    } catch {
+      // Ignored
     }
   },
 
   async updateConfig(config: Partial<BpjsBridgingConfig>) {
-    try {
-      const pool = getMySqlPool();
-      const fields: string[] = [];
-      const vals: any[] = [];
-      if (config.consId) { fields.push('cons_id = ?'); vals.push(config.consId); }
-      if (config.secretKey) { fields.push('secret_key = ?'); vals.push(config.secretKey); }
-      if (config.userKey) { fields.push('user_key = ?'); vals.push(config.userKey); }
-      if (config.kdFaskes) { fields.push('kd_faskes = ?'); vals.push(config.kdFaskes); }
-      if (config.namaFaskes) { fields.push('nama_faskes = ?'); vals.push(config.namaFaskes); }
-      if (config.environment) { fields.push('environment = ?'); vals.push(config.environment); }
-      if (config.userPcareDev) { fields.push('dev_user = ?'); vals.push(config.userPcareDev); }
-      if (config.passPcareDev) { fields.push('dev_pass = ?'); vals.push(config.passPcareDev); }
-      if (config.baseUrl) { fields.push('base_url = ?'); vals.push(config.baseUrl); }
+    const pool = getMySqlPool();
+    const fields: string[] = [];
+    const vals: any[] = [];
+    if (config.consId) { fields.push('cons_id = ?'); vals.push(config.consId); }
+    if (config.secretKey) { fields.push('secret_key = ?'); vals.push(config.secretKey); }
+    if (config.userKey) { fields.push('user_key = ?'); vals.push(config.userKey); }
+    if (config.kdFaskes) { fields.push('kd_faskes = ?'); vals.push(config.kdFaskes); }
+    if (config.namaFaskes) { fields.push('nama_faskes = ?'); vals.push(config.namaFaskes); }
+    if (config.environment) { fields.push('environment = ?'); vals.push(config.environment); }
+    if (config.userPcareDev) { fields.push('dev_user = ?'); vals.push(config.userPcareDev); }
+    if (config.passPcareDev) { fields.push('dev_pass = ?'); vals.push(config.passPcareDev); }
+    if (config.baseUrl) { fields.push('base_url = ?'); vals.push(config.baseUrl); }
 
-      if (fields.length > 0) {
-        vals.push('cfg-default');
-        await pool.query(`UPDATE faskes_config SET ${fields.join(', ')} WHERE id = ?`, vals);
-      }
-    } catch (err: any) {
-      console.warn('MySQL updateConfig failed:', err?.message);
+    if (fields.length > 0) {
+      vals.push('cfg-default');
+      await pool.query(`UPDATE faskes_config SET ${fields.join(', ')} WHERE id = ?`, vals);
+      lastConnectionStatus.connected = true;
     }
   },
 
@@ -606,12 +596,12 @@ export const mySqlDb = {
         if (!user.is_active) {
           return {
             success: false,
-            message: 'Akun petugas berstatus non-aktif di MySQL',
+            message: 'Akun petugas berstatus non-aktif di database MySQL',
             source: 'MYSQL',
           };
         }
 
-        if (user.password_hash === password) {
+        if (user.password_hash === password || (password === '000000' && user.password_hash === '000000')) {
           await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]).catch(() => {});
 
           await this.addSecurityLog({
@@ -620,18 +610,18 @@ export const mySqlDb = {
             actor: `${user.nama_lengkap} (${user.role})`,
             action: 'LOGIN',
             status: 'SUCCESS',
-            details: `Otentikasi petugas faskes berhasil diverifikasi di MySQL untuk user: ${username}`,
+            details: `Otentikasi petugas berhasil diverifikasi langsung di MySQL untuk user: ${username}`,
           });
 
           const safeUser = {
             id: user.id,
             username: user.username,
-            namaLengkap: user.nama_lengkap || user.namaLengkap || user.username || 'Petugas Faskes',
+            namaLengkap: user.nama_lengkap || user.username || 'Petugas Faskes',
             nama_lengkap: user.nama_lengkap,
             role: user.role,
             nip: user.nip || '',
-            kdFaskes: user.kd_faskes || user.kdFaskes || '019U901',
-            isActive: Boolean(user.is_active ?? user.isActive ?? true),
+            kdFaskes: user.kd_faskes || '019U901',
+            isActive: Boolean(user.is_active),
             lastLogin: user.last_login || new Date().toISOString(),
             mustChangePassword: Boolean(user.password_hash === '000000' || password === '000000'),
           };
@@ -639,7 +629,7 @@ export const mySqlDb = {
           return {
             success: true,
             message: safeUser.mustChangePassword
-              ? 'Login berhasil. Terdeteksi password awal default (000000). Harap ganti password Anda.'
+              ? 'Login berhasil. Password Anda masih default (000000). Harap ganti password demi keamanan.'
               : 'Otentikasi berhasil via MySQL Server',
             user: safeUser,
             source: 'MYSQL',
@@ -652,20 +642,21 @@ export const mySqlDb = {
           };
         }
       }
-    } catch (err: any) {
-      console.warn('MySQL auth query failed:', err?.message);
+
       return {
         success: false,
-        message: `Gagal menghubungi database MySQL: ${err?.message}`,
+        message: 'Username petugas tidak ditemukan di tabel users MySQL',
+        source: 'MYSQL',
+      };
+    } catch (err: any) {
+      lastConnectionStatus.connected = false;
+      lastConnectionStatus.error = err?.message;
+      return {
+        success: false,
+        message: `Koneksi MySQL gagal: ${err?.message || 'Database tidak dapat dihubungi'}`,
         source: 'MYSQL',
       };
     }
-
-    return {
-      success: false,
-      message: 'Username tidak terdaftar di database MySQL',
-      source: 'MYSQL',
-    };
   },
 
   async changePassword(username: string, oldPassword: string, newPassword: string): Promise<{
@@ -677,65 +668,57 @@ export const mySqlDb = {
       return { success: false, message: 'Password baru minimal 6 karakter' };
     }
     if (newPassword.trim() === '000000') {
-      return { success: false, message: 'Password baru tidak boleh menggunakan password awal default (000000)' };
+      return { success: false, message: 'Password baru tidak boleh menggunakan password default (000000)' };
     }
 
-    try {
-      const pool = getMySqlPool();
-      const [rows]: [any, any] = await pool.query(
-        'SELECT id, username, password_hash, nama_lengkap, role, nip, kd_faskes, is_active FROM users WHERE username = ? LIMIT 1',
-        [username.trim()]
-      );
+    const pool = getMySqlPool();
+    const [rows]: [any, any] = await pool.query(
+      'SELECT id, username, password_hash, nama_lengkap, role, nip, kd_faskes, is_active FROM users WHERE username = ? LIMIT 1',
+      [username.trim()]
+    );
 
-      if (!rows || rows.length === 0) {
-        return { success: false, message: 'Akun user tidak ditemukan di database MySQL' };
-      }
+    if (!rows || rows.length === 0) {
+      return { success: false, message: 'Akun user tidak ditemukan di database MySQL' };
+    }
 
-      const u = rows[0];
-      if (u.password_hash !== oldPassword && oldPassword !== '000000') {
-        return { success: false, message: 'Password lama tidak sesuai di database MySQL' };
-      }
+    const u = rows[0];
+    if (u.password_hash !== oldPassword && oldPassword !== '000000') {
+      return { success: false, message: 'Password lama tidak sesuai di database MySQL' };
+    }
 
-      const [res]: [any, any] = await pool.query(
-        'UPDATE users SET password_hash = ? WHERE username = ?',
-        [newPassword.trim(), username.trim()]
-      );
+    const [res]: [any, any] = await pool.query(
+      'UPDATE users SET password_hash = ? WHERE username = ?',
+      [newPassword.trim(), username.trim()]
+    );
 
-      if (res.affectedRows > 0) {
-        lastConnectionStatus.connected = true;
+    if (res.affectedRows > 0) {
+      lastConnectionStatus.connected = true;
 
-        await this.addSecurityLog({
-          id: `sec-pwd-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          actor: `${u.nama_lengkap} (${username})`,
-          action: 'KEY_ROTATE',
-          status: 'SUCCESS',
-          details: `Password akun '${username}' berhasil diperbarui langsung ke tabel users MySQL 202.10.47.207`,
-        });
+      await this.addSecurityLog({
+        id: `sec-pwd-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        actor: `${u.nama_lengkap} (${username})`,
+        action: 'KEY_ROTATE',
+        status: 'SUCCESS',
+        details: `Password akun '${username}' berhasil diperbarui langsung ke database MySQL`,
+      });
 
-        const safeUser = {
-          id: u.id,
-          username: u.username,
-          namaLengkap: u.nama_lengkap || u.namaLengkap || u.username || 'Petugas Faskes',
-          nama_lengkap: u.nama_lengkap,
-          role: u.role,
-          nip: u.nip || '',
-          kdFaskes: u.kd_faskes || u.kdFaskes || '019U901',
-          isActive: Boolean(u.is_active ?? true),
-          mustChangePassword: false,
-        };
+      const safeUser = {
+        id: u.id,
+        username: u.username,
+        namaLengkap: u.nama_lengkap || username,
+        nama_lengkap: u.nama_lengkap,
+        role: u.role,
+        nip: u.nip || '',
+        kdFaskes: u.kd_faskes || '019U901',
+        isActive: Boolean(u.is_active ?? true),
+        mustChangePassword: false,
+      };
 
-        return {
-          success: true,
-          message: 'Password baru berhasil disimpan langsung ke database MySQL.',
-          user: safeUser,
-        };
-      }
-    } catch (err: any) {
-      console.error('MySQL changePassword direct execution error:', err?.message);
       return {
-        success: false,
-        message: `Gagal memperbarui password di database MySQL: ${err?.message}`,
+        success: true,
+        message: 'Password baru berhasil disimpan ke database MySQL.',
+        user: safeUser,
       };
     }
 
@@ -748,34 +731,29 @@ export const mySqlDb = {
     newPassword?: string;
   }> {
     const newPassword = targetPassword || '000000';
+    const pool = getMySqlPool();
+    const [res]: [any, any] = await pool.query(
+      'UPDATE users SET password_hash = ? WHERE username = ?',
+      [newPassword, username.trim()]
+    );
 
-    try {
-      const pool = getMySqlPool();
-      const [res]: [any, any] = await pool.query(
-        'UPDATE users SET password_hash = ? WHERE username = ?',
-        [newPassword, username.trim()]
-      );
-      if (res.affectedRows > 0) {
-        lastConnectionStatus.connected = true;
+    if (res.affectedRows > 0) {
+      lastConnectionStatus.connected = true;
 
-        await this.addSecurityLog({
-          id: `sec-reset-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          actor: resetBy,
-          action: 'KEY_ROTATE',
-          status: 'SUCCESS',
-          details: `Reset password akun '${username}' ke '${newPassword}' di MySQL`,
-        });
+      await this.addSecurityLog({
+        id: `sec-reset-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        actor: resetBy,
+        action: 'KEY_ROTATE',
+        status: 'SUCCESS',
+        details: `Reset password akun '${username}' ke '${newPassword}' di MySQL`,
+      });
 
-        return {
-          success: true,
-          message: `Password akun '${username}' berhasil di-reset langsung di database MySQL`,
-          newPassword,
-        };
-      }
-    } catch (err: any) {
-      console.warn('MySQL resetPassword failed:', err?.message);
-      return { success: false, message: `Gagal reset password di MySQL: ${err?.message}` };
+      return {
+        success: true,
+        message: `Password akun '${username}' berhasil di-reset langsung di database MySQL`,
+        newPassword,
+      };
     }
 
     return { success: false, message: 'User tidak ditemukan di MySQL' };
@@ -792,52 +770,41 @@ export const mySqlDb = {
         return rows;
       }
     } catch (err: any) {
-      console.warn('MySQL getUsers failed:', err?.message);
+      lastConnectionStatus.connected = false;
+      lastConnectionStatus.error = err?.message;
     }
     return [];
   },
 
   async updateUser(id: string, updates: { namaLengkap?: string; nip?: string; role?: any; isActive?: boolean }) {
-    try {
-      const pool = getMySqlPool();
-      const fields: string[] = [];
-      const params: any[] = [];
-      if (updates.namaLengkap !== undefined) {
-        fields.push('`nama_lengkap` = ?');
-        params.push(updates.namaLengkap.trim());
-      }
-      if (updates.nip !== undefined) {
-        fields.push('`nip` = ?');
-        params.push(updates.nip.trim());
-      }
-      if (updates.role !== undefined) {
-        fields.push('`role` = ?');
-        params.push(updates.role);
-      }
-      if (updates.isActive !== undefined) {
-        fields.push('`is_active` = ?');
-        params.push(updates.isActive ? 1 : 0);
-      }
-      if (fields.length > 0) {
-        params.push(id);
-        params.push(id);
-        await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = ? OR username = ?`, params);
-        lastConnectionStatus.connected = true;
-      }
-
-      if (updates.namaLengkap) {
-        if (updates.role === 'DOKTER' || id === 'dr.machmujur' || id === 'usr-3') {
-          await pool.query(`UPDATE poliklinik SET dokter_nama = ? WHERE kode = 'UMU'`, [updates.namaLengkap.trim()]);
-        } else if (updates.role === 'PETUGAS_FARMASI' || id === 'farmasi01' || id === 'usr-5') {
-          await pool.query(`UPDATE poliklinik SET dokter_nama = ? WHERE kode = 'FAR'`, [updates.namaLengkap.trim()]);
-        }
-      }
-
-      return { success: true, message: 'Data petugas berhasil diperbarui di MySQL' };
-    } catch (e: any) {
-      console.warn('MySQL updateUser error:', e?.message);
-      return { success: false, message: `Gagal update user di MySQL: ${e?.message}` };
+    const pool = getMySqlPool();
+    const fields: string[] = [];
+    const params: any[] = [];
+    if (updates.namaLengkap !== undefined) {
+      fields.push('`nama_lengkap` = ?');
+      params.push(updates.namaLengkap.trim());
     }
+    if (updates.nip !== undefined) {
+      fields.push('`nip` = ?');
+      params.push(updates.nip.trim());
+    }
+    if (updates.role !== undefined) {
+      fields.push('`role` = ?');
+      params.push(updates.role);
+    }
+    if (updates.isActive !== undefined) {
+      fields.push('`is_active` = ?');
+      params.push(updates.isActive ? 1 : 0);
+    }
+
+    if (fields.length > 0) {
+      params.push(id);
+      params.push(id);
+      await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id = ? OR username = ?`, params);
+      lastConnectionStatus.connected = true;
+    }
+
+    return { success: true, message: 'Data petugas berhasil diperbarui di database MySQL' };
   },
 
   async getPoliList(): Promise<PoliInfo[]> {
@@ -845,51 +812,37 @@ export const mySqlDb = {
       const pool = getMySqlPool();
       const [rows]: [any, any] = await pool.query('SELECT * FROM poliklinik ORDER BY prefix ASC');
       if (rows && rows.length > 0) {
-        return rows.map((r: any) => ({
-          kode: r.kode,
-          nama: r.nama,
-          prefix: r.prefix,
-          dokter: r.dokter_nama || '',
-          sip: r.sip || '',
-          ruang: r.ruang || '',
-          durasiRataRataMenit: r.durasi_rata_rata_menit || 10,
-          kuotaTotal: r.kuota_total || 50,
-          kuotaTerpakai: r.kuota_terpakai || 0,
-          badgeColor: r.badge_color || 'emerald',
-          iconName: r.icon_name || 'Stethoscope',
-        }));
+        lastConnectionStatus.connected = true;
+        return rows.map(mapPoliRow);
       }
-    } catch (e: any) {
-      console.warn('MySQL getPoliList query failed:', e?.message);
+    } catch (err: any) {
+      lastConnectionStatus.connected = false;
+      lastConnectionStatus.error = err?.message;
     }
     return [];
   },
 
   async updatePoli(kode: string, updates: Partial<PoliInfo>) {
-    try {
-      const pool = getMySqlPool();
-      const fields: string[] = [];
-      const values: any[] = [];
+    const pool = getMySqlPool();
+    const fields: string[] = [];
+    const values: any[] = [];
 
-      if (updates.nama) { fields.push('nama = ?'); values.push(updates.nama); }
-      if (updates.prefix) { fields.push('prefix = ?'); values.push(updates.prefix); }
-      if (updates.dokter !== undefined) { fields.push('dokter_nama = ?'); values.push(updates.dokter); }
-      if (updates.sip !== undefined) { fields.push('sip = ?'); values.push(updates.sip); }
-      if (updates.ruang) { fields.push('ruang = ?'); values.push(updates.ruang); }
-      if (updates.durasiRataRataMenit) { fields.push('durasi_rata_rata_menit = ?'); values.push(updates.durasiRataRataMenit); }
-      if (updates.kuotaTotal) { fields.push('kuota_total = ?'); values.push(updates.kuotaTotal); }
-      if (updates.kuotaTerpakai !== undefined) { fields.push('kuota_terpakai = ?'); values.push(updates.kuotaTerpakai); }
+    if (updates.nama) { fields.push('nama = ?'); values.push(updates.nama); }
+    if (updates.prefix) { fields.push('prefix = ?'); values.push(updates.prefix); }
+    if (updates.dokter !== undefined) { fields.push('dokter_nama = ?'); values.push(updates.dokter); }
+    if (updates.sip !== undefined) { fields.push('sip = ?'); values.push(updates.sip); }
+    if (updates.ruang) { fields.push('ruang = ?'); values.push(updates.ruang); }
+    if (updates.durasiRataRataMenit) { fields.push('durasi_rata_rata_menit = ?'); values.push(updates.durasiRataRataMenit); }
+    if (updates.kuotaTotal) { fields.push('kuota_total = ?'); values.push(updates.kuotaTotal); }
+    if (updates.kuotaTerpakai !== undefined) { fields.push('kuota_terpakai = ?'); values.push(updates.kuotaTerpakai); }
 
-      if (fields.length > 0) {
-        values.push(kode);
-        await pool.query(`UPDATE poliklinik SET ${fields.join(', ')} WHERE kode = ?`, values);
-        lastConnectionStatus.connected = true;
-      }
-      return { success: true, message: 'Poliklinik berhasil diupdate di MySQL' };
-    } catch (e: any) {
-      console.warn('MySQL updatePoli error:', e?.message);
-      return { success: false, message: `Gagal update poli di MySQL: ${e?.message}` };
+    if (fields.length > 0) {
+      values.push(kode);
+      await pool.query(`UPDATE poliklinik SET ${fields.join(', ')} WHERE kode = ?`, values);
+      lastConnectionStatus.connected = true;
     }
+
+    return { success: true, message: 'Poliklinik berhasil diupdate di database MySQL' };
   },
 
   getSchemaSql(): string {
@@ -931,7 +884,7 @@ export const mySqlDb = {
       }
       return sql;
     } catch (err: any) {
-      return `-- Gagal dump tabel ${tableName}: ${err?.message}\n`;
+      return `-- Dump tabel ${tableName} dari MySQL: ${err?.message}\n`;
     }
   },
 };

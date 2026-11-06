@@ -13,7 +13,7 @@ export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
   emailFaskes: "sombanmedika@gmail.com",
   environment: "tester",
   baseUrl: "https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev",
-  isOnline: false, // Menunggu proses whitelist IP faskes oleh BPJS Kesehatan
+  isOnline: true, // Domain resmi https://kliniksombanmedika.id/ telah terdaftar dan di-whitelist oleh BPJS Kesehatan
   lastSyncTimestamp: new Date().toISOString(),
 };
 

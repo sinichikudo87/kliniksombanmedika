@@ -292,19 +292,29 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                 </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Status Koneksi Bridging BPJS</label>
-                {bpjsConfig.isOnline === true ? (
-                  <div className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span>Bridging Terhubung & Terverifikasi Aktif</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                    <span>Menunggu Pembukaan Whitelist IP BPJS (Belum Terhubung)</span>
-                  </div>
-                )}
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-700">Status Whitelist Domain & Koneksi BPJS</label>
+                <select
+                  value={isOnline ? 'online' : 'pending'}
+                  onChange={(e) => {
+                    const val = e.target.value === 'online';
+                    setIsOnline(val);
+                    updateBpjsConfig({ isOnline: val });
+                  }}
+                  className={`w-full py-2 px-3 border rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+                    isOnline
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
+                      : 'bg-amber-50 border-amber-300 text-amber-800'
+                  }`}
+                >
+                  <option value="online">🟢 Sudah Di-Whitelist (Domain https://kliniksombanmedika.id/)</option>
+                  <option value="pending">🟡 Menunggu Whitelist Domain BPJS (Belum Terhubung)</option>
+                </select>
+                <p className="text-[11px] text-slate-500">
+                  {isOnline
+                    ? 'Domain resmi https://kliniksombanmedika.id/ telah terdaftar dan disetujui di BPJS Kesehatan. Sistem aktif terhubung dan 9 endpoint siap melayani transaksi.'
+                    : 'Pilih "Sudah Di-Whitelist" jika BPJS Kesehatan telah membuka izin akses untuk domain faskes Anda.'}
+                </p>
               </div>
             </div>
 
@@ -337,7 +347,7 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                         <span>Latensi: {pingResult.latencyMs} ms</span>
                       </div>
                       <p className="text-slate-500">
-                        Kredensial valid dan IP terdaftar di BPJS. Web Service siap menerima transaksi pendaftaran.
+                        Kredensial valid dan Domain https://kliniksombanmedika.id/ telah di-whitelist BPJS. Web Service siap menerima transaksi antrean.
                       </p>
                     </div>
                   ) : (

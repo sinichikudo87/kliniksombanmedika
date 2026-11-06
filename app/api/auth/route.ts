@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getMySqlPool } from '@/lib/mysql-db';
+import { mySqlDb } from '@/lib/mysql-db';
 
 export async function GET(req: NextRequest) {
   const username = req.headers.get('x-username');
@@ -18,33 +18,17 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const pool = getMySqlPool();
-    const [rows]: [any, any] = await pool.query(
-      'SELECT id, username, password_hash, is_active FROM users WHERE username = ? LIMIT 1',
-      [username.trim()]
-    );
+    const authResult = await mySqlDb.authenticateUser(username, password);
 
-    if (!rows || rows.length === 0 || rows[0].password_hash !== password.trim()) {
+    if (!authResult.success) {
       return NextResponse.json(
         {
           metadata: {
             code: 401,
-            message: 'Username atau Password Web Service Salah di Database MySQL',
+            message: authResult.message || 'Username atau Password Web Service Salah',
           },
         },
         { status: 401 }
-      );
-    }
-
-    if (!rows[0].is_active) {
-      return NextResponse.json(
-        {
-          metadata: {
-            code: 403,
-            message: 'Akun user faskes berstatus non-aktif di MySQL',
-          },
-        },
-        { status: 403 }
       );
     }
 

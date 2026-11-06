@@ -48,15 +48,18 @@ function MainApp() {
     try {
       const res = await testBridgingPing();
       if (res && res.success && res.isWhitelisted) {
-        showSwalSuccess(`Tes koneksi ke Web Service BPJS terverifikasi terhubung (${res.latencyMs} ms).`, 'Bridging Terhubung');
+        showSwalSuccess(
+          res.message || `Tes koneksi ke Web Service BPJS terverifikasi terhubung (${res.latencyMs} ms). Domain https://kliniksombanmedika.id/ aktif di-whitelist.`,
+          'Bridging Terhubung'
+        );
       } else {
         showSwalError(
-          res.message || 'Koneksi ke endpoint BPJS belum terbuka. IP server faskes belum selesai di-whitelist oleh tim BPJS Kesehatan.',
-          'Belum Di-Whitelist BPJS'
+          res.message || 'Koneksi ke endpoint BPJS belum terbuka. Pastikan domain faskes (https://kliniksombanmedika.id/) telah di-whitelist oleh tim BPJS Kesehatan.',
+          'Status Bridging'
         );
       }
     } catch (err: any) {
-      showSwalError('Koneksi BPJS gagal: ' + (err.message || 'Handshake timeout / IP Belum Di-Whitelist'), 'Belum Di-Whitelist');
+      showSwalError('Koneksi BPJS gagal: ' + (err.message || 'Handshake timeout'), 'Status Bridging');
     } finally {
       setIsPinging(false);
     }
