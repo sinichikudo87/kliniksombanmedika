@@ -1,0 +1,352 @@
+{
+  "users": [
+    {
+      "id": "usr-admin-dedy",
+      "username": "dedy",
+      "passwordHash": "f96b906bf85122ee087a47be0783f0cbadf0a4de763a9453852dc38934f8e180",
+      "fullName": "Dedy",
+      "role": "admin",
+      "email": "dedyfabregas@gmail.com",
+      "phone": "081234567891",
+      "nip": "198904122015012001",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z",
+      "lastLogin": "2026-10-15T14:25:59.178Z"
+    },
+    {
+      "id": "usr-admin-01",
+      "username": "admin",
+      "passwordHash": "f96b906bf85122ee087a47be0783f0cbadf0a4de763a9453852dc38934f8e180",
+      "fullName": "Dedy (Akses Penuh SIM-RS)",
+      "role": "admin",
+      "email": "admin@sombanmedika.id",
+      "phone": "081234567890",
+      "nip": "198801012015011001",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z",
+      "lastLogin": "2026-10-15T14:17:18.568Z"
+    },
+    {
+      "id": "usr-loket-01",
+      "username": "loket1",
+      "passwordHash": "d103382582c2e2f1ec08233cf06032d83b2a1fe4a7fffb249e160713b30091e0",
+      "fullName": "Ifa",
+      "role": "petugas_loket",
+      "email": "ifa.loket@sombanmedika.id",
+      "phone": "081298765432",
+      "nip": "199203152018022003",
+      "loketId": "loket-1",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z",
+      "lastLogin": "2026-10-15T14:21:42.536Z"
+    },
+    {
+      "id": "usr-loket-02",
+      "username": "loket2",
+      "passwordHash": "d103382582c2e2f1ec08233cf06032d83b2a1fe4a7fffb249e160713b30091e0",
+      "fullName": "Dwi Lestari, Amd.Keb",
+      "role": "petugas_loket",
+      "email": "dwi.lestari@sombanmedika.id",
+      "phone": "081377889900",
+      "nip": "199407222019032005",
+      "loketId": "loket-2",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z"
+    },
+    {
+      "id": "usr-dokter-01",
+      "username": "dr_machmujur",
+      "passwordHash": "391362ea7bf7774cf8211c209063068d8e33d93c610b6ebac28d93fe2ffae979",
+      "fullName": "dr. Machmujur",
+      "role": "dokter",
+      "email": "dr.machmujur@sombanmedika.id",
+      "phone": "081122334455",
+      "nip": "198005102008011002",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z",
+      "lastLogin": "2026-10-15T14:21:42.560Z"
+    },
+    {
+      "id": "usr-dokter-02",
+      "username": "dr_diana",
+      "passwordHash": "391362ea7bf7774cf8211c209063068d8e33d93c610b6ebac28d93fe2ffae979",
+      "fullName": "dr. Diana",
+      "role": "dokter",
+      "email": "dr.diana@sombanmedika.id",
+      "phone": "081199887766",
+      "nip": "198503152011012003",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z",
+      "lastLogin": "2026-10-15T14:21:42.580Z"
+    },
+    {
+      "id": "usr-farmasi-01",
+      "username": "wandi",
+      "passwordHash": "cf46f341621efd31b9e8840450e7f9b1645288ca9d79cde02b90df1a7584c0f9",
+      "fullName": "Wandi",
+      "role": "farmasi",
+      "email": "wandi@sombanmedika.id",
+      "phone": "081399881122",
+      "nip": "199109092017012004",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z",
+      "lastLogin": "2026-10-15T14:21:42.598Z"
+    },
+    {
+      "id": "usr-farmasi-02",
+      "username": "farmasi1",
+      "passwordHash": "cf46f341621efd31b9e8840450e7f9b1645288ca9d79cde02b90df1a7584c0f9",
+      "fullName": "Wandi (Penyerahan Resep)",
+      "role": "farmasi",
+      "email": "penyerahan.resep@sombanmedika.id",
+      "phone": "081399881122",
+      "nip": "199109092017012004",
+      "isActive": true,
+      "createdAt": "2026-01-01T08:00:00.000Z"
+    },
+    {
+      "id": "usr-mv28toiy-hong",
+      "username": "perawat_rima",
+      "passwordHash": "dd700477b9a52cf6ce66825b0ba210a4d0ebaf6046ebec9d780fc245786b8c95",
+      "fullName": "Ns. Rima Melati, M.Kep (Promosi)",
+      "role": "admin",
+      "email": "rima@sombanmedika.id",
+      "phone": "",
+      "nip": "",
+      "isActive": true,
+      "createdAt": "2026-10-10T10:20:16.618Z"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "t-1791699836171-6ek",
+      "nomorAntrean": "F-001",
+      "huruf": "F",
+      "angka": 1,
+      "kategori": "FARMASI",
+      "poliTujuan": "Farmasi & Apotek Somban Medika",
+      "kodePoli": "FAR",
+      "dokterNama": "Apt. Dimas Wicaksono, S.Farm",
+      "namaPasien": "Pasien Pengambilan Obat",
+      "noKartuBPJS": "-",
+      "nik": "3515085675854320",
+      "nomorRM": "RM-74005",
+      "kodeBooking": "BK-20261011-001",
+      "status": "MENUNGGU",
+      "waktuAmbil": "2026-10-11T06:23:56.172Z",
+      "taskIdBpjs": 1,
+      "estimasiDilayani": "13.38 WIB"
+    }
+  ],
+  "lokets": [
+    {
+      "id": "loket-1",
+      "nama": "Loket 1 - Pendaftaran & SEP BPJS",
+      "kode": "LOKET-1",
+      "tipe": "ADMISI",
+      "kategoriHuruf": [
+        "A",
+        "P"
+      ],
+      "petugas": "Sdri. Ifa",
+      "status": "BUKA"
+    },
+    {
+      "id": "loket-2",
+      "nama": "Loket 2 - Pendaftaran Pasien Umum",
+      "kode": "LOKET-2",
+      "tipe": "ADMISI",
+      "kategoriHuruf": [
+        "B"
+      ],
+      "petugas": "Sdri. Dwi Lestari",
+      "status": "BUKA"
+    },
+    {
+      "id": "loket-3",
+      "nama": "Loket 3 - Prioritas Lansia & Ibu Hamil",
+      "kode": "LOKET-3",
+      "tipe": "ADMISI",
+      "kategoriHuruf": [
+        "P"
+      ],
+      "petugas": "Sdri. Maya Safitri",
+      "status": "BUKA"
+    },
+    {
+      "id": "poli-umu",
+      "nama": "Poli Umum - Ruang 1",
+      "kode": "POLI-UMU",
+      "tipe": "POLI",
+      "kategoriHuruf": [
+        "A",
+        "B",
+        "P"
+      ],
+      "petugas": "dr. Machmujur",
+      "ruang": "Ruang 1 (Klinik Lantai 1)",
+      "status": "BUKA"
+    },
+    {
+      "id": "poli-gig",
+      "nama": "Poli Umum - Ruang 2",
+      "kode": "POLI-UMU-2",
+      "tipe": "POLI",
+      "kategoriHuruf": [
+        "A",
+        "B",
+        "P"
+      ],
+      "petugas": "dr. Diana",
+      "ruang": "Ruang 2 (Klinik Lantai 1)",
+      "status": "BUKA"
+    },
+    {
+      "id": "farmasi",
+      "nama": "Depo Farmasi & Penyerahan Resep Obat",
+      "kode": "FARMASI",
+      "tipe": "FARMASI",
+      "kategoriHuruf": [
+        "F"
+      ],
+      "petugas": "Sdr. Wandi",
+      "ruang": "Depo Farmasi Depan",
+      "status": "BUKA"
+    }
+  ],
+  "bridgingLogs": [
+    {
+      "id": "log-1791699836187-r43c",
+      "timestamp": "13.23.56",
+      "method": "POST",
+      "endpoint": "/antrean/add",
+      "requestHeaders": {
+        "Content-Type": "application/json",
+        "X-cons-id": "10982",
+        "X-timestamp": "1791699836",
+        "X-signature": "J6IkxTJNh5ViiM2u9XKvRRONn5ENaSC2eVa9lrcS5sI=",
+        "user_key": "4f8a3b1c9e7d2a5f6b8c0e1d2f3a4b5c"
+      },
+      "requestBody": {
+        "kodebooking": "BK-20261011-001",
+        "jenispasien": "NON-JKN",
+        "nomorkartu": "-",
+        "nik": "3515085675854320",
+        "nohp": "081262639289",
+        "kodepoli": "FAR",
+        "namapoli": "Farmasi & Apotek Somban Medika",
+        "pasienbaru": 0,
+        "norm": "RM-74005",
+        "tanggalperiksa": "2026-10-11",
+        "kodedokter": 101,
+        "namadokter": "Apt. Dimas Wicaksono, S.Farm",
+        "jampraktek": "08:00-14:00",
+        "jeniskunjungan": 1,
+        "nomorreferensi": "REF-BK-20261011-001",
+        "nomorantrean": "F-001",
+        "angkaantrean": 1,
+        "estimasidilayani": 1791701036173,
+        "sisakuotajkn": 25,
+        "kuotajkn": 30,
+        "sisakuotanonjkn": 15,
+        "kuotanonjkn": 20,
+        "keterangan": "Pendaftaran mandiri kiosk RS"
+      },
+      "responseStatus": 200,
+      "responseBody": {
+        "response": {
+          "nomorantrean": "F-001",
+          "angkaantrean": 1,
+          "kodebooking": "BK-20261011-001",
+          "namapoli": "Farmasi & Apotek Somban Medika",
+          "namadokter": "Apt. Dimas Wicaksono, S.Farm",
+          "estimasidilayani": 1791700736492,
+          "sisakuotajkn": 24,
+          "kuotajkn": 30,
+          "keterangan": "Antrean berhasil didaftarkan ke Server Antrean BPJS Kesehatan"
+        },
+        "metaData": {
+          "code": 200,
+          "message": "Ok"
+        }
+      },
+      "status": "SUCCESS",
+      "latencyMs": 318
+    }
+  ],
+  "sessions": [
+    {
+      "token": "somban_tok_49b5888f8328abbdbe1fb91b5900a9b80dd99737924576ab",
+      "userId": "usr-admin-01",
+      "expiresAt": "2026-10-17T10:20:10.171Z"
+    },
+    {
+      "token": "somban_tok_9cc0dd4e1067684ab59cddb4c2ada00f1832d6d1e59c4fb5",
+      "userId": "usr-admin-01",
+      "expiresAt": "2026-10-18T07:08:31.672Z"
+    },
+    {
+      "token": "somban_tok_8108ff5ca4f20822e35358ae27b9e558ab312a7e9978ffd0",
+      "userId": "usr-loket-01",
+      "expiresAt": "2026-10-19T18:05:22.223Z"
+    },
+    {
+      "token": "somban_tok_2e5947b12f085fb01ce6b4c90258613c15794e1648535a10",
+      "userId": "usr-admin-dedy",
+      "expiresAt": "2026-10-22T12:51:46.729Z"
+    },
+    {
+      "token": "somban_tok_19dbcba195c28c14bb4fbf99d1cd75c0083e54f13a5b4305",
+      "userId": "usr-admin-01",
+      "expiresAt": "2026-10-22T14:17:18.568Z"
+    },
+    {
+      "token": "somban_tok_ae05e5ebdaf5884438b60d85e3f6a1dbeef71115745f14fd",
+      "userId": "usr-admin-dedy",
+      "expiresAt": "2026-10-22T14:21:42.513Z"
+    },
+    {
+      "token": "somban_tok_d3ebc9029bbb324366b013ce9ba6e9174bf6c2fab288ed0b",
+      "userId": "usr-loket-01",
+      "expiresAt": "2026-10-22T14:21:42.536Z"
+    },
+    {
+      "token": "somban_tok_0eb90d38f1a3a3d2176a9d9a6245f839b25b09b97995c368",
+      "userId": "usr-dokter-01",
+      "expiresAt": "2026-10-22T14:21:42.560Z"
+    },
+    {
+      "token": "somban_tok_136e14dd402afac19e777ab5348a96401fcbf5068daf25a8",
+      "userId": "usr-dokter-02",
+      "expiresAt": "2026-10-22T14:21:42.580Z"
+    },
+    {
+      "token": "somban_tok_32e34dfb0bb300b3b1c25df8ed44368540a1a4cc91f8badb",
+      "userId": "usr-farmasi-01",
+      "expiresAt": "2026-10-22T14:21:42.598Z"
+    },
+    {
+      "token": "somban_tok_2693ef5c82bef5799967e9c4cf47356384571924da3c5fe1",
+      "userId": "usr-admin-dedy",
+      "expiresAt": "2026-10-22T14:25:59.178Z"
+    }
+  ],
+  "bpjsConfig": {
+    "baseUrl": "https://apijkn-dev.bpjs-kesehatan.go.id/antreanrs_dev",
+    "consId": "11495",
+    "secretKey": "4xHABA0A84",
+    "userKey": "4a1a84234ffc19f0c77750cebfa2444e",
+    "kodePPK": "019U901",
+    "namaFaskes": "TPMD DR MACHMUJUR",
+    "isSandbox": true,
+    "autoSyncBpjs": true,
+    "jenisBridging": "Pcare (Eclaim)",
+    "jenisCid": "Tester",
+    "cidTesterProd": "Tester",
+    "userPcare": "0195U091-dev",
+    "passPcare": "Dev1234#",
+    "emailFaskes": "praktekdokter91@gmail.com",
+    "pengembanganVendor": "Pengembangan sendiri",
+    "kdAplikasi": "095"
+  }
+}
