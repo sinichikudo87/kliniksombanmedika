@@ -29,13 +29,26 @@ export async function POST(req: NextRequest) {
     };
 
     if (action === 'ping') {
-      let targetBaseUrl = body.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
-      if (targetBaseUrl.includes('vclaim') || !targetBaseUrl.includes('antrean')) {
-        targetBaseUrl = body.environment === 'production'
-          ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
-          : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+      const targetBaseUrl = body.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+      
+      // Determine module & appropriate endpoint
+      let moduleName = 'Antrean Online (Mobile JKN)';
+      let pingEndpoint = '/ref/poli';
+      if (targetBaseUrl.includes('pcare')) {
+        moduleName = 'PCare (Primary Care)';
+        pingEndpoint = '/diagnosa/01';
+      } else if (targetBaseUrl.includes('vclaim')) {
+        moduleName = 'VClaim (Virtual Claim RS)';
+        pingEndpoint = '/referensi/poli';
+      } else if (targetBaseUrl.includes('aplicaresws') || targetBaseUrl.includes('aplicare')) {
+        moduleName = 'Aplicare (Ketersediaan Kamar)';
+        pingEndpoint = '/ref/kelas';
+      } else if (targetBaseUrl.includes('antreanrs')) {
+        moduleName = 'Antrean Online RS';
+        pingEndpoint = '/ref/poli';
       }
-      const pingUrl = `${targetBaseUrl.replace(/\/+$/, '')}/ref/poli`;
+
+      const pingUrl = `${targetBaseUrl.replace(/\/+$/, '')}${pingEndpoint}`;
       const registeredDomain = 'https://kliniksombanmedika.id';
       const isUserDeclaredWhitelisted = body.isWhitelisted !== false;
       const isDev = body.environment === 'tester' || targetBaseUrl.includes('dev');

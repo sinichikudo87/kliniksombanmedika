@@ -34,6 +34,138 @@ import {
 import { WS_FKTP_ENDPOINTS } from '@/types/queue';
 import { exportWsFktpExcel } from '@/lib/client-excel-export';
 
+export interface BpjsEndpointOption {
+  value: string;
+  name: string;
+  moduleKey: 'PCARE' | 'VCLAIM' | 'APLICARE' | 'ANTREAN';
+  moduleNumber: number;
+  moduleName: string;
+  env: 'tester' | 'production';
+  envLabel: string;
+  targetFaskes: string;
+  description: string;
+}
+
+export const BPJS_BRIDGING_ENDPOINT_OPTIONS: BpjsEndpointOption[] = [
+  // 1. PCare (Primary Care)
+  {
+    value: 'https://apijkn-dev.bpjs-kesehatan.go.id/pcare-rest-dev',
+    name: 'PCare Dev / Tester (Primary Care FKTP)',
+    moduleKey: 'PCARE',
+    moduleNumber: 1,
+    moduleName: 'PCare (Primary Care)',
+    env: 'tester',
+    envLabel: 'Development / Tester',
+    targetFaskes: 'FKTP (Puskesmas, Klinik, Praktik Dokter Mandiri)',
+    description: 'Digunakan oleh fasilitas kesehatan tingkat pertama (Puskesmas, klinik, praktek dokter) untuk pendaftaran, pemeriksaan, diagnosis, dan rujukan.',
+  },
+  {
+    value: 'https://apijkn.bpjs-kesehatan.go.id/pcare-rest',
+    name: 'PCare Production (Primary Care Live)',
+    moduleKey: 'PCARE',
+    moduleNumber: 1,
+    moduleName: 'PCare (Primary Care)',
+    env: 'production',
+    envLabel: 'Production (Live)',
+    targetFaskes: 'FKTP (Puskesmas, Klinik, Praktik Dokter Mandiri)',
+    description: 'Digunakan oleh fasilitas kesehatan tingkat pertama (Puskesmas, klinik, praktek dokter) untuk pendaftaran, pemeriksaan, diagnosis, dan rujukan.',
+  },
+
+  // 2. VClaim (Virtual Claim)
+  {
+    value: 'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev',
+    name: 'VClaim Dev / Tester (Virtual Claim RS)',
+    moduleKey: 'VCLAIM',
+    moduleNumber: 2,
+    moduleName: 'VClaim (Virtual Claim)',
+    env: 'tester',
+    envLabel: 'Development / Tester',
+    targetFaskes: 'FKRTL (Khusus Rumah Sakit)',
+    description: 'Digunakan oleh rumah sakit untuk pembuatan SEP dan pengajuan klaim biaya pelayanan.',
+  },
+  {
+    value: 'https://apijkn.bpjs-kesehatan.go.id/vclaim-rest',
+    name: 'VClaim Production (Virtual Claim Live RS)',
+    moduleKey: 'VCLAIM',
+    moduleNumber: 2,
+    moduleName: 'VClaim (Virtual Claim)',
+    env: 'production',
+    envLabel: 'Production (Live)',
+    targetFaskes: 'FKRTL (Khusus Rumah Sakit)',
+    description: 'Digunakan oleh rumah sakit untuk pembuatan SEP dan pengajuan klaim biaya pelayanan.',
+  },
+
+  // 3. Aplicare
+  {
+    value: 'https://apijkn-dev.bpjs-kesehatan.go.id/aplicaresws/rest',
+    name: 'Aplicare Dev / Tester (Ketersediaan Kamar & Jadwal)',
+    moduleKey: 'APLICARE',
+    moduleNumber: 3,
+    moduleName: 'Aplicare',
+    env: 'tester',
+    envLabel: 'Development / Tester',
+    targetFaskes: 'RS & Klinik Rawat Inap',
+    description: 'Sistem keterbukaan informasi ketersediaan kamar dan jadwal layanan faskes.',
+  },
+  {
+    value: 'https://apijkn.bpjs-kesehatan.go.id/aplicaresws/rest',
+    name: 'Aplicare Production (Live Kamar & Jadwal)',
+    moduleKey: 'APLICARE',
+    moduleNumber: 3,
+    moduleName: 'Aplicare',
+    env: 'production',
+    envLabel: 'Production (Live)',
+    targetFaskes: 'RS & Klinik Rawat Inap',
+    description: 'Sistem keterbukaan informasi ketersediaan kamar dan jadwal layanan faskes.',
+  },
+
+  // 4. Antrean Online (MJKN)
+  {
+    value: 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev',
+    name: 'Antrean FKTP Dev / Tester (Klinik Pratama & TPMD)',
+    moduleKey: 'ANTREAN',
+    moduleNumber: 4,
+    moduleName: 'Antrean Online (MJKN)',
+    env: 'tester',
+    envLabel: 'Development / Tester',
+    targetFaskes: 'FKTP (Klinik Pratama & TPMD)',
+    description: 'Terintegrasi dengan aplikasi Mobile JKN untuk pendaftaran dan pemantauan antrean pasien di faskes.',
+  },
+  {
+    value: 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp',
+    name: 'Antrean FKTP Production (Live FKTP)',
+    moduleKey: 'ANTREAN',
+    moduleNumber: 4,
+    moduleName: 'Antrean Online (MJKN)',
+    env: 'production',
+    envLabel: 'Production (Live)',
+    targetFaskes: 'FKTP (Klinik Pratama & TPMD)',
+    description: 'Terintegrasi dengan aplikasi Mobile JKN untuk pendaftaran dan pemantauan antrean pasien di faskes.',
+  },
+  {
+    value: 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanrs_dev',
+    name: 'Antrean RS Dev / Tester (Rumah Sakit)',
+    moduleKey: 'ANTREAN',
+    moduleNumber: 4,
+    moduleName: 'Antrean Online (MJKN)',
+    env: 'tester',
+    envLabel: 'Development / Tester',
+    targetFaskes: 'FKRTL (Rumah Sakit)',
+    description: 'Terintegrasi dengan aplikasi Mobile JKN untuk pendaftaran dan pemantauan antrean pasien di faskes.',
+  },
+  {
+    value: 'https://apijkn.bpjs-kesehatan.go.id/antreanrs',
+    name: 'Antrean RS Production (Live RS)',
+    moduleKey: 'ANTREAN',
+    moduleNumber: 4,
+    moduleName: 'Antrean Online (MJKN)',
+    env: 'production',
+    envLabel: 'Production (Live)',
+    targetFaskes: 'FKRTL (Rumah Sakit)',
+    description: 'Terintegrasi dengan aplikasi Mobile JKN untuk pendaftaran dan pemantauan antrean pasien di faskes.',
+  },
+];
+
 interface BridgingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -53,18 +185,11 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   const [environment, setEnvironment] = useState<'tester' | 'production'>(bpjsConfig.environment);
   const [isOnline, setIsOnline] = useState<boolean>(bpjsConfig.isOnline !== false);
   
-  const getSanitizedBaseUrl = (url: string | undefined, env: 'tester' | 'production') => {
-    if (!url || url.includes('vclaim') || !url.includes('antrean')) {
-      return env === 'production'
-        ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
-        : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
-    }
-    return url;
-  };
-
   const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
-  const baseUrl = customBaseUrl !== null ? customBaseUrl : getSanitizedBaseUrl(bpjsConfig.baseUrl, bpjsConfig.environment);
+  const baseUrl = customBaseUrl !== null ? customBaseUrl : (bpjsConfig.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev');
   const setBaseUrl = (val: string) => setCustomBaseUrl(val);
+
+  const [isManualCustomInput, setIsManualCustomInput] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'CREDENTIALS' | 'ALUR_ANTREAN' | 'WS_FKTP' | 'SANDBOX' | 'LOGS'>('CREDENTIALS');
   const [customWsDomain, setCustomWsDomain] = useState('https://kliniksombanmedika.id');
@@ -78,8 +203,6 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   if (!isOpen) return null;
 
   const handleSave = () => {
-    const cleanUrl = getSanitizedBaseUrl(baseUrl, environment);
-    setBaseUrl(cleanUrl);
     updateBpjsConfig({
       consId,
       secretKey,
@@ -90,10 +213,10 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
       passPcareDev,
       emailFaskes,
       environment,
-      baseUrl: cleanUrl,
+      baseUrl,
       isOnline,
     });
-    showSwalSuccess('Konfigurasi Bridging Antrean Online BPJS berhasil diperbarui.');
+    showSwalSuccess('Konfigurasi Bridging BPJS berhasil diperbarui.');
   };
 
   const handleDownloadExcel = () => {
@@ -120,8 +243,6 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   const handlePing = async () => {
     setIsTestingPing(true);
     setPingResult(null);
-    const cleanUrl = getSanitizedBaseUrl(baseUrl, environment);
-    setBaseUrl(cleanUrl);
     try {
       const res = await testBridgingPing({
         consId,
@@ -132,13 +253,15 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
         userPcareDev,
         passPcareDev,
         emailFaskes,
-        baseUrl: cleanUrl,
+        baseUrl,
         environment,
         isOnline,
       });
       setPingResult(res);
       if (res && res.success) {
-        showSwalSuccess(`Koneksi Web Service BPJS mode ${environment === 'tester' ? 'Development / Tester' : 'Production'} terhubung normal (${res.latencyMs} ms)!`, 'Ping Berhasil');
+        const matched = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
+        const modTitle = matched?.moduleName || 'Web Service BPJS';
+        showSwalSuccess(`Koneksi ${modTitle} mode ${environment === 'tester' ? 'Development / Tester' : 'Production'} terhubung normal (${res.latencyMs} ms)!`, 'Ping Berhasil');
       } else {
         showSwalError('Gagal terhubung ke Web Service BPJS.', 'Ping Gagal');
       }
@@ -416,69 +539,189 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                 <label className="block font-bold text-slate-700 mb-1">Lingkungan (Environment)</label>
                 <select
                   value={environment}
-                  onChange={(e: any) => {
+                  onChange={(e) => {
                     const newEnv = e.target.value as 'tester' | 'production';
                     setEnvironment(newEnv);
-                    if (newEnv === 'production') {
-                      setBaseUrl('https://apijkn.bpjs-kesehatan.go.id/antreanfktp');
-                    } else {
-                      setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev');
+                    const currentMatch = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
+                    if (currentMatch) {
+                      const counterpart = BPJS_BRIDGING_ENDPOINT_OPTIONS.find(
+                        (o) => o.moduleKey === currentMatch.moduleKey && o.env === newEnv && o.targetFaskes === currentMatch.targetFaskes
+                      ) || BPJS_BRIDGING_ENDPOINT_OPTIONS.find(
+                        (o) => o.moduleKey === currentMatch.moduleKey && o.env === newEnv
+                      );
+                      if (counterpart) {
+                        setBaseUrl(counterpart.value);
+                      }
                     }
                   }}
-                  className="w-full py-2 px-3 border border-slate-300 rounded-xl"
+                  className="w-full py-2 px-3 border border-slate-300 rounded-xl bg-white font-semibold text-slate-800"
                 >
                   <option value="tester">Development / Tester (Trustmark Dev)</option>
                   <option value="production">Production (BPJS Live)</option>
                 </select>
               </div>
 
-              {/* Endpoint Base URL & Presets */}
-              <div className="sm:col-span-2 space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              {/* Endpoint Base URL Select Option & Modul Info */}
+              <div className="sm:col-span-2 space-y-2 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
                 <div className="flex items-center justify-between">
-                  <label className="block font-bold text-slate-800">Base URL Web Service BPJS (Antrean Online FKTP)</label>
-                  <span className="text-[10px] text-emerald-700 font-semibold font-mono">Mobile JKN / FKTP</span>
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-emerald-600" />
+                    <label className="block font-bold text-slate-900 text-xs">
+                      Base URL Web Service BPJS (Select Option Modul API)
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const currentMatch = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
+                      return currentMatch ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold font-mono">
+                          {currentMatch.moduleName}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 font-bold font-mono">
+                          URL Kustom
+                        </span>
+                      );
+                    })()}
+                    <button
+                      type="button"
+                      onClick={() => setIsManualCustomInput(!isManualCustomInput)}
+                      className="text-[10px] text-slate-500 hover:text-emerald-700 underline cursor-pointer"
+                    >
+                      {isManualCustomInput ? 'Pilih Preset Dropdown' : 'Ketik Manual'}
+                    </button>
+                  </div>
                 </div>
-                <input
-                  type="text"
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev"
-                  className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono text-[11px] bg-white focus:border-emerald-600"
-                />
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] text-slate-400 font-semibold">Preset Endpoint:</span>
-                  <button
-                    type="button"
-                    onClick={() => setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev')}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-emerald-100 hover:bg-emerald-200 text-emerald-900 border border-emerald-300 cursor-pointer"
+
+                {!isManualCustomInput ? (
+                  <select
+                    value={baseUrl}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === '__MANUAL__') {
+                        setIsManualCustomInput(true);
+                        return;
+                      }
+                      setBaseUrl(val);
+                      const matched = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((u) => u.value === val);
+                      if (matched) {
+                        setEnvironment(matched.env);
+                      }
+                    }}
+                    className="w-full py-2.5 px-3 border border-slate-300 rounded-xl font-mono text-xs bg-white text-slate-900 font-semibold focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 shadow-2xs cursor-pointer"
                   >
-                    Antrean FKTP Dev
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBaseUrl('https://apijkn.bpjs-kesehatan.go.id/antreanfktp')}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-blue-100 hover:bg-blue-200 text-blue-900 border border-blue-300 cursor-pointer"
-                  >
-                    Antrean FKTP Prod
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/pcare-rest-dev')}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300 cursor-pointer"
-                  >
-                    PCare Dev
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBaseUrl('https://apijkn.bpjs-kesehatan.go.id/pcare-rest')}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300 cursor-pointer"
-                  >
-                    PCare Prod
-                  </button>
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  Untuk Fasilitas Kesehatan Tingkat Pertama (Klinik Pratama &amp; TPMD), gunakan endpoint <strong>antreanfktp</strong>.
-                </p>
+                    <optgroup label="1. PCare (Primary Care - FKTP: Puskesmas, Klinik, TPMD)">
+                      {BPJS_BRIDGING_ENDPOINT_OPTIONS.filter((o) => o.moduleKey === 'PCARE').map((opt) => (
+                        <option key={opt.value + opt.env} value={opt.value}>
+                          [1. PCare] {opt.name} — {opt.value}
+                        </option>
+                      ))}
+                    </optgroup>
+
+                    <optgroup label="2. VClaim (Virtual Claim - Khusus Rumah Sakit)">
+                      {BPJS_BRIDGING_ENDPOINT_OPTIONS.filter((o) => o.moduleKey === 'VCLAIM').map((opt) => (
+                        <option key={opt.value + opt.env} value={opt.value}>
+                          [2. VClaim] {opt.name} — {opt.value}
+                        </option>
+                      ))}
+                    </optgroup>
+
+                    <optgroup label="3. Aplicare (Ketersediaan Kamar & Jadwal Layanan)">
+                      {BPJS_BRIDGING_ENDPOINT_OPTIONS.filter((o) => o.moduleKey === 'APLICARE').map((opt) => (
+                        <option key={opt.value + opt.env} value={opt.value}>
+                          [3. Aplicare] {opt.name} — {opt.value}
+                        </option>
+                      ))}
+                    </optgroup>
+
+                    <optgroup label="4. Antrean Online (Mobile JKN - MJKN)">
+                      {BPJS_BRIDGING_ENDPOINT_OPTIONS.filter((o) => o.moduleKey === 'ANTREAN').map((opt) => (
+                        <option key={opt.value + opt.env} value={opt.value}>
+                          [4. Antrean MJKN] {opt.name} — {opt.value}
+                        </option>
+                      ))}
+                    </optgroup>
+
+                    {!BPJS_BRIDGING_ENDPOINT_OPTIONS.some((o) => o.value === baseUrl) && (
+                      <option value={baseUrl}>URL Kustom: {baseUrl}</option>
+                    )}
+                    <option value="__MANUAL__">+ Ketik URL Kustom Lainnya...</option>
+                  </select>
+                ) : (
+                  <div className="space-y-1">
+                    <input
+                      type="text"
+                      value={baseUrl}
+                      onChange={(e) => setBaseUrl(e.target.value)}
+                      placeholder="https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev"
+                      className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono text-xs bg-white text-slate-900 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500 shadow-2xs"
+                    />
+                    <p className="text-[10px] text-slate-500">
+                      Mode input manual aktif. Anda dapat mengetikkan URL proxy atau gateway kustom faskes.
+                    </p>
+                  </div>
+                )}
+
+                {/* Info Detail Modul Terpilih */}
+                {(() => {
+                  const currentMatch = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
+                  if (!currentMatch) {
+                    return (
+                      <div className="p-2.5 bg-white rounded-xl border border-slate-200 text-[11px] text-slate-600">
+                        URL Bridging Kustom: <span className="font-mono font-bold text-slate-800">{baseUrl}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-100 pb-2">
+                        <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                          {currentMatch.moduleKey === 'PCARE' && <Stethoscope className="w-4 h-4 text-emerald-600" />}
+                          {currentMatch.moduleKey === 'VCLAIM' && <Building2 className="w-4 h-4 text-amber-600" />}
+                          {currentMatch.moduleKey === 'APLICARE' && <BedDouble className="w-4 h-4 text-blue-600" />}
+                          {currentMatch.moduleKey === 'ANTREAN' && <Smartphone className="w-4 h-4 text-emerald-600" />}
+                          <span>Modul {currentMatch.moduleNumber}: {currentMatch.moduleName}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            {currentMatch.targetFaskes}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            currentMatch.env === 'tester'
+                              ? 'bg-amber-100 text-amber-900 border border-amber-200'
+                              : 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                          }`}>
+                            {currentMatch.envLabel}
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        <strong>Peruntukan Modul:</strong> {currentMatch.description}
+                      </p>
+
+                      <div className="flex items-center justify-between pt-1 text-[10px] font-mono text-slate-500 border-t border-slate-100">
+                        <span className="truncate max-w-[80%] font-semibold text-slate-700 select-all">
+                          {baseUrl}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                              navigator.clipboard.writeText(baseUrl);
+                            }
+                            showSwalSuccess('URL bridging berhasil disalin.');
+                          }}
+                          className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-sans font-semibold cursor-pointer"
+                        >
+                          <Copy className="w-3 h-3" />
+                          <span>Salin URL</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">

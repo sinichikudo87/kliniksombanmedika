@@ -96,13 +96,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               setPoliList(json.data.poliList);
             }
             if (json.data.config) {
-              const cfg = { ...json.data.config };
-              if (!cfg.baseUrl || cfg.baseUrl.includes('vclaim') || !cfg.baseUrl.includes('antrean')) {
-                cfg.baseUrl = cfg.environment === 'production'
-                  ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
-                  : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
-              }
-              setBpjsConfig(cfg);
+              setBpjsConfig(json.data.config);
             }
             if (json.data.securityLogs) setSecurityLogs(json.data.securityLogs);
             if (json.data.bridgingLogs) setBridgingLogs(json.data.bridgingLogs);
@@ -618,29 +612,21 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateBpjsConfig = (newConfig: Partial<BpjsBridgingConfig>) => {
-    let cleanBaseUrl = newConfig.baseUrl;
-    if (cleanBaseUrl && (cleanBaseUrl.includes('vclaim') || !cleanBaseUrl.includes('antrean'))) {
-      cleanBaseUrl = (newConfig.environment || bpjsConfig.environment) === 'production'
-        ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
-        : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
-    }
-    const sanitizedConfig = cleanBaseUrl ? { ...newConfig, baseUrl: cleanBaseUrl } : newConfig;
-    setBpjsConfig((prev) => ({ ...prev, ...sanitizedConfig }));
+    setBpjsConfig((prev) => ({ ...prev, ...newConfig }));
     addSecurityLog('KEY_ROTATE', 'Konfigurasi kredensial BPJS Bridging diperbarui oleh admin.');
 
     try {
       fetch('/api/db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update_config', payload: sanitizedConfig }),
+        body: JSON.stringify({ action: 'update_config', payload: newConfig }),
       });
     } catch {}
   };
 
   const testBridgingPing = async (customConfig?: Partial<BpjsBridgingConfig>) => {
     const activeCfg = { ...bpjsConfig, ...customConfig };
-    // Ensure ping payload never sends vclaim URL
-    if (!activeCfg.baseUrl || activeCfg.baseUrl.includes('vclaim') || !activeCfg.baseUrl.includes('antrean')) {
+    if (!activeCfg.baseUrl) {
       activeCfg.baseUrl = activeCfg.environment === 'production'
         ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
         : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';

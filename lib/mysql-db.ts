@@ -61,13 +61,7 @@ function mapPoliRow(r: any): PoliInfo {
 }
 
 function mapConfigRow(row: any) {
-  let baseUrl = row.base_url || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
-  // Sanitize and migrate any legacy vclaim URL stored in database to Antrean Online FKTP
-  if (baseUrl.includes('vclaim') || !baseUrl.includes('antrean')) {
-    baseUrl = row.environment === 'production'
-      ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
-      : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
-  }
+  const baseUrl = row.base_url || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
 
   return {
     id: row.id,
@@ -414,15 +408,7 @@ export const mySqlDb = {
           isSyncedBpjs: q.is_synced_bpjs === 1,
           panggilanKe: q.panggilan_ke || 0,
         })),
-        config: (() => {
-          if (!configRows || configRows.length === 0) return null;
-          const mapped = mapConfigRow(configRows[0]);
-          if (configRows[0].base_url && (configRows[0].base_url.includes('vclaim') || !configRows[0].base_url.includes('antrean'))) {
-            // Auto-heal MySQL row in the background so it never returns vclaim again
-            pool.query('UPDATE faskes_config SET base_url = ? WHERE id = ?', [mapped.baseUrl, configRows[0].id]).catch(() => {});
-          }
-          return mapped;
-        })(),
+        config: configRows && configRows.length > 0 ? mapConfigRow(configRows[0]) : null,
         securityLogs: secLogs || [],
         bridgingLogs: brLogs || [],
         poliList: (poliRows || []).map(mapPoliRow),
@@ -587,14 +573,8 @@ export const mySqlDb = {
     if (config.userPcareDev) { fields.push('dev_user = ?'); vals.push(config.userPcareDev); }
     if (config.passPcareDev) { fields.push('dev_pass = ?'); vals.push(config.passPcareDev); }
     if (config.baseUrl) {
-      let cleanUrl = config.baseUrl;
-      if (cleanUrl.includes('vclaim') || !cleanUrl.includes('antrean')) {
-        cleanUrl = config.environment === 'production'
-          ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
-          : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
-      }
       fields.push('base_url = ?');
-      vals.push(cleanUrl);
+      vals.push(config.baseUrl.trim());
     }
 
     if (fields.length > 0) {
