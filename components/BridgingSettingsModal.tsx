@@ -28,6 +28,8 @@ import {
   Smartphone,
   Layers,
   Info,
+  Building2,
+  BedDouble,
 } from 'lucide-react';
 import { WS_FKTP_ENDPOINTS } from '@/types/queue';
 import { exportWsFktpExcel } from '@/lib/client-excel-export';
@@ -50,7 +52,19 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   const [emailFaskes, setEmailFaskes] = useState(bpjsConfig.emailFaskes);
   const [environment, setEnvironment] = useState<'tester' | 'production'>(bpjsConfig.environment);
   const [isOnline, setIsOnline] = useState<boolean>(bpjsConfig.isOnline !== false);
-  const [baseUrl, setBaseUrl] = useState<string>(bpjsConfig.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev');
+  
+  const getSanitizedBaseUrl = (url: string | undefined, env: 'tester' | 'production') => {
+    if (!url || url.includes('vclaim') || !url.includes('antrean')) {
+      return env === 'production'
+        ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+        : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+    }
+    return url;
+  };
+
+  const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
+  const baseUrl = customBaseUrl !== null ? customBaseUrl : getSanitizedBaseUrl(bpjsConfig.baseUrl, bpjsConfig.environment);
+  const setBaseUrl = (val: string) => setCustomBaseUrl(val);
 
   const [activeTab, setActiveTab] = useState<'CREDENTIALS' | 'ALUR_ANTREAN' | 'WS_FKTP' | 'SANDBOX' | 'LOGS'>('CREDENTIALS');
   const [customWsDomain, setCustomWsDomain] = useState('https://kliniksombanmedika.id');
@@ -64,6 +78,8 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   if (!isOpen) return null;
 
   const handleSave = () => {
+    const cleanUrl = getSanitizedBaseUrl(baseUrl, environment);
+    setBaseUrl(cleanUrl);
     updateBpjsConfig({
       consId,
       secretKey,
@@ -74,7 +90,7 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
       passPcareDev,
       emailFaskes,
       environment,
-      baseUrl,
+      baseUrl: cleanUrl,
       isOnline,
     });
     showSwalSuccess('Konfigurasi Bridging Antrean Online BPJS berhasil diperbarui.');
@@ -104,6 +120,8 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   const handlePing = async () => {
     setIsTestingPing(true);
     setPingResult(null);
+    const cleanUrl = getSanitizedBaseUrl(baseUrl, environment);
+    setBaseUrl(cleanUrl);
     try {
       const res = await testBridgingPing({
         consId,
@@ -114,7 +132,7 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
         userPcareDev,
         passPcareDev,
         emailFaskes,
-        baseUrl,
+        baseUrl: cleanUrl,
         environment,
         isOnline,
       });
@@ -229,6 +247,90 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
         {/* Tab 1: CREDENTIALS */}
         {activeTab === 'CREDENTIALS' && (
           <div className="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+            {/* Matriks 4 Modul Utama Bridging BPJS Kesehatan */}
+            <div className="p-3.5 bg-slate-900 text-white rounded-2xl border border-slate-800 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 font-bold">
+                    <ShieldCheck className="w-4 h-4" />
+                  </span>
+                  <div>
+                    <h4 className="font-bold text-xs text-white">Status 4 Modul Utama Bridging BPJS Kesehatan</h4>
+                    <p className="text-[10px] text-slate-400">Verifikasi kesesuaian modul sistem faskes tingkat pertama (FKTP Klinik Pratama)</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/30">
+                  FKTP: Klinik Pratama &amp; TPMD
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                {/* 1. PCare */}
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] text-emerald-400 flex items-center gap-1.5">
+                      <Stethoscope className="w-3.5 h-3.5" />
+                      1. PCare
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
+                      AKTIF (FKTP)
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 leading-relaxed">
+                    Pendaftaran, pemeriksaan medis, diagnosis ICD-10, dan rujukan pasien faskes pertama.
+                  </p>
+                </div>
+
+                {/* 2. VClaim */}
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] text-amber-400 flex items-center gap-1.5">
+                      <Building2 className="w-3.5 h-3.5" />
+                      2. VClaim
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
+                      KHUSUS RS
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 leading-relaxed">
+                    Pembuatan SEP &amp; klaim INA-CBGs rumah sakit. <em>Tidak digunakan pada klinik FKTP.</em>
+                  </p>
+                </div>
+
+                {/* 3. Aplicare */}
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] text-blue-400 flex items-center gap-1.5">
+                      <BedDouble className="w-3.5 h-3.5" />
+                      3. Aplicare
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-500/20 text-blue-300">
+                      RAWAT JALAN
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-300 leading-relaxed">
+                    Ketersediaan tempat tidur kamar &amp; jadwal layanan. Siap bila klinik rawat inap.
+                  </p>
+                </div>
+
+                {/* 4. Antrean Online (MJKN) */}
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-emerald-500/40 bg-emerald-950/20 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] text-emerald-300 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5" />
+                      4. Antrean MJKN
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500 text-slate-950">
+                      100% TERHUBUNG
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-emerald-100/90 leading-relaxed">
+                    Integrasi 9 WS-FKTP Mobile JKN, booking kuota real-time, dan transmisi 7 Task ID.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Nama Faskes</label>
@@ -368,7 +470,7 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                   </button>
                   <button
                     type="button"
-                    onClick={() => setBaseUrl('https://apijkn-dev.bpjs-kesehatan.go.id/pcare-rest')}
+                    onClick={() => setBaseUrl('https://apijkn.bpjs-kesehatan.go.id/pcare-rest')}
                     className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300 cursor-pointer"
                   >
                     PCare Prod

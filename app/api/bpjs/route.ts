@@ -29,7 +29,12 @@ export async function POST(req: NextRequest) {
     };
 
     if (action === 'ping') {
-      const targetBaseUrl = body.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+      let targetBaseUrl = body.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+      if (targetBaseUrl.includes('vclaim') || !targetBaseUrl.includes('antrean')) {
+        targetBaseUrl = body.environment === 'production'
+          ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+          : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+      }
       const pingUrl = `${targetBaseUrl.replace(/\/+$/, '')}/ref/poli`;
       const registeredDomain = 'https://kliniksombanmedika.id';
       const isUserDeclaredWhitelisted = body.isWhitelisted !== false;

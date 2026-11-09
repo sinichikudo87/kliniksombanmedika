@@ -189,8 +189,7 @@ VALUES (
   '0195U091-dev',
   'Dev1234#',
   'tester',
-  'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev'
-) ON DUPLICATE KEY UPDATE `kd_faskes` = VALUES(`kd_faskes`);
+) ON DUPLICATE KEY UPDATE `kd_faskes` = VALUES(`kd_faskes`), `base_url` = IF(`base_url` LIKE '%vclaim%', 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev', VALUES(`base_url`));
 
 -- ------------------------------------------------------------------------------
 -- SEED DATA AWAL: MASTER POLIKLINIK & DOKTER (poliklinik)

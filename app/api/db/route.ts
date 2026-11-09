@@ -6,6 +6,11 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const data = await mySqlDb.getAllData();
+    if (data.config && (!data.config.baseUrl || data.config.baseUrl.includes('vclaim') || !data.config.baseUrl.includes('antrean'))) {
+      data.config.baseUrl = data.config.environment === 'production'
+        ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+        : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+    }
     const mysqlStatus = mySqlDb.getStatus();
     const users = await mySqlDb.getUsers();
     const poliList = await mySqlDb.getPoliList();

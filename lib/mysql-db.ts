@@ -61,6 +61,14 @@ function mapPoliRow(r: any): PoliInfo {
 }
 
 function mapConfigRow(row: any) {
+  let baseUrl = row.base_url || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+  // Sanitize and migrate any legacy vclaim URL stored in database to Antrean Online FKTP
+  if (baseUrl.includes('vclaim') || !baseUrl.includes('antrean')) {
+    baseUrl = row.environment === 'production'
+      ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+      : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+  }
+
   return {
     id: row.id,
     kdFaskes: row.kd_faskes,
@@ -71,7 +79,7 @@ function mapConfigRow(row: any) {
     userPcareDev: row.dev_user,
     passPcareDev: row.dev_pass,
     environment: row.environment || 'tester',
-    baseUrl: row.base_url,
+    baseUrl,
     isOnline: row.is_online !== 0,
   };
 }
@@ -305,7 +313,9 @@ export async function initMySqlSchema() {
       'cfg-default', '019U901', 'KLINIK SOMBAN MEDIKA', '11495', '4xHABA0A84',
       '4a1a84234ffc19f0c77750cebfa2444e', '0195U091-dev', 'Dev1234#', 'tester',
       'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev'
-    ) ON DUPLICATE KEY UPDATE kd_faskes = VALUES(kd_faskes);
+    ) ON DUPLICATE KEY UPDATE base_url = IF(base_url LIKE '%vclaim%', 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev', base_url);
+
+    UPDATE faskes_config SET base_url = 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev' WHERE base_url LIKE '%vclaim%' OR base_url = '' OR base_url IS NULL;
   `;
 
   try {
@@ -404,7 +414,15 @@ export const mySqlDb = {
           isSyncedBpjs: q.is_synced_bpjs === 1,
           panggilanKe: q.panggilan_ke || 0,
         })),
-        config: configRows && configRows.length > 0 ? mapConfigRow(configRows[0]) : null,
+        config: (() => {
+          if (!configRows || configRows.length === 0) return null;
+          const mapped = mapConfigRow(configRows[0]);
+          if (configRows[0].base_url && (configRows[0].base_url.includes('vclaim') || !configRows[0].base_url.includes('antrean'))) {
+            // Auto-heal MySQL row in the background so it never returns vclaim again
+            pool.query('UPDATE faskes_config SET base_url = ? WHERE id = ?', [mapped.baseUrl, configRows[0].id]).catch(() => {});
+          }
+          return mapped;
+        })(),
         securityLogs: secLogs || [],
         bridgingLogs: brLogs || [],
         poliList: (poliRows || []).map(mapPoliRow),
@@ -568,7 +586,16 @@ export const mySqlDb = {
     if (config.environment) { fields.push('environment = ?'); vals.push(config.environment); }
     if (config.userPcareDev) { fields.push('dev_user = ?'); vals.push(config.userPcareDev); }
     if (config.passPcareDev) { fields.push('dev_pass = ?'); vals.push(config.passPcareDev); }
-    if (config.baseUrl) { fields.push('base_url = ?'); vals.push(config.baseUrl); }
+    if (config.baseUrl) {
+      let cleanUrl = config.baseUrl;
+      if (cleanUrl.includes('vclaim') || !cleanUrl.includes('antrean')) {
+        cleanUrl = config.environment === 'production'
+          ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+          : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+      }
+      fields.push('base_url = ?');
+      vals.push(cleanUrl);
+    }
 
     if (fields.length > 0) {
       vals.push('cfg-default');
