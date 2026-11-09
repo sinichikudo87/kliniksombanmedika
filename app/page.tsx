@@ -76,9 +76,10 @@ function MainApp() {
         customBaseUrl: defaultDomain,
         namaFaskes: bpjsConfig.namaFaskes,
         kdFaskes: bpjsConfig.kdFaskes,
+        environment: bpjsConfig.environment,
       });
       if (ok) {
-        showSwalSuccess('File Excel resmi BPJS (URL WS FKTP Production) berhasil diunduh ke komputer Anda.', 'Download Berhasil');
+        showSwalSuccess(`File Excel format resmi BPJS (${bpjsConfig.environment === 'production' ? 'Production' : 'Development / Tester'}) berhasil diunduh ke komputer Anda.`, 'Download Berhasil');
       } else {
         showSwalError('Gagal menyiapkan file Excel.', 'Download Gagal');
       }

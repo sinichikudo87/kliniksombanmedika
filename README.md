@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="klinik-somban-medika" src="" />
+<img width="1200" height="475" alt="GHBanner" src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg" />
 </div>
 
 ## Run Locally

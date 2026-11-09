@@ -1,1 +1,0 @@
-globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/api/db/route"]={"moduleLoading":{"prefix":"/_next/"},"ssrModuleMapping":{},"edgeSSRModuleMapping":{},"clientModules":{},"entryCSSFiles":{"Z:\\web\\klinikSombanMedika\\":[],"Z:\\web\\klinikSombanMedika\\app\\api\\db\\route":[]},"rscModuleMapping":{},"edgeRscModuleMapping":{}}

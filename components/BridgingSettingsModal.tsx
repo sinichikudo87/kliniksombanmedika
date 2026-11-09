@@ -87,6 +87,7 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
         customBaseUrl: customWsDomain,
         namaFaskes,
         kdFaskes,
+        environment,
       });
       if (ok) {
         showSwalSuccess('File Excel resmi WS FKTP BPJS Kesehatan berhasil diunduh ke komputer Anda.', 'Download Berhasil');
@@ -104,10 +105,22 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
     setIsTestingPing(true);
     setPingResult(null);
     try {
-      const res = await testBridgingPing();
+      const res = await testBridgingPing({
+        consId,
+        secretKey,
+        userKey,
+        kdFaskes,
+        namaFaskes,
+        userPcareDev,
+        passPcareDev,
+        emailFaskes,
+        baseUrl,
+        environment,
+        isOnline,
+      });
       setPingResult(res);
       if (res && res.success) {
-        showSwalSuccess(`Koneksi Web Service BPJS terhubung normal (${res.latencyMs} ms)!`, 'Ping Berhasil');
+        showSwalSuccess(`Koneksi Web Service BPJS mode ${environment === 'tester' ? 'Development / Tester' : 'Production'} terhubung normal (${res.latencyMs} ms)!`, 'Ping Berhasil');
       } else {
         showSwalError('Gagal terhubung ke Web Service BPJS.', 'Ping Gagal');
       }
@@ -410,34 +423,76 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
               </div>
 
               {pingResult && (
-                <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 font-mono text-[11px] text-slate-700">
+                <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 font-mono text-[11px] text-slate-700 space-y-2">
                   {pingResult.isWhitelisted ? (
                     <div>
                       <div className="flex items-center justify-between font-bold text-emerald-700 mb-1">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Status: 200 OK (Terhubung Live)
+                          <span>Status: 200 OK (Terhubung Live)</span>
                         </span>
-                        <span>Latensi: {pingResult.latencyMs} ms</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            environment === 'tester' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {environment === 'tester' ? 'Mode: Development / Tester' : 'Mode: Production'}
+                          </span>
+                          <span>Latensi: {pingResult.latencyMs} ms</span>
+                        </div>
                       </div>
-                      <p className="text-slate-500">
-                        Kredensial valid dan Domain https://kliniksombanmedika.id/ telah di-whitelist BPJS. Web Service siap menerima transaksi antrean.
+                      <p className="text-slate-500 font-sans text-xs">
+                        Kredensial valid dan Domain https://kliniksombanmedika.id/ telah terhubung ke Web Service BPJS ({environment === 'tester' ? 'Development / Tester' : 'Production'}).
                       </p>
                     </div>
                   ) : (
                     <div>
                       <div className="flex items-center justify-between font-bold text-amber-700 mb-1">
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5" />
-                          Status: Belum Terhubung (Menunggu Whitelist IP)
+                          <span>Status: 201 Menunggu Whitelist IP/Domain</span>
                         </span>
-                        <span>{pingResult.latencyMs ? `${pingResult.latencyMs} ms` : ''}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            environment === 'tester' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {environment === 'tester' ? 'Mode: Development / Tester' : 'Mode: Production'}
+                          </span>
+                          <span>{pingResult.latencyMs ? `${pingResult.latencyMs} ms` : ''}</span>
+                        </div>
                       </div>
                       <p className="text-amber-800 text-xs font-sans mt-1">
                         {pingResult.message || 'Koneksi ke endpoint BPJS Kesehatan ditolak atau timeout karena IP server faskes belum di-whitelist oleh tim TI BPJS Kesehatan.'}
                       </p>
                     </div>
                   )}
+
+                  {/* Standard BPJS Server JSON Callback View */}
+                  <div className="pt-2 border-t border-slate-200">
+                    <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1 font-sans">
+                      <span className="font-bold text-slate-700">Response Callback Server BPJS (Standar JSON):</span>
+                      <span className="font-mono text-[9px] text-slate-400">Endpoint: {baseUrl}</span>
+                    </div>
+                    <pre className="bg-slate-900 text-slate-100 p-2.5 rounded-xl text-[10px] font-mono overflow-x-auto max-h-40 select-all">
+                      {JSON.stringify(
+                        pingResult.raw || {
+                          response: {
+                            faskes: namaFaskes || 'KLINIK SOMBAN MEDIKA',
+                            kdFaskes: kdFaskes || '019U901',
+                            environment: environment === 'tester' ? 'development' : 'production',
+                            mode: environment === 'tester' ? 'Development / Tester (Trustmark Dev)' : 'Production (BPJS Live)',
+                            status: pingResult.isWhitelisted ? 'ACTIVE_BRIDGED' : 'PENDING_WHITELIST',
+                            isWhitelisted: pingResult.isWhitelisted,
+                          },
+                          metadata: {
+                            code: pingResult.isWhitelisted ? 200 : 201,
+                            message: pingResult.message || (pingResult.isWhitelisted ? 'Ok' : 'Pending Whitelist'),
+                          },
+                        },
+                        null,
+                        2
+                      )}
+                    </pre>
+                  </div>
                 </div>
               )}
             </div>
@@ -719,10 +774,10 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                     <span className="text-emerald-300 text-xs font-mono">Antrean Online Versi 2</span>
                   </div>
                   <h3 className="text-base sm:text-lg font-extrabold text-white mt-1">
-                    URL WS FKTP Production Bridging Antrean Online Versi 2
+                    URL WS FKTP {environment === 'production' ? 'Production' : 'Development / Tester'} Bridging Antrean Online Versi 2
                   </h3>
                   <p className="text-xs text-emerald-100/80 mt-0.5">
-                    Data 9 endpoint dan metode web service resmi BPJS Kesehatan (Antrean Online Versi 2)
+                    Data 9 endpoint dan metode web service resmi BPJS Kesehatan ({environment === 'production' ? 'Production / Live' : 'Development / Tester Trustmark'})
                   </p>
                 </div>
 
@@ -848,10 +903,14 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                         Jenis Method
                       </th>
                       <th className="py-2.5 px-3 border-r border-slate-300 min-w-[280px] bg-emerald-50/80 text-emerald-900 font-extrabold">
-                        URL WS FKTP Production
+                        URL WS FKTP {environment === 'production' ? 'Production' : 'Development'}
                       </th>
-                      <th className="py-2.5 px-3 border-r border-slate-300 w-28">User Production</th>
-                      <th className="py-2.5 px-3 w-32">Password Production</th>
+                      <th className="py-2.5 px-3 border-r border-slate-300 w-28">
+                        User {environment === 'production' ? 'Production' : 'Development'}
+                      </th>
+                      <th className="py-2.5 px-3 w-32">
+                        Password {environment === 'production' ? 'Production' : 'Development'}
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">

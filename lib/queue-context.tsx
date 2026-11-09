@@ -40,7 +40,7 @@ interface QueueContextType {
   cancelQueue: (id: string) => Promise<void>;
   transferToPharmacy: (id: string) => Promise<QueueItem>;
   updateBpjsConfig: (newConfig: Partial<BpjsBridgingConfig>) => void;
-  testBridgingPing: () => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any }>;
+  testBridgingPing: (customConfig?: Partial<BpjsBridgingConfig>) => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any }>;
   addSecurityLog: (action: AuditSecurityLog['action'], details: string, status?: 'SUCCESS' | 'DENIED') => void;
   resetToSampleData: () => void;
 }
@@ -622,9 +622,10 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch {}
   };
 
-  const testBridgingPing = async () => {
+  const testBridgingPing = async (customConfig?: Partial<BpjsBridgingConfig>) => {
+    const activeCfg = { ...bpjsConfig, ...customConfig };
     const start = performance.now();
-    const headers = await getBpjsHeaders(bpjsConfig);
+    const headers = await getBpjsHeaders(activeCfg);
 
     try {
       const res = await fetch('/api/bpjs', {
@@ -632,42 +633,45 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'ping',
-          consId: bpjsConfig.consId,
-          secretKey: bpjsConfig.secretKey,
-          userKey: bpjsConfig.userKey,
-          kdFaskes: bpjsConfig.kdFaskes,
-          baseUrl: bpjsConfig.baseUrl,
-          isWhitelisted: bpjsConfig.isOnline !== false,
+          consId: activeCfg.consId,
+          secretKey: activeCfg.secretKey,
+          userKey: activeCfg.userKey,
+          kdFaskes: activeCfg.kdFaskes,
+          baseUrl: activeCfg.baseUrl,
+          environment: activeCfg.environment,
+          isWhitelisted: activeCfg.isOnline !== false,
         }),
       });
 
       const json = await res.json().catch(() => ({}));
       const latencyMs = Math.round(performance.now() - start);
-      const isWhitelisted = (json.metaData?.code === 200 && json.response?.isWhitelisted === true) || bpjsConfig.isOnline === true;
+      const meta = json.metadata || json.metaData || {};
+      const isWhitelisted = (meta.code === 200 && json.response?.isWhitelisted === true) || activeCfg.isOnline === true;
 
       addBridgingLog({
         timestamp: new Date().toISOString(),
         endpoint: '/ref/poli (Ping BPJS)',
         method: 'GET',
         requestHeader: headers,
-        responseStatus: json.metaData?.code || res.status,
+        responseStatus: meta.code || res.status,
         responsePayload: json,
         durationMs: latencyMs,
       });
 
       // Update state isOnline
-      updateBpjsConfig({ isOnline: isWhitelisted });
+      updateBpjsConfig({ isOnline: isWhitelisted, ...customConfig });
 
       return {
         success: isWhitelisted,
         isWhitelisted,
         latencyMs,
-        message: json.metaData?.message || (isWhitelisted ? 'Terhubung ke Web Service BPJS' : 'Belum di-whitelist oleh BPJS'),
+        message: meta.message || (isWhitelisted ? 'Terhubung ke Web Service BPJS' : 'Belum di-whitelist oleh BPJS'),
         details: json.response || json,
+        raw: json,
       };
     } catch (err: any) {
       const latencyMs = Math.round(performance.now() - start);
-      const isWhitelisted = bpjsConfig.isOnline === true;
+      const isWhitelisted = activeCfg.isOnline === true;
       return {
         success: isWhitelisted,
         isWhitelisted,

@@ -1,6 +1,6 @@
 {
-  "name": "Antrean BPJS Kesehatan & Bridging API",
-  "description": "Sistem Antrean Faskes terintegrasi Bridging BPJS Kesehatan dengan pemanggil suara jernih responsif (Text-to-Speech), display ruang tunggu, kiosk mandiri, dan modul loket.",
+  "name": "Antrean Online Bridging BPJS - TPMD Dr. Machmujur",
+  "description": "Sistem antrean online bridging BPJS Kesehatan (Mobile JKN & PCare) terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

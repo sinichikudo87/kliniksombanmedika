@@ -9,6 +9,7 @@ export interface ExportExcelOptions {
   picPhone?: string;
   kantorCabang?: string;
   devUser?: string;
+  environment?: 'tester' | 'production';
 }
 
 export function exportWsFktpExcel(options?: ExportExcelOptions): boolean {
@@ -23,12 +24,14 @@ export function exportWsFktpExcel(options?: ExportExcelOptions): boolean {
     const picPhone = options?.picPhone || '-';
     const kantorCabang = options?.kantorCabang || '-';
     const devUser = options?.devUser || '0195U091-dev';
+    const isProd = options?.environment === 'production';
+    const envLabel = isProd ? 'Production' : 'Development';
 
     const wb = XLSX.utils.book_new();
 
     // Sheet 1: Template Format BPJS Kesehatan
     const wsData = [
-      ['URL WS FKTP Production Bridging Antrean Online Versi 2'],
+      [`URL WS FKTP ${isProd ? 'Production' : 'Development / Tester'} Bridging Antrean Online Versi 2`],
       [],
       [
         'No',
@@ -40,9 +43,9 @@ export function exportWsFktpExcel(options?: ExportExcelOptions): boolean {
         'Kepwil',
         'Kantor Cabang',
         'Jenis Method',
-        'URL WS FKTP Production',
-        'User Production',
-        'Password Production',
+        `URL WS FKTP ${envLabel}`,
+        `User ${envLabel}`,
+        `Password ${envLabel}`,
       ],
       ...WS_FKTP_ENDPOINTS.map((item, idx) => [
         idx === 0 ? 1 : '',
