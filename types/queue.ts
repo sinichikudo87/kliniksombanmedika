@@ -74,13 +74,13 @@ export interface BpjsBridgingConfig {
   consId: string;
   secretKey: string;
   userKey: string;
-  userPcareDev: string;
-  passPcareDev: string;
+  userPcareDev?: string;
+  passPcareDev?: string;
   emailFaskes: string;
   environment: 'tester' | 'production';
   baseUrl: string;
   isOnline: boolean;
-  lastSyncTimestamp?: string;
+  lastSyncTimestamp?: string | null;
 }
 
 export interface BridgingLog {
