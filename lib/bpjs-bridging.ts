@@ -13,7 +13,7 @@ export interface BpjsBridgingConfig {
   environment: 'tester' | 'production';
   baseUrl: string;
   isOnline: boolean;
-  lastSyncTimestamp: string | null | undefined; // Tambahkan undefined di sini
+  lastSyncTimestamp?: string | null; // Tambahkan tanda tanya (?) dan izinkan undefined
 }
 
 export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
