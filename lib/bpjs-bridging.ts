@@ -1,6 +1,21 @@
-import { BpjsBridgingConfig, BridgingLog } from '@/types/queue';
+import { BridgingLog } from '@/types/queue';
 
-// Default config from user's provided credentials in TPMD DR MACHMUJUR
+export interface BpjsBridgingConfig {
+  kdFaskes: string;
+  namaFaskes: string;
+  jenisBridging: string;
+  consId: string;
+  secretKey: string;
+  userKey: string;
+  userPcareDev: string;
+  passPcareDev: string;
+  emailFaskes: string;
+  environment: 'tester' | 'production';
+  baseUrl: string;
+  isOnline: boolean;
+  lastSyncTimestamp: string | null;
+}
+
 export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
   kdFaskes: "019U901",
   namaFaskes: "KLINIK SOMBAN MEDIKA",
@@ -13,8 +28,8 @@ export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
   emailFaskes: "sombanmedika@gmail.com",
   environment: "tester",
   baseUrl: "https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev",
-  isOnline: true, // Domain resmi https://kliniksombanmedika.id/ telah terdaftar dan di-whitelist oleh BPJS Kesehatan
-  lastSyncTimestamp: new Date().toISOString(),
+  isOnline: false,
+  lastSyncTimestamp: null,
 };
 
 /**
@@ -75,7 +90,6 @@ export async function verifyBpjsParticipant(query: string, config: BpjsBridgingC
   const headers = await getBpjsHeaders(config);
   const cleanQuery = query.trim().replace(/\D/g, "");
 
-  // Simulated live Trustmark validation matching Dr. Machmujur's clinic
   // Validates if it's 16 digits (NIK) or 13 digits (No. Kartu BPJS)
   if (cleanQuery.length !== 16 && cleanQuery.length !== 13) {
     return {
@@ -100,7 +114,7 @@ export async function verifyBpjsParticipant(query: string, config: BpjsBridgingC
     });
 
     const json = await res.json();
-    if (json.metaData && json.metaData.code === 200 && json.response?.peserta) {
+    if (json.metaData && (json.metaData.code === 200 || json.metaData.code === '200') && json.response?.peserta) {
       const p = json.response.peserta;
       return {
         success: true,
