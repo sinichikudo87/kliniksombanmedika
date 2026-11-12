@@ -7,13 +7,13 @@ export interface BpjsBridgingConfig {
   consId: string;
   secretKey: string;
   userKey: string;
-  userPcareDev: string;
-  passPcareDev: string;
+  userPcareDev?: string;
+  passPcareDev?: string;
   emailFaskes: string;
   environment: 'tester' | 'production';
   baseUrl: string;
   isOnline: boolean;
-  lastSyncTimestamp?: string | null; // Tambahkan tanda tanya (?) dan izinkan undefined
+  lastSyncTimestamp?: string | null;
 }
 
 export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
