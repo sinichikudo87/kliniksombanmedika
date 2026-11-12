@@ -169,9 +169,10 @@ export const BPJS_BRIDGING_ENDPOINT_OPTIONS: BpjsEndpointOption[] = [
 interface BridgingSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenPcare?: () => void;
 }
 
-export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ isOpen, onClose }) => {
+export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ isOpen, onClose, onOpenPcare }) => {
   const { bpjsConfig, updateBpjsConfig, testBridgingPing, bridgingLogs } = useQueue();
 
   const [consId, setConsId] = useState(bpjsConfig.consId);
@@ -389,19 +390,33 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
                 {/* 1. PCare */}
-                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px] text-emerald-400 flex items-center gap-1.5">
-                      <Stethoscope className="w-3.5 h-3.5" />
-                      1. PCare
-                    </span>
-                    <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
-                      AKTIF (FKTP)
-                    </span>
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-1.5 flex flex-col justify-between">
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[11px] text-emerald-400 flex items-center gap-1.5">
+                        <Stethoscope className="w-3.5 h-3.5" />
+                        1. PCare
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
+                        AKTIF (FKTP)
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-slate-300 leading-relaxed">
+                      Pendaftaran, pemeriksaan medis, diagnosis ICD-10, dan rujukan pasien faskes pertama.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-slate-300 leading-relaxed">
-                    Pendaftaran, pemeriksaan medis, diagnosis ICD-10, dan rujukan pasien faskes pertama.
-                  </p>
+                  {onOpenPcare && (
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onOpenPcare();
+                      }}
+                      className="w-full mt-1 py-1 px-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>Buka Modul PCare</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
 
                 {/* 2. VClaim */}

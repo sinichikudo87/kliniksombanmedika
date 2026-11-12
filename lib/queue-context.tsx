@@ -101,9 +101,11 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             if (json.data.securityLogs) setSecurityLogs(json.data.securityLogs);
             if (json.data.bridgingLogs) setBridgingLogs(json.data.bridgingLogs);
 
-            // Find currently called queue for TV display sync
+            // Find currently called or currently served queue for TV display sync
             const activeCall = (json.data.queues || []).find(
               (q: QueueItem) => q.status === 'DIPANGGIL'
+            ) || (json.data.queues || []).find(
+              (q: QueueItem) => q.status === 'DILAYANI'
             );
             setCurrentCalled(activeCall || null);
           }

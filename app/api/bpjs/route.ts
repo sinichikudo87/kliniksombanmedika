@@ -196,6 +196,42 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    if (action === 'pcare_kunjungan') {
+      const now = new Date();
+      const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+      const yearStr = String(now.getFullYear()).slice(-2);
+      const noKunjungan = `0195U091${monthStr}${yearStr}Y${Math.floor(100000 + Math.random() * 900000)}`;
+
+      return NextResponse.json({
+        metaData: { code: 201, message: 'Created' },
+        response: {
+          noKunjungan,
+          status: 'SUCCESS_BRIDGED',
+          message: 'Data pemeriksaan dan diagnosis kunjungan berhasil terkirim ke PCare BPJS Kesehatan',
+          timestamp,
+        },
+        headers,
+      });
+    }
+
+    if (action === 'pcare_rujukan') {
+      const now = new Date();
+      const monthStr = String(now.getMonth() + 1).padStart(2, '0');
+      const yearStr = String(now.getFullYear()).slice(-2);
+      const noRujukan = `0195U091${monthStr}${yearStr}P${Math.floor(100000 + Math.random() * 900000)}`;
+
+      return NextResponse.json({
+        metaData: { code: 201, message: 'Created' },
+        response: {
+          noRujukan,
+          status: 'SUCCESS_BRIDGED',
+          message: 'Surat Rujukan Vertikal BPJS berhasil diterbitkan ke RS rujukan tujuan',
+          timestamp,
+        },
+        headers,
+      });
+    }
+
     // Default response for add queue / updatewaktu
     return NextResponse.json({
       metaData: { code: 200, message: 'Ok' },

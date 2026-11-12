@@ -11,6 +11,7 @@ import { SecurityDatabaseView } from '@/components/SecurityDatabaseView';
 import { BridgingSettingsModal } from '@/components/BridgingSettingsModal';
 import { InitialLoginView } from '@/components/InitialLoginView';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
+import { PcareView } from '@/components/PcareView';
 import Image from 'next/image';
 import {
   ShieldCheck,
@@ -34,7 +35,7 @@ import { exportWsFktpExcel } from '@/lib/client-excel-export';
 
 function MainApp() {
   const { user, isAuthenticated, isAuthLoaded } = useAuth();
-  const [currentTab, setCurrentTab] = useState<'KIOSK' | 'OPERATOR' | 'SECURITY' | 'TV'>('KIOSK');
+  const [currentTab, setCurrentTab] = useState<'KIOSK' | 'OPERATOR' | 'PCARE' | 'SECURITY' | 'TV'>('KIOSK');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPatientBypass, setIsPatientBypass] = useState(false);
   const { bpjsConfig, updateBpjsConfig, testBridgingPing } = useQueue();
@@ -169,18 +170,7 @@ function MainApp() {
 
   // If in TV Mode, render fullscreen waiting room display
   if (currentTab === 'TV') {
-    return (
-      <div className="relative">
-        <button
-          onClick={() => setCurrentTab('OPERATOR')}
-          className="fixed top-4 left-4 z-50 bg-slate-900/90 hover:bg-slate-800 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-700/80 backdrop-blur-md transition-all shadow-lg flex items-center gap-2 opacity-60 hover:opacity-100"
-          title="Keluar dari Mode TV"
-        >
-          ← Kembali ke Dashboard
-        </button>
-        <TvDisplayMode onExitFullscreen={() => setCurrentTab('OPERATOR')} />
-      </div>
-    );
+    return <TvDisplayMode onExitFullscreen={() => setCurrentTab('OPERATOR')} />;
   }
 
   return (
@@ -207,7 +197,15 @@ function MainApp() {
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {currentTab === 'KIOSK' && <KioskMode />}
-          {currentTab === 'OPERATOR' && <OperatorDashboard />}
+          {currentTab === 'OPERATOR' && (
+            <OperatorDashboard onNavigateToPcare={() => setCurrentTab('PCARE')} />
+          )}
+          {currentTab === 'PCARE' && (
+            <PcareView
+              onOpenSettings={() => setIsSettingsOpen(true)}
+              onNavigateToOperator={() => setCurrentTab('OPERATOR')}
+            />
+          )}
           {currentTab === 'SECURITY' && (
             isRmeAdmin ? (
               <SecurityDatabaseView />
@@ -350,7 +348,11 @@ function MainApp() {
       </footer>
 
       {isAdministrator && (
-        <BridgingSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+        <BridgingSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          onOpenPcare={() => setCurrentTab('PCARE')}
+        />
       )}
     </div>
   );

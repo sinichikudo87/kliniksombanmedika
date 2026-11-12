@@ -27,7 +27,11 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 
-export const OperatorDashboard: React.FC = () => {
+interface OperatorDashboardProps {
+  onNavigateToPcare?: () => void;
+}
+
+export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigateToPcare }) => {
   const {
     queues,
     poliList,
@@ -166,17 +170,21 @@ export const OperatorDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <div className="flex items-center gap-2 bg-emerald-50/80 border border-emerald-200/80 px-3 py-1.5 rounded-xl text-xs text-emerald-800 font-medium">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="font-semibold">Antrean BPJS Aktif</span>
-            <span className="text-emerald-300">·</span>
-            <span className="font-mono text-emerald-900">CID: ******</span>
-          </div>
+        <div className="flex items-center gap-2">
+          {onNavigateToPcare && (
+            <button
+              onClick={onNavigateToPcare}
+              className="h-9 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Buka Modul Pemeriksaan Dokter PCare FKTP"
+            >
+              <Stethoscope className="w-4 h-4 text-emerald-200" />
+              <span>PCare FKTP</span>
+            </button>
+          )}
 
           <button
             onClick={() => setShowManualModal(true)}
-            className="h-9 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5"
+            className="h-9 px-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
             <span>Pendaftaran Loket</span>
@@ -333,6 +341,17 @@ export const OperatorDashboard: React.FC = () => {
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Selesai</span>
                 </button>
+
+                {onNavigateToPcare && (
+                  <button
+                    onClick={onNavigateToPcare}
+                    className="h-10 flex items-center gap-1.5 px-3.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    title="Buka form pemeriksaan dokter PCare (Anamnesa, Vital Signs, Diagnosa ICD-10, Rujukan)"
+                  >
+                    <Stethoscope className="w-3.5 h-3.5 text-emerald-200" />
+                    <span>Pemeriksaan PCare</span>
+                  </button>
+                )}
 
                 {activeServing.poliKode !== 'FAR' && (
                   <button

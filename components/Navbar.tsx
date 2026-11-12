@@ -35,8 +35,8 @@ import {
 import Image from 'next/image';
 
 interface NavbarProps {
-  currentTab: 'KIOSK' | 'OPERATOR' | 'SECURITY' | 'TV';
-  setCurrentTab: (tab: 'KIOSK' | 'OPERATOR' | 'SECURITY' | 'TV') => void;
+  currentTab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'SECURITY' | 'TV';
+  setCurrentTab: (tab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'SECURITY' | 'TV') => void;
   onOpenSettings: () => void;
 }
 
@@ -133,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
             </div>
           </div>
 
-          {/* Navigation Controls (Desktop Segmented Bar - Clean 3 Core Tabs) */}
+          {/* Navigation Controls (Desktop Segmented Bar - Kiosk, Loket, PCare BPJS, TV) */}
           <nav className="hidden lg:flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/70 shadow-2xs">
             <button
               onClick={() => setCurrentTab('KIOSK')}
@@ -157,6 +157,23 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
             >
               <LayoutDashboard className={`w-3.5 h-3.5 ${currentTab === 'OPERATOR' ? 'text-emerald-600' : 'text-slate-400'}`} />
               <span>Loket Antrean</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentTab('PCARE')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                currentTab === 'PCARE'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <Stethoscope className={`w-3.5 h-3.5 ${currentTab === 'PCARE' ? 'text-white' : 'text-emerald-600'}`} />
+              <span>PCare BPJS</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                currentTab === 'PCARE' ? 'bg-emerald-900 text-emerald-100' : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                FKTP
+              </span>
             </button>
 
             <button
@@ -272,7 +289,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               setCurrentTab('KIOSK');
               setIsMobileMenuOpen(false);
             }}
-            className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
+            className={`flex-1 min-w-[65px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
               currentTab === 'KIOSK'
                 ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/60'
                 : 'text-slate-600 hover:text-slate-900'
@@ -285,7 +302,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               setCurrentTab('OPERATOR');
               setIsMobileMenuOpen(false);
             }}
-            className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
+            className={`flex-1 min-w-[65px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
               currentTab === 'OPERATOR'
                 ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/60'
                 : 'text-slate-600 hover:text-slate-900'
@@ -295,10 +312,23 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
           </button>
           <button
             onClick={() => {
+              setCurrentTab('PCARE');
+              setIsMobileMenuOpen(false);
+            }}
+            className={`flex-1 min-w-[75px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
+              currentTab === 'PCARE'
+                ? 'bg-emerald-700 text-white font-bold shadow-xs'
+                : 'text-emerald-700 bg-emerald-50/70 hover:bg-emerald-100/70'
+            }`}
+          >
+            PCare
+          </button>
+          <button
+            onClick={() => {
               setCurrentTab('TV');
               setIsMobileMenuOpen(false);
             }}
-            className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
+            className={`flex-1 min-w-[65px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
               currentTab === 'TV'
                 ? 'bg-emerald-700 text-white font-bold shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -312,13 +342,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                 setCurrentTab('SECURITY');
                 setIsMobileMenuOpen(false);
               }}
-              className={`flex-1 min-w-[85px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
+              className={`flex-1 min-w-[75px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
                 currentTab === 'SECURITY'
                   ? 'bg-emerald-50 text-emerald-800 font-bold border border-emerald-200/60'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              RME & DB
+              RME
             </button>
           )}
         </div>
@@ -339,7 +369,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Kios Mandiri
+                Kios
               </button>
               <button
                 onClick={() => {
@@ -353,6 +383,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                 }`}
               >
                 Loket
+              </button>
+              <button
+                onClick={() => {
+                  setCurrentTab('PCARE');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`flex-1 min-w-[80px] py-1.5 px-2 rounded-lg text-center text-xs font-medium transition-colors ${
+                  currentTab === 'PCARE'
+                    ? 'bg-emerald-700 text-white font-bold shadow-xs'
+                    : 'text-emerald-800 bg-emerald-50 hover:bg-emerald-100'
+                }`}
+              >
+                PCare BPJS
               </button>
               <button
                 onClick={() => {
@@ -371,7 +414,41 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
 
             {/* Menu Items Grid: Fitur Lanjutan, Konfigurasi & Admin */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
-              {/* 1. Pengaturan Bridging BPJS (Hanya Admin) */}
+              {/* 1. PCare Primary Care Modul Langsung */}
+              <button
+                onClick={() => {
+                  setCurrentTab('PCARE');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`p-3 rounded-2xl border text-left flex items-start justify-between gap-3 transition-all cursor-pointer ${
+                  currentTab === 'PCARE'
+                    ? 'bg-emerald-800 border-emerald-900 text-white'
+                    : 'bg-emerald-50/90 hover:bg-emerald-100 border-emerald-200 text-emerald-950'
+                }`}
+              >
+                <div className="flex items-start gap-2.5">
+                  <div className={`p-2 rounded-xl shrink-0 ${
+                    currentTab === 'PCARE' ? 'bg-emerald-900 text-white' : 'bg-emerald-200 text-emerald-900'
+                  }`}>
+                    <Stethoscope className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="font-bold text-xs flex items-center gap-1.5">
+                      <span>PCare (Primary Care) BPJS</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                        currentTab === 'PCARE' ? 'bg-emerald-950 text-white' : 'bg-emerald-200 text-emerald-900'
+                      }`}>
+                        FKTP
+                      </span>
+                    </div>
+                    <p className={`text-[11px] mt-0.5 ${currentTab === 'PCARE' ? 'text-emerald-100' : 'text-slate-600'}`}>
+                      Pemeriksaan dokter, tanda vital, diagnosa ICD-10 &amp; rujukan vertikal
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              {/* 2. Pengaturan Bridging BPJS (Hanya Admin) */}
               {isAdministrator && (
                 <button
                   onClick={() => {
@@ -380,13 +457,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                   }}
                   className={`p-3 rounded-2xl border text-left flex items-start justify-between gap-3 transition-all cursor-pointer ${
                     bpjsConfig.isOnline === true
-                      ? 'bg-emerald-50/80 border-emerald-200 hover:bg-emerald-100/70 text-emerald-950'
+                      ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-900'
                       : 'bg-amber-50/80 border-amber-200 hover:bg-amber-100/70 text-amber-950'
                   }`}
                 >
                   <div className="flex items-start gap-2.5">
                     <div className={`p-2 rounded-xl shrink-0 ${
-                      bpjsConfig.isOnline === true ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                      bpjsConfig.isOnline === true ? 'bg-slate-200 text-slate-800' : 'bg-amber-100 text-amber-800'
                     }`}>
                       <Settings className="w-4 h-4 animate-spin-slow" />
                     </div>
@@ -394,7 +471,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                       <div className="font-bold text-xs flex items-center gap-1.5">
                         <span>Bridging Antrean BPJS</span>
                         <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
-                          bpjsConfig.isOnline === true ? 'bg-emerald-200 text-emerald-900' : 'bg-amber-200 text-amber-900'
+                          bpjsConfig.isOnline === true ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-900'
                         }`}>
                           {bpjsConfig.isOnline === true ? 'Mobile JKN Aktif' : 'Pending Whitelist'}
                         </span>
@@ -407,7 +484,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                 </button>
               )}
 
-              {/* 2. Database & Rekam Medis RME (Hanya Admin RME) */}
+              {/* 3. Database & Rekam Medis RME (Hanya Admin RME) */}
               {isRmeAdmin && (
                 <button
                   onClick={() => {
