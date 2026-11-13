@@ -124,26 +124,27 @@ export const KioskMode: React.FC = () => {
       if (res.ok) {
         const json = await res.json();
         if (json.response && json.response.nomorantrean) {
+          const resp = json.response;
           const item: QueueItem = {
-            id: `q-jkn-${Date.now()}`,
-            nomorAntrean: json.response.nomorantrean,
-            prefix: json.response.nomorantrean.charAt(0),
-            nomorUrut: 1,
-            tipePasien: 'BPJS',
-            poliKode: 'UMU',
-            poliNama: json.response.namapoli || 'Poli Umum',
-            dokterNama: 'dr. Machmujur',
-            ruangNama: 'Ruang 01',
-            patientId: clean,
-            nik: clean.length === 16 ? clean : '',
-            noBpjs: clean.length === 13 ? clean : '',
-            namaPasien: 'Pasien Mobile JKN',
-            status: 'MENUNGGU',
-            waktuDaftar: new Date().toISOString(),
-            estimasiWaktuTungguMenit: json.response.waktutunggu || 10,
-            estimasiJamPanggil: 'Sesuai Jadwal Mobile JKN',
-            bpjsTaskId: 1,
-            kodeBooking: clean,
+            id: resp.id || `q-jkn-${clean}`,
+            nomorAntrean: resp.nomorantrean,
+            prefix: resp.prefix || resp.nomorantrean.charAt(0),
+            nomorUrut: resp.nomorurut || 1,
+            tipePasien: resp.tipepasien || 'BPJS',
+            poliKode: resp.kodepoli || '',
+            poliNama: resp.namapoli || '-',
+            dokterNama: resp.namadokter || '',
+            ruangNama: resp.ruang || '',
+            patientId: resp.patientid || clean,
+            nik: resp.nik || (clean.length === 16 ? clean : ''),
+            noBpjs: resp.nomorkartu || (clean.length === 13 ? clean : ''),
+            namaPasien: resp.namapasien || '-',
+            status: resp.status || 'MENUNGGU',
+            waktuDaftar: resp.waktudaftar || new Date().toISOString(),
+            estimasiWaktuTungguMenit: resp.waktutunggu ?? 0,
+            estimasiJamPanggil: resp.estimasi_jam_panggil || '-',
+            bpjsTaskId: resp.bpjs_task_id ?? 1,
+            kodeBooking: resp.kodebooking || clean,
             isSyncedBpjs: Boolean(bpjsConfig.isOnline),
             panggilanKe: 0,
           };
@@ -178,8 +179,8 @@ export const KioskMode: React.FC = () => {
       noBpjs = verifiedPatient.noBpjs;
       phone = verifiedPatient.noHp;
     } else {
-      name = generalName.trim() || 'PASIEN UMUM';
-      nik = generalNik.trim() || '3201019900001234';
+      name = generalName.trim();
+      nik = generalNik.trim();
       phone = generalPhone.trim();
     }
 
@@ -367,7 +368,7 @@ export const KioskMode: React.FC = () => {
                 type="text"
                 value={idInput}
                 onChange={(e) => setIdInput(e.target.value.replace(/\D/g, ''))}
-                placeholder="Contoh: 3201011508890001 atau 0001234567890"
+                placeholder="Masukkan 16 digit NIK atau 13 digit No. Kartu BPJS"
                 maxLength={16}
                 className="w-full text-center font-mono text-xl sm:text-2xl font-bold py-3.5 px-4 rounded-2xl border-2 border-emerald-500/50 focus:border-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-500/10 text-slate-900 tracking-wider placeholder:text-slate-300 placeholder:text-base placeholder:font-sans placeholder:font-normal"
               />
@@ -459,7 +460,7 @@ export const KioskMode: React.FC = () => {
                 type="text"
                 value={idInput}
                 onChange={(e) => setIdInput(e.target.value.toUpperCase())}
-                placeholder="Contoh: BK202611060001 atau 3201011508890001"
+                placeholder="Masukkan Kode Booking Mobile JKN atau 16 digit NIK"
                 maxLength={24}
                 className="w-full text-center font-mono text-xl sm:text-2xl font-bold py-3.5 px-4 rounded-2xl border-2 border-indigo-500/50 focus:border-indigo-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 text-slate-900 tracking-wider placeholder:text-slate-300 placeholder:text-base placeholder:font-sans placeholder:font-normal uppercase"
               />
@@ -555,7 +556,7 @@ export const KioskMode: React.FC = () => {
                 type="text"
                 value={generalName}
                 onChange={(e) => setGeneralName(e.target.value)}
-                placeholder="Contoh: Rahmat Hidayat"
+                placeholder="Nama lengkap pasien sesuai identitas"
                 className="w-full py-3 px-4 rounded-xl border border-slate-300 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 text-slate-900 text-sm font-medium"
               />
             </div>
@@ -578,7 +579,7 @@ export const KioskMode: React.FC = () => {
                 type="text"
                 value={generalPhone}
                 onChange={(e) => setGeneralPhone(e.target.value)}
-                placeholder="081234567890"
+                placeholder="Nomor telepon / WhatsApp aktif"
                 className="w-full py-3 px-4 rounded-xl border border-slate-300 focus:border-teal-600 focus:ring-2 focus:ring-teal-500/20 text-slate-900 text-sm font-mono"
               />
             </div>
@@ -648,7 +649,7 @@ export const KioskMode: React.FC = () => {
               type="text"
               value={complaint}
               onChange={(e) => setComplaint(e.target.value)}
-              placeholder="Contoh: Demam tinggi 2 hari, pusing, batuk berdahak..."
+              placeholder="Tuliskan keluhan singkat pasien..."
               className="w-full py-2.5 px-3.5 text-xs rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-500/20 text-slate-800"
             />
           </div>
@@ -658,52 +659,58 @@ export const KioskMode: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-3">
               Pilih Poli Tujuan Pemeriksaan
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {poliList
-                .filter((p) => p.kode !== 'FAR') // Pharmacy is typically for post-consultation prescription
-                .map((poli) => {
-                  const waitingCount = queues.filter(
-                    (q) => q.poliKode === poli.kode && q.status === 'MENUNGGU'
-                  ).length;
-                  const estWait = waitingCount * poli.durasiRataRataMenit;
+            {poliList.filter((p) => p.kode !== 'FAR').length === 0 ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center text-xs text-amber-900">
+                Data poliklinik belum tersedia dari database MySQL. Pastikan koneksi server MySQL aktif.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {poliList
+                  .filter((p) => p.kode !== 'FAR')
+                  .map((poli) => {
+                    const waitingCount = queues.filter(
+                      (q) => q.poliKode === poli.kode && q.status === 'MENUNGGU'
+                    ).length;
+                    const estWait = waitingCount * poli.durasiRataRataMenit;
 
-                  return (
-                    <button
-                      key={poli.kode}
-                      onClick={() => handleSelectPoliAndSubmit(poli)}
-                      className="group bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-emerald-500 rounded-3xl p-5 text-left transition-all hover:shadow-xl active:scale-[0.98] flex flex-col justify-between h-56"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
-                            {poli.prefix}
+                    return (
+                      <button
+                        key={poli.kode}
+                        onClick={() => handleSelectPoliAndSubmit(poli)}
+                        className="group bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-emerald-500 rounded-3xl p-5 text-left transition-all hover:shadow-xl active:scale-[0.98] flex flex-col justify-between h-56"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-lg">
+                              {poli.prefix}
+                            </span>
+                            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                              ± {estWait} mnt
+                            </span>
+                          </div>
+                          <h4 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-emerald-700 transition-colors">
+                            {poli.nama}
+                          </h4>
+                          {poli.dokter ? (
+                            <p className="text-xs font-medium text-slate-600 mt-1">{poli.dokter}</p>
+                          ) : null}
+                          <p className="text-[11px] text-slate-400">{poli.ruang}</p>
+                        </div>
+
+                        <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                          <span className="text-slate-500">
+                            Menunggu: <strong className="text-slate-800">{waitingCount} orang</strong>
                           </span>
-                          <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                            ± {estWait} mnt
+                          <span className="font-bold text-emerald-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                            Pilih Poli <ChevronRight className="w-4 h-4" />
                           </span>
                         </div>
-                        <h4 className="font-bold text-slate-900 text-lg leading-tight group-hover:text-emerald-700 transition-colors">
-                          {poli.nama}
-                        </h4>
-                        {poli.dokter ? (
-                          <p className="text-xs font-medium text-slate-600 mt-1">{poli.dokter}</p>
-                        ) : null}
-                        <p className="text-[11px] text-slate-400">{poli.ruang}</p>
-                      </div>
-
-                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-slate-500">
-                          Menunggu: <strong className="text-slate-800">{waitingCount} orang</strong>
-                        </span>
-                        <span className="font-bold text-emerald-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                          Pilih Poli <ChevronRight className="w-4 h-4" />
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-            </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
           </div>
         </div>
       )}

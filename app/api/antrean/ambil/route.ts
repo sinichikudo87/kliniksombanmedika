@@ -46,16 +46,14 @@ export async function POST(req: NextRequest) {
       [kodepoli, kodepoli]
     );
 
-    const poli = poliRows && poliRows.length > 0 ? poliRows[0] : {
-      kode: kodepoli,
-      nama: 'Poli Umum',
-      prefix: 'A',
-      dokter_nama: 'Dokter Faskes',
-      ruang: 'Ruang 01',
-      kuota_total: 50,
-      kuota_terpakai: 0,
-      durasi_rata_rata_menit: 10,
-    };
+    if (!poliRows || poliRows.length === 0) {
+      return NextResponse.json(
+        { metadata: { code: 404, message: `Poliklinik (${kodepoli}) tidak ditemukan di database MySQL` } },
+        { status: 404 }
+      );
+    }
+
+    const poli = poliRows[0];
 
     // 3. Hitung nomor urut antrean hari ini untuk poli ini
     const todayStr = new Date().toISOString().split('T')[0];

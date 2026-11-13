@@ -4,7 +4,7 @@ import { getMySqlPool } from '@/lib/mysql-db';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { nik, nomorkartu, nama, nohp, alamat, jeniskelamin = 'L', tgllahir = '1990-01-01' } = body;
+    const { nik, nomorkartu, nama, nohp, alamat, jeniskelamin = 'L', tgllahir = null } = body;
 
     if (!nik && !nomorkartu) {
       return NextResponse.json(
@@ -45,20 +45,25 @@ export async function POST(req: NextRequest) {
 
     const patientId = `RM-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const [cfgRows]: [any, any] = await pool.query('SELECT nama_faskes FROM faskes_config LIMIT 1').catch(() => [[], []]);
+    const faskesName = cfgRows?.[0]?.nama_faskes || '';
+
     await pool.query(
       `INSERT INTO patients (
         id, nik, no_bpjs, nama, tgl_lahir, jenis_kelamin, no_hp, alamat,
         status_bpjs, jenis_peserta, faskes_tingkat_1, kelas_rawat
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AKTIF', 'Peserta BPJS', 'KLINIK SOMBAN MEDIKA', 'Kelas 3')`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'AKTIF', ?, ?, '')`,
       [
         patientId,
         nik || `NIK-${Date.now()}`,
         nomorkartu || null,
         nama.trim(),
-        tgllahir,
+        tgllahir || null,
         jeniskelamin,
         nohp || '',
         alamat || '',
+        nomorkartu ? 'Peserta BPJS' : 'Pasien Umum',
+        faskesName,
       ]
     );
 

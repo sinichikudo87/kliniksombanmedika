@@ -18,12 +18,12 @@ export function exportWsFktpExcel(options?: ExportExcelOptions): boolean {
       ? window.location.origin
       : 'https://kliniksombanmedika.id';
     const customBaseUrl = options?.customBaseUrl || defaultOrigin;
-    const namaFaskes = options?.namaFaskes || 'TPMD DR MACHMUJUR';
-    const kdFaskes = options?.kdFaskes || '019U901';
+    const namaFaskes = options?.namaFaskes || '-';
+    const kdFaskes = options?.kdFaskes || '-';
     const picName = options?.picName || '-';
     const picPhone = options?.picPhone || '-';
     const kantorCabang = options?.kantorCabang || '-';
-    const devUser = options?.devUser || '0195U091-dev';
+    const devUser = options?.devUser || '-';
     const isProd = options?.environment === 'production';
     const envLabel = isProd ? 'Production' : 'Development';
 

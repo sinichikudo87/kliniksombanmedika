@@ -46,7 +46,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
     audioEnabled,
   } = useQueue();
 
-  const [selectedPoliKode, setSelectedPoliKode] = useState<string>('UMU'); // Default to Poli Umum (dr. Machmujur)
+  const [selectedPoliKode, setSelectedPoliKode] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showUnmasked, setShowUnmasked] = useState<boolean>(false);
@@ -57,11 +57,12 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
   const [manualNik, setManualNik] = useState('');
   const [manualNoBpjs, setManualNoBpjs] = useState('');
   const [manualTipe, setManualTipe] = useState<'BPJS' | 'UMUM'>('BPJS');
-  const [manualPoli, setManualPoli] = useState('UMU');
+  const [manualPoli, setManualPoli] = useState('');
   const [manualKeluhan, setManualKeluhan] = useState('');
 
-  // Selected Poli Object
+  // Selected Poli Object from MySQL poliList
   const currentPoli = poliList.find((p) => p.kode === selectedPoliKode) || poliList[0];
+  const effectiveManualPoli = manualPoli || poliList[0]?.kode || '';
 
   // Queues filtered for currently selected Poli
   const poliQueues = selectedPoliKode === 'ALL'
@@ -104,11 +105,16 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
     e.preventDefault();
     if (!manualNama.trim()) return;
 
+    if (!effectiveManualPoli) {
+      showSwalAlert('Data poliklinik dari database MySQL belum tersedia.', { title: 'Data Poli Kosong', icon: 'warning' });
+      return;
+    }
+
     await addQueue({
       namaPasien: manualNama.trim(),
-      nik: manualNik || '3201019900001235',
+      nik: manualNik.trim() || `UMUM-${Date.now().toString().slice(-11)}`,
       noBpjs: manualNoBpjs,
-      poliKode: manualPoli,
+      poliKode: effectiveManualPoli,
       tipePasien: manualTipe,
       keluhan: manualKeluhan,
     });
@@ -248,9 +254,9 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2 text-xs">
               <span className="font-bold uppercase tracking-wider text-emerald-400">
-                Konsol Panggilan · {selectedPoliKode === 'ALL' ? 'Poli Umum' : currentPoli.nama}
+                Konsol Panggilan · {selectedPoliKode === 'ALL' ? 'Semua Poli' : (currentPoli?.nama || 'Poli Belum Dipilih')}
               </span>
-              {currentPoli.dokter && (
+              {currentPoli?.dokter && (
                 <>
                   <span className="text-slate-600">·</span>
                   <span className="text-slate-300 font-medium">{currentPoli.dokter}</span>
@@ -653,7 +659,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   maxLength={16}
                   value={manualNik}
                   onChange={(e) => setManualNik(e.target.value.replace(/\D/g, ''))}
-                  placeholder="3201..."
+                  placeholder="Masukkan 16 digit NIK"
                   className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono"
                 />
               </div>
@@ -666,7 +672,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                     maxLength={13}
                     value={manualNoBpjs}
                     onChange={(e) => setManualNoBpjs(e.target.value.replace(/\D/g, ''))}
-                    placeholder="0001..."
+                    placeholder="Masukkan 13 digit No. Kartu BPJS"
                     className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono"
                   />
                 </div>
@@ -675,15 +681,19 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Poli Tujuan</label>
                 <select
-                  value={manualPoli}
+                  value={effectiveManualPoli}
                   onChange={(e) => setManualPoli(e.target.value)}
                   className="w-full py-2 px-3 border border-slate-300 rounded-xl"
                 >
-                  {poliList.map((p) => (
-                    <option key={p.kode} value={p.kode}>
-                      {p.nama} {p.dokter ? `(${p.dokter})` : ''}
-                    </option>
-                  ))}
+                  {poliList.length > 0 ? (
+                    poliList.map((p) => (
+                      <option key={p.kode} value={p.kode}>
+                        {p.nama} {p.dokter ? `(${p.dokter})` : ''}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">Data poli belum dimuat dari MySQL</option>
+                  )}
                 </select>
               </div>
 

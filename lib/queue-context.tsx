@@ -10,9 +10,9 @@ import {
   AuditSecurityLog,
 } from '@/types/queue';
 import { DEFAULT_BPJS_CONFIG, getBpjsHeaders } from './bpjs-bridging';
-import { DEFAULT_POLI_LIST, calculateEstimatedWaitTime } from './queue-estimator';
-import { speakIndonesianQueue, chimePlayer } from './tts-announcer';
-import { encryptData, decryptData } from './encrypted-db';
+import { calculateEstimatedWaitTime } from './queue-estimator';
+import { speakIndonesianQueue } from './tts-announcer';
+import { encryptData } from './encrypted-db';
 
 interface QueueContextType {
   queues: QueueItem[];
@@ -42,66 +42,40 @@ interface QueueContextType {
   updateBpjsConfig: (newConfig: Partial<BpjsBridgingConfig>) => void;
   testBridgingPing: (customConfig?: Partial<BpjsBridgingConfig>) => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any }>;
   addSecurityLog: (action: AuditSecurityLog['action'], details: string, status?: 'SUCCESS' | 'DENIED') => void;
-  resetToSampleData: () => void;
+  refreshFromDb: () => Promise<void>;
 }
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
 
-// Initial state starts empty - all data loaded live from database
-const INITIAL_PATIENTS: Patient[] = [];
-const INITIAL_QUEUES: QueueItem[] = [];
-
-// Initial Security Logs Seed
-const INITIAL_SECURITY_LOGS: AuditSecurityLog[] = [
-  {
-    id: 'sec-init',
-    timestamp: '2026-10-23T00:00:00.000Z',
-    actor: 'Sistem Database RME',
-    action: 'KEY_ROTATE',
-    status: 'SUCCESS',
-    details: 'Basis data terhubung live. Seluruh antrean dan pasien tersimpan ke database.',
-  },
-];
-
 export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [queues, setQueues] = useState<QueueItem[]>(INITIAL_QUEUES);
-  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
-  const [poliList, setPoliList] = useState<PoliInfo[]>(DEFAULT_POLI_LIST);
+  const [queues, setQueues] = useState<QueueItem[]>([]);
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [poliList, setPoliList] = useState<PoliInfo[]>([]);
   const [bpjsConfig, setBpjsConfig] = useState<BpjsBridgingConfig>(DEFAULT_BPJS_CONFIG);
   const [bridgingLogs, setBridgingLogs] = useState<BridgingLog[]>([]);
-  const [securityLogs, setSecurityLogs] = useState<AuditSecurityLog[]>(INITIAL_SECURITY_LOGS);
+  const [securityLogs, setSecurityLogs] = useState<AuditSecurityLog[]>([]);
   const [currentCalled, setCurrentCalled] = useState<QueueItem | null>(null);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
 
-  // Synchronize state with Server Database on mount and live polling
+  // Synchronize state exclusively with MySQL Server Database on mount and live polling
   useEffect(() => {
     let isMounted = true;
 
-    // Purge browser local storage completely - all data comes from MySQL
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.clear();
-      } catch {}
-    }
-
     const fetchServerDb = async () => {
       try {
-        const res = await fetch('/api/db');
+        const res = await fetch('/api/db', { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           if (json.success && json.data && isMounted) {
             setQueues(json.data.queues || []);
             setPatients(json.data.patients || []);
-            if (json.data.poliList && Array.isArray(json.data.poliList) && json.data.poliList.length > 0) {
-              setPoliList(json.data.poliList);
-            }
+            setPoliList(Array.isArray(json.data.poliList) ? json.data.poliList : []);
             if (json.data.config) {
               setBpjsConfig(json.data.config);
             }
-            if (json.data.securityLogs) setSecurityLogs(json.data.securityLogs);
-            if (json.data.bridgingLogs) setBridgingLogs(json.data.bridgingLogs);
+            if (Array.isArray(json.data.securityLogs)) setSecurityLogs(json.data.securityLogs);
+            if (Array.isArray(json.data.bridgingLogs)) setBridgingLogs(json.data.bridgingLogs);
 
-            // Find currently called or currently served queue for TV display sync
             const activeCall = (json.data.queues || []).find(
               (q: QueueItem) => q.status === 'DIPANGGIL'
             ) || (json.data.queues || []).find(
@@ -111,14 +85,11 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           }
         }
       } catch {
-        // Fallback gracefully to local memory state
+        // Keep empty/latest server state without fabricating static fallback data
       }
     };
 
-    // Initial fetch
     fetchServerDb();
-
-    // Live sync polling every 3.5 seconds across all clinic screens (Kiosk, Loket, TV Display)
     const syncInterval = setInterval(fetchServerDb, 3500);
 
     return () => {
@@ -127,7 +98,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, []);
 
-  // Recalculate dynamic wait times whenever queues change or on interval
+  // Recalculate dynamic wait times periodically
   useEffect(() => {
     const interval = setInterval(() => {
       setQueues((prev) =>
@@ -155,22 +126,104 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     status: 'SUCCESS' | 'DENIED' = 'SUCCESS'
   ) => {
     const log: AuditSecurityLog = {
-      id: `sec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      id: `sec-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: new Date().toISOString(),
-      actor: 'Admin Rekam Medis (0195U091-dev)',
+      actor: bpjsConfig.userPcareDev || 'Operator Faskes',
       action,
       status,
       details,
     };
     setSecurityLogs((prev) => [log, ...prev].slice(0, 50));
+
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add_security_log', payload: log }),
+    }).catch(() => {});
   };
 
   const addBridgingLog = (logData: Omit<BridgingLog, 'id'>) => {
     const log: BridgingLog = {
-      id: `br-${Date.now()}`,
+      id: `br-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
       ...logData,
     };
     setBridgingLogs((prev) => [log, ...prev].slice(0, 50));
+
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add_bridging_log', payload: log }),
+    }).catch(() => {});
+  };
+
+  const dispatchBridgingTask = async (
+    endpoint: string,
+    requestPayload: Record<string, any>,
+    fallbackDescription: string
+  ) => {
+    const headers = await getBpjsHeaders(bpjsConfig);
+    const isBridgingActive = bpjsConfig.isOnline === true;
+    const start = performance.now();
+
+    if (!isBridgingActive) {
+      addBridgingLog({
+        timestamp: new Date().toISOString(),
+        endpoint,
+        method: 'POST',
+        requestHeader: headers,
+        requestPayload,
+        responseStatus: 201,
+        responsePayload: {
+          metaData: { code: 201, message: 'Pending Bridging (Bridging BPJS Nonaktif / Default Off)' },
+          response: { status: fallbackDescription },
+        },
+        durationMs: Math.round(performance.now() - start),
+      });
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/bpjs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: endpoint === '/antrean/batal' ? 'antrean_batal' : endpoint === '/antrean/add' ? 'antrean_add' : 'antrean_updatewaktu',
+          consId: bpjsConfig.consId,
+          secretKey: bpjsConfig.secretKey,
+          userKey: bpjsConfig.userKey,
+          kdFaskes: bpjsConfig.kdFaskes,
+          baseUrl: bpjsConfig.baseUrl,
+          environment: bpjsConfig.environment,
+          isOnline: true,
+          payload: requestPayload,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      const metaCode = json.metaData?.code || json.metadata?.code || res.status;
+      addBridgingLog({
+        timestamp: new Date().toISOString(),
+        endpoint,
+        method: 'POST',
+        requestHeader: headers,
+        requestPayload,
+        responseStatus: metaCode,
+        responsePayload: json,
+        durationMs: Math.round(performance.now() - start),
+      });
+    } catch (err: any) {
+      addBridgingLog({
+        timestamp: new Date().toISOString(),
+        endpoint,
+        method: 'POST',
+        requestHeader: headers,
+        requestPayload,
+        responseStatus: 503,
+        responsePayload: {
+          metaData: { code: 503, message: err?.message || 'Gagal menghubungi API BPJS Bridging' },
+        },
+        durationMs: Math.round(performance.now() - start),
+      });
+    }
   };
 
   const addQueue = async (data: {
@@ -182,10 +235,12 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     keluhan?: string;
     noHp?: string;
   }): Promise<QueueItem> => {
-    const poli = poliList.find((p) => p.kode === data.poliKode) || poliList[0] || DEFAULT_POLI_LIST[0];
-    const prefix = poli.prefix;
+    const poli = poliList.find((p) => p.kode === data.poliKode) || poliList[0];
+    if (!poli) {
+      throw new Error('Data master poliklinik belum tersedia di database MySQL.');
+    }
 
-    // Find highest number for this prefix today
+    const prefix = poli.prefix;
     const existingInPoli = queues.filter((q) => q.prefix === prefix);
     const nextNumber =
       existingInPoli.length > 0 ? Math.max(...existingInPoli.map((q) => q.nomorUrut)) + 1 : 1;
@@ -197,30 +252,33 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .toString()
       .padStart(4, '0')}`;
 
-    // Encrypt sensitive patient PII for security compliance
+    const cleanNik = (data.nik || '').trim() || `UMUM-${Date.now().toString().slice(-11)}`;
+    const cleanNoBpjs = (data.noBpjs || '').trim();
+    const cleanNoHp = (data.noHp || '').trim();
+
     const encryptedPii = await encryptData(
       JSON.stringify({
-        nik: data.nik,
+        nik: cleanNik,
         nama: data.namaPasien,
-        noBpjs: data.noBpjs || '',
+        noBpjs: cleanNoBpjs,
         keluhan: data.keluhan || '',
-        noHp: data.noHp || '',
+        noHp: cleanNoHp,
       })
     );
 
     const newPatient: Patient = {
       id: patientId,
-      nik: data.nik,
-      noBpjs: data.noBpjs || (data.tipePasien === 'BPJS' ? `000${data.nik.slice(6, 16)}` : '-'),
+      nik: cleanNik,
+      noBpjs: cleanNoBpjs,
       nama: data.namaPasien.toUpperCase(),
-      tglLahir: '1995-01-01',
+      tglLahir: '',
       jenisKelamin: 'L',
-      noHp: data.noHp || '081234567890',
-      alamat: 'Wilayah Layanan TPMD Dr. Machmujur',
-      statusBpjs: 'AKTIF',
-      jenisPeserta: data.tipePasien === 'BPJS' ? 'PBI APBN' : 'Non-BPJS (Umum)',
+      noHp: cleanNoHp,
+      alamat: '',
+      statusBpjs: data.tipePasien === 'BPJS' ? 'AKTIF' : 'NON_AKTIF',
+      jenisPeserta: data.tipePasien === 'BPJS' ? 'Peserta JKN' : 'Pasien Umum',
       faskesTingkat1: `${bpjsConfig.kdFaskes} - ${bpjsConfig.namaFaskes}`,
-      kelasRawat: 'Kelas 2',
+      kelasRawat: '',
       createdAt: new Date().toISOString(),
       encryptedData: encryptedPii,
     };
@@ -233,71 +291,52 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       tipePasien: data.tipePasien,
       poliKode: poli.kode,
       poliNama: poli.nama,
-      dokterNama: poli.dokter,
-      ruangNama: poli.ruang,
+      dokterNama: poli.dokter || '',
+      ruangNama: poli.ruang || '',
       patientId,
-      nik: data.nik,
-      noBpjs: newPatient.noBpjs,
+      nik: cleanNik,
+      noBpjs: cleanNoBpjs,
       namaPasien: data.namaPasien.toUpperCase(),
       status: 'MENUNGGU',
       waktuDaftar: new Date().toISOString(),
       estimasiWaktuTungguMenit: 10,
       estimasiJamPanggil: 'Menghitung...',
-      bpjsTaskId: 1, // Task 1: Check-in Kios
+      bpjsTaskId: 1,
       kodeBooking,
       keluhan: data.keluhan,
       isSyncedBpjs: Boolean(bpjsConfig.isOnline),
       panggilanKe: 0,
     };
 
-    // Calculate initial wait time estimate
     const estimate = calculateEstimatedWaitTime(newQueueItem, queues, poli);
     newQueueItem.estimasiWaktuTungguMenit = estimate.menitTunggu;
     newQueueItem.estimasiJamPanggil = estimate.jamEstimasiPanggil;
 
-    // Log BPJS Bridging sync
-    const headers = await getBpjsHeaders(bpjsConfig);
-    const isBridgingActive = bpjsConfig.isOnline === true;
-    addBridgingLog({
-      timestamp: new Date().toISOString(),
-      endpoint: '/antrean/add',
-      method: 'POST',
-      requestHeader: headers,
-      requestPayload: {
+    await dispatchBridgingTask(
+      '/antrean/add',
+      {
         kodebooking: kodeBooking,
         jenispasien: data.tipePasien,
-        nomorkartu: newPatient.noBpjs,
+        nomorkartu: cleanNoBpjs,
         nik: data.nik,
         kodepoli: poli.kode,
         namapoli: poli.nama,
         nomorantrean: nomorAntrean,
         angkaantrean: nextNumber,
         estimasidilayani: Date.now() + estimate.menitTunggu * 60000,
-        kodedokter: '019U901-DOC-01',
-        namadokter: poli.dokter,
-        jampraktek: '08:00-16:00',
+        namadokter: poli.dokter || '',
       },
-      responseStatus: isBridgingActive ? 200 : 201,
-      responsePayload: {
-        metaData: { code: isBridgingActive ? 200 : 201, message: isBridgingActive ? 'Ok' : 'Pending Bridging' },
-        response: {
-          status: isBridgingActive
-            ? 'Nomor Antrean Berhasil Disinkronkan ke Antrean Online BPJS (Mobile JKN)'
-            : 'Antrean tersimpan di database lokal (Bridging API BPJS Nonaktif / Default Off)',
-        },
-      },
-      durationMs: 84,
-    });
+      'Antrean tersimpan di MySQL (Bridging API BPJS Nonaktif / Default Off)'
+    );
 
     addSecurityLog(
       'ENCRYPT',
-      `Data pasien ${nomorAntrean} (${data.namaPasien}) terenkripsi AES-256-GCM dengan tag otentikasi.`
+      `Data pasien ${nomorAntrean} (${data.namaPasien}) terenkripsi AES-256-GCM dan dikirim ke MySQL.`
     );
 
     setPatients((prev) => [newPatient, ...prev]);
     setQueues((prev) => [...prev, newQueueItem]);
 
-    // Persist to Server Database
     try {
       await fetch('/api/db', {
         method: 'POST',
@@ -310,7 +349,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         body: JSON.stringify({ action: 'add_queue', payload: newQueueItem }),
       });
     } catch (err) {
-      console.warn('Gagal sync ke server db:', err);
+      console.warn('Gagal menyimpan antrean ke MySQL:', err);
     }
 
     return newQueueItem;
@@ -341,27 +380,23 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const updatedItem = updatedQueues.find((q) => q.id === id) || item;
     setCurrentCalled(updatedItem);
 
-    // Persist to Server Database
-    try {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update_queue',
-          payload: {
-            id,
-            updates: {
-              status: 'DIPANGGIL',
-              waktuDipanggil,
-              panggilanKe,
-              bpjsTaskId,
-            },
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_queue',
+        payload: {
+          id,
+          updates: {
+            status: 'DIPANGGIL',
+            waktuDipanggil,
+            panggilanKe,
+            bpjsTaskId,
           },
-        }),
-      });
-    } catch {}
+        },
+      }),
+    }).catch(() => {});
 
-    // Announce with Hospital Chime + Indonesian TTS
     if (audioEnabled) {
       try {
         await speakIndonesianQueue(updatedItem.nomorAntrean, updatedItem.poliNama, updatedItem.ruangNama);
@@ -370,25 +405,15 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }
 
-    // BPJS Bridging Task 4 update
-    const headers = await getBpjsHeaders(bpjsConfig);
-    addBridgingLog({
-      timestamp: new Date().toISOString(),
-      endpoint: '/antrean/updatewaktu',
-      method: 'POST',
-      requestHeader: headers,
-      requestPayload: {
+    await dispatchBridgingTask(
+      '/antrean/updatewaktu',
+      {
         kodebooking: updatedItem.kodeBooking,
         taskid: 4,
         waktu: Date.now(),
       },
-      responseStatus: 200,
-      responsePayload: {
-        metaData: { code: 200, message: 'Ok' },
-        response: { status: `Task 4 (Panggil Poli) Berhasil Dikirim untuk ${updatedItem.nomorAntrean}` },
-      },
-      durationMs: 65,
-    });
+      `Task 4 (Panggil Poli) untuk ${updatedItem.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+    );
   };
 
   const startService = async (id: string) => {
@@ -409,45 +434,33 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setQueues(updatedQueues);
 
-    // Persist to Server Database
-    try {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update_queue',
-          payload: {
-            id,
-            updates: {
-              status: 'DILAYANI',
-              waktuMulaiLayanan,
-              bpjsTaskId,
-            },
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_queue',
+        payload: {
+          id,
+          updates: {
+            status: 'DILAYANI',
+            waktuMulaiLayanan,
+            bpjsTaskId,
           },
-        }),
-      });
-    } catch {}
+        },
+      }),
+    }).catch(() => {});
 
     const item = updatedQueues.find((q) => q.id === id);
     if (item) {
-      const headers = await getBpjsHeaders(bpjsConfig);
-      addBridgingLog({
-        timestamp: new Date().toISOString(),
-        endpoint: '/antrean/updatewaktu',
-        method: 'POST',
-        requestHeader: headers,
-        requestPayload: {
+      await dispatchBridgingTask(
+        '/antrean/updatewaktu',
+        {
           kodebooking: item.kodeBooking,
           taskid: 5,
           waktu: Date.now(),
         },
-        responseStatus: 200,
-        responsePayload: {
-          metaData: { code: 200, message: 'Ok' },
-          response: { status: `Task 5 (Mulai Pelayanan Dokter) Berhasil Dikirim` },
-        },
-        durationMs: 72,
-      });
+        `Task 5 (Mulai Layanan Dokter) untuk ${item.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+      );
     }
   };
 
@@ -470,45 +483,34 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setQueues(updatedQueues);
 
-    // Persist to Server Database
-    try {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update_queue',
-          payload: {
-            id,
-            updates: {
-              status: 'SELESAI',
-              waktuSelesai,
-              bpjsTaskId,
-            },
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_queue',
+        payload: {
+          id,
+          updates: {
+            status: 'SELESAI',
+            waktuSelesai,
+            bpjsTaskId,
           },
-        }),
-      });
-    } catch {}
+        },
+      }),
+    }).catch(() => {});
 
     const item = updatedQueues.find((q) => q.id === id);
     if (item) {
-      const headers = await getBpjsHeaders(bpjsConfig);
-      addBridgingLog({
-        timestamp: new Date().toISOString(),
-        endpoint: '/antrean/updatewaktu',
-        method: 'POST',
-        requestHeader: headers,
-        requestPayload: {
+      const targetTask = item.poliKode === 'FAR' ? 7 : 6;
+      await dispatchBridgingTask(
+        '/antrean/updatewaktu',
+        {
           kodebooking: item.kodeBooking,
-          taskid: item.poliKode === 'FAR' ? 7 : 6,
+          taskid: targetTask,
           waktu: Date.now(),
         },
-        responseStatus: 200,
-        responsePayload: {
-          metaData: { code: 200, message: 'Ok' },
-          response: { status: `Pelayanan Pasien Selesai. Data bridging terupdate.` },
-        },
-        durationMs: 58,
-      });
+        `Task ${targetTask} (Selesai Layanan) untuk ${item.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+      );
     }
   };
 
@@ -517,16 +519,14 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       prev.map((q) => (q.id === id ? { ...q, status: 'DILEWATI' as const } : q))
     );
 
-    try {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update_queue',
-          payload: { id, updates: { status: 'DILEWATI' } },
-        }),
-      });
-    } catch {}
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_queue',
+        payload: { id, updates: { status: 'DILEWATI' } },
+      }),
+    }).catch(() => {});
   };
 
   const cancelQueue = async (id: string) => {
@@ -535,35 +535,24 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       prev.map((q) => (q.id === id ? { ...q, status: 'BATAL' as const } : q))
     );
 
-    try {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update_queue',
-          payload: { id, updates: { status: 'BATAL' } },
-        }),
-      });
-    } catch {}
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_queue',
+        payload: { id, updates: { status: 'BATAL' } },
+      }),
+    }).catch(() => {});
 
     if (item) {
-      const headers = await getBpjsHeaders(bpjsConfig);
-      addBridgingLog({
-        timestamp: new Date().toISOString(),
-        endpoint: '/antrean/batal',
-        method: 'POST',
-        requestHeader: headers,
-        requestPayload: {
+      await dispatchBridgingTask(
+        '/antrean/batal',
+        {
           kodebooking: item.kodeBooking,
           keterangan: 'Dibatalkan oleh petugas faskes/pasien',
         },
-        responseStatus: 200,
-        responsePayload: {
-          metaData: { code: 200, message: 'Ok' },
-          response: { status: `Antrean ${item.nomorAntrean} dibatalkan di sistem BPJS` },
-        },
-        durationMs: 62,
-      });
+        `Pembatalan antrean ${item.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+      );
     }
   };
 
@@ -571,11 +560,9 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const item = queues.find((q) => q.id === id);
     if (!item) throw new Error('Antrean tidak ditemukan');
 
-    // Mark current as finished first
     await finishQueue(id);
 
-    // Create Pharmacy queue
-    const farmasiPoli = poliList.find((p) => p.kode === 'FAR') || poliList[3] || DEFAULT_POLI_LIST[3];
+    const farmasiPoli = poliList.find((p) => p.kode === 'FAR');
     const existingFar = queues.filter((q) => q.prefix === 'F');
     const nextNumber = existingFar.length > 0 ? Math.max(...existingFar.map((q) => q.nomorUrut)) + 1 : 1;
     const nomorAntrean = `F-${nextNumber.toString().padStart(3, '0')}`;
@@ -587,18 +574,18 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       nomorUrut: nextNumber,
       tipePasien: item.tipePasien,
       poliKode: 'FAR',
-      poliNama: 'Apotek & Farmasi',
-      dokterNama: farmasiPoli.dokter,
-      ruangNama: farmasiPoli.ruang,
+      poliNama: farmasiPoli?.nama || 'Apotek & Farmasi',
+      dokterNama: farmasiPoli?.dokter || '',
+      ruangNama: farmasiPoli?.ruang || 'Loket Farmasi',
       patientId: item.patientId,
       nik: item.nik,
       noBpjs: item.noBpjs,
       namaPasien: item.namaPasien,
       status: 'MENUNGGU',
       waktuDaftar: new Date().toISOString(),
-      estimasiWaktuTungguMenit: 6,
+      estimasiWaktuTungguMenit: farmasiPoli?.durasiRataRataMenit || 6,
       estimasiJamPanggil: 'Segera',
-      bpjsTaskId: 6, // Resep siap
+      bpjsTaskId: 6,
       kodeBooking: item.kodeBooking,
       keluhan: `Resep lanjutan dari ${item.poliNama}`,
       isSyncedBpjs: Boolean(bpjsConfig.isOnline),
@@ -607,28 +594,24 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setQueues((prev) => [...prev, farItem]);
 
-    try {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add_queue', payload: farItem }),
-      });
-    } catch {}
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add_queue', payload: farItem }),
+    }).catch(() => {});
 
     return farItem;
   };
 
   const updateBpjsConfig = (newConfig: Partial<BpjsBridgingConfig>) => {
     setBpjsConfig((prev) => ({ ...prev, ...newConfig }));
-    addSecurityLog('KEY_ROTATE', 'Konfigurasi kredensial BPJS Bridging diperbarui oleh admin.');
+    addSecurityLog('KEY_ROTATE', 'Konfigurasi kredensial BPJS Bridging diperbarui di MySQL.');
 
-    try {
-      fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update_config', payload: newConfig }),
-      });
-    } catch {}
+    fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_config', payload: newConfig }),
+    }).catch(() => {});
   };
 
   const testBridgingPing = async (customConfig?: Partial<BpjsBridgingConfig>) => {
@@ -672,7 +655,6 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         durationMs: latencyMs,
       });
 
-      // Update state isOnline
       updateBpjsConfig({ ...customConfig, isOnline: isWhitelisted });
 
       return {
@@ -695,20 +677,22 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const resetToSampleData = async () => {
+  const refreshFromDb = async () => {
     try {
-      const res = await fetch('/api/db');
+      const res = await fetch('/api/db', { cache: 'no-store' });
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
           setQueues(json.data.queues || []);
           setPatients(json.data.patients || []);
           if (json.data.config) setBpjsConfig(json.data.config);
-          if (json.data.poliList) setPoliList(json.data.poliList);
+          if (Array.isArray(json.data.poliList)) setPoliList(json.data.poliList);
+          if (Array.isArray(json.data.securityLogs)) setSecurityLogs(json.data.securityLogs);
+          if (Array.isArray(json.data.bridgingLogs)) setBridgingLogs(json.data.bridgingLogs);
         }
       }
     } catch (e) {
-      console.warn('Gagal memuat ulang data dari database:', e);
+      console.warn('Gagal memuat ulang data dari database MySQL:', e);
     }
   };
 
@@ -734,7 +718,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateBpjsConfig,
         testBridgingPing,
         addSecurityLog,
-        resetToSampleData,
+        refreshFromDb,
       }}
     >
       {children}

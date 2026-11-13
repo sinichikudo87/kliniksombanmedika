@@ -13,6 +13,40 @@ export interface MySqlConfig {
   ssl?: boolean;
 }
 
+export interface PcareVisitRecord {
+  id: string;
+  noKunjungan: string | null;
+  noRujukan?: string | null;
+  queueId?: string | null;
+  noKartu: string;
+  nik?: string | null;
+  namaPasien: string;
+  poliKode: string;
+  poliNama: string;
+  sistole?: number;
+  diastole?: number;
+  heartRate?: number;
+  respRate?: number;
+  suhu?: string;
+  beratBadan?: number | null;
+  tinggiBadan?: number | null;
+  kesadaran?: string;
+  anamnesa?: string | null;
+  diagnosaKode: string;
+  diagnosaNama: string;
+  terapiObat?: string | null;
+  statusPulang: string;
+  ppkRujuk?: string | null;
+  namaPpkRujuk?: string | null;
+  poliRujuk?: string | null;
+  tglRencanaRujuk?: string | null;
+  catatanRujukan?: string | null;
+  isBridged: boolean;
+  bridgingStatus: string;
+  bpjsResponse?: any;
+  createdAt?: string;
+}
+
 // Production VPS configuration - MySQL runs locally on the VPS
 export const getDefaultMySqlConfig = (): MySqlConfig => {
   const host = process.env.MYSQL_HOST || 'localhost';
@@ -205,7 +239,7 @@ export async function initMySqlSchema() {
       nik VARCHAR(16) UNIQUE NOT NULL,
       no_bpjs VARCHAR(13) NULL,
       nama VARCHAR(150) NOT NULL,
-      tgl_lahir DATE NOT NULL,
+      tgl_lahir DATE NULL,
       jenis_kelamin ENUM('L', 'P') NOT NULL,
       no_hp VARCHAR(20) NULL,
       alamat TEXT NULL,
@@ -304,6 +338,43 @@ export async function initMySqlSchema() {
       INDEX idx_rs_nama (nama)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+    CREATE TABLE IF NOT EXISTS pcare_visits (
+      id VARCHAR(50) PRIMARY KEY,
+      no_kunjungan VARCHAR(50) NULL,
+      no_rujukan VARCHAR(50) NULL,
+      queue_id VARCHAR(50) NULL,
+      no_kartu VARCHAR(20) NOT NULL,
+      nik VARCHAR(16) NULL,
+      nama_pasien VARCHAR(150) NOT NULL,
+      poli_kode VARCHAR(20) NOT NULL,
+      poli_nama VARCHAR(100) NOT NULL,
+      sistole INT DEFAULT 120,
+      diastole INT DEFAULT 80,
+      heart_rate INT DEFAULT 78,
+      resp_rate INT DEFAULT 18,
+      suhu VARCHAR(10) DEFAULT '36.5',
+      berat_badan DECIMAL(5,2) NULL,
+      tinggi_badan DECIMAL(5,2) NULL,
+      kesadaran VARCHAR(10) DEFAULT '01',
+      anamnesa TEXT NULL,
+      diagnosa_kode VARCHAR(20) NOT NULL,
+      diagnosa_nama VARCHAR(255) NOT NULL,
+      terapi_obat TEXT NULL,
+      status_pulang VARCHAR(80) NOT NULL,
+      ppk_rujuk VARCHAR(20) NULL,
+      nama_ppk_rujuk VARCHAR(200) NULL,
+      poli_rujuk VARCHAR(20) NULL,
+      tgl_rencana_rujuk VARCHAR(20) NULL,
+      catatan_rujukan TEXT NULL,
+      is_bridged TINYINT(1) NOT NULL DEFAULT 0,
+      bridging_status VARCHAR(60) NOT NULL DEFAULT 'SAVED_MYSQL_PENDING_BRIDGING',
+      bpjs_response JSON NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_pcare_nokunjungan (no_kunjungan),
+      INDEX idx_pcare_nokartu (no_kartu),
+      INDEX idx_pcare_created (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
     INSERT INTO users (id, username, password_hash, nama_lengkap, role, nip, kd_faskes, is_active)
     VALUES
       ('usr-1', '0195U091-dev', '000000', 'Operator Bridging Antrean BPJS (Mobile JKN)', 'ADMIN_BRIDGING', '198805122010011001', '019U901', 1),
@@ -315,10 +386,10 @@ export async function initMySqlSchema() {
 
     INSERT INTO poliklinik (kode, nama, prefix, dokter_nama, sip, ruang, durasi_rata_rata_menit, kuota_total, kuota_terpakai, badge_color, icon_name)
     VALUES
-      ('UMU', 'Poli Umum', 'A', 'Dokter Pemeriksa', '', 'Ruang 01 (Lantai 1)', 10, 60, 0, 'emerald', 'Stethoscope'),
-      ('GIG', 'Poli Gigi & Mulut', 'B', 'drg. Siti Nurhaliza', '', 'Ruang 02 (Lantai 1)', 15, 30, 0, 'blue', 'Smile'),
-      ('KIA', 'Poli KIA & KB', 'C', 'Bdn. Rahmawati, S.Tr.Keb', '', 'Ruang 03 (Lantai 1)', 12, 40, 0, 'purple', 'HeartPulse'),
-      ('FAR', 'Apotek & Farmasi', 'F', 'Apt. Hendra Pratama, S.Farm', '', 'Loket Farmasi Utama', 6, 100, 0, 'amber', 'Pill')
+      ('UMU', 'Poli Umum', 'A', '', '', 'Ruang 01 (Lantai 1)', 10, 60, 0, 'emerald', 'Stethoscope'),
+      ('GIG', 'Poli Gigi & Mulut', 'B', '', '', 'Ruang 02 (Lantai 1)', 15, 30, 0, 'blue', 'Smile'),
+      ('KIA', 'Poli KIA & KB', 'C', '', '', 'Ruang 03 (Lantai 1)', 12, 40, 0, 'purple', 'HeartPulse'),
+      ('FAR', 'Apotek & Farmasi', 'F', '', '', 'Loket Farmasi Utama', 6, 100, 0, 'amber', 'Pill')
     ON DUPLICATE KEY UPDATE nama = VALUES(nama);
 
     INSERT INTO faskes_config (id, kd_faskes, nama_faskes, cons_id, secret_key, user_key, dev_user, dev_pass, environment, base_url, is_online)
@@ -558,14 +629,14 @@ export const mySqlDb = {
       patient.nik,
       patient.noBpjs || '',
       patient.nama,
-      patient.tglLahir || '1990-01-01',
+      patient.tglLahir || null,
       patient.jenisKelamin,
       patient.noHp || '',
       patient.alamat || '',
       patient.statusBpjs || 'AKTIF',
-      patient.jenisPeserta || 'Umum',
+      patient.jenisPeserta || '',
       patient.faskesTingkat1 || '',
-      patient.kelasRawat || 'Kelas 3',
+      patient.kelasRawat || '',
       patient.encryptedData || '',
       patient.createdAt ? new Date(patient.createdAt) : new Date(),
     ]);
@@ -915,15 +986,15 @@ export const mySqlDb = {
   },
 
   async getReferralHospitals(search?: string, province?: string): Promise<{
-    source: 'MYSQL' | 'MASTER_DATASET';
+    source: 'MYSQL';
     hospitals: ReferralHospital[];
+    error?: string;
   }> {
     const cleanSearch = (search || '').trim().toLowerCase();
     const cleanProv = (province || '').trim();
 
     try {
       const pool = getMySqlPool();
-      // Ensure rs_rujukan exists and has initial Indonesian hospitals seed
       await pool.query(`
         CREATE TABLE IF NOT EXISTS rs_rujukan (
           id VARCHAR(50) PRIMARY KEY,
@@ -982,18 +1053,13 @@ export const mySqlDb = {
           isBpjs: r.is_bpjs === 1,
         })),
       };
-    } catch {
-      const filtered = INDONESIA_REFERRAL_HOSPITALS.filter((rs) => {
-        if (cleanProv && cleanProv !== 'ALL' && rs.provinsi !== cleanProv) return false;
-        if (cleanSearch) {
-          const hay = `${rs.kodeFaskes} ${rs.nama} ${rs.kota} ${rs.provinsi} ${rs.jenis}`.toLowerCase();
-          return hay.includes(cleanSearch);
-        }
-        return true;
-      });
+    } catch (err: any) {
+      lastConnectionStatus.connected = false;
+      lastConnectionStatus.error = err?.message;
       return {
-        source: 'MASTER_DATASET',
-        hospitals: filtered,
+        source: 'MYSQL',
+        hospitals: [],
+        error: err?.message || 'Koneksi MySQL tabel rs_rujukan tidak aktif',
       };
     }
   },
@@ -1073,6 +1139,179 @@ export const mySqlDb = {
       return {
         success: false,
         message: `Gagal seed RS Rujukan ke MySQL: ${err?.message || 'Koneksi gagal'}`,
+      };
+    }
+  },
+
+  async ensurePcareVisitsTable(pool: mysql.Pool) {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS pcare_visits (
+        id VARCHAR(50) PRIMARY KEY,
+        no_kunjungan VARCHAR(50) NULL,
+        no_rujukan VARCHAR(50) NULL,
+        queue_id VARCHAR(50) NULL,
+        no_kartu VARCHAR(20) NOT NULL,
+        nik VARCHAR(16) NULL,
+        nama_pasien VARCHAR(150) NOT NULL,
+        poli_kode VARCHAR(20) NOT NULL,
+        poli_nama VARCHAR(100) NOT NULL,
+        sistole INT DEFAULT 120,
+        diastole INT DEFAULT 80,
+        heart_rate INT DEFAULT 78,
+        resp_rate INT DEFAULT 18,
+        suhu VARCHAR(10) DEFAULT '36.5',
+        berat_badan DECIMAL(5,2) NULL,
+        tinggi_badan DECIMAL(5,2) NULL,
+        kesadaran VARCHAR(10) DEFAULT '01',
+        anamnesa TEXT NULL,
+        diagnosa_kode VARCHAR(20) NOT NULL,
+        diagnosa_nama VARCHAR(255) NOT NULL,
+        terapi_obat TEXT NULL,
+        status_pulang VARCHAR(80) NOT NULL,
+        ppk_rujuk VARCHAR(20) NULL,
+        nama_ppk_rujuk VARCHAR(200) NULL,
+        poli_rujuk VARCHAR(20) NULL,
+        tgl_rencana_rujuk VARCHAR(20) NULL,
+        catatan_rujukan TEXT NULL,
+        is_bridged TINYINT(1) NOT NULL DEFAULT 0,
+        bridging_status VARCHAR(60) NOT NULL DEFAULT 'SAVED_MYSQL_PENDING_BRIDGING',
+        bpjs_response JSON NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_pcare_nokunjungan (no_kunjungan),
+        INDEX idx_pcare_nokartu (no_kartu),
+        INDEX idx_pcare_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+  },
+
+  async getPcareVisits(): Promise<{
+    success: boolean;
+    source: 'MYSQL';
+    visits: PcareVisitRecord[];
+    error?: string;
+  }> {
+    try {
+      const pool = getMySqlPool();
+      await this.ensurePcareVisitsTable(pool);
+      const [rows]: [any, any] = await pool.query(
+        'SELECT * FROM pcare_visits ORDER BY created_at DESC LIMIT 100'
+      );
+      lastConnectionStatus.connected = true;
+      lastConnectionStatus.error = undefined;
+
+      return {
+        success: true,
+        source: 'MYSQL',
+        visits: (rows || []).map((r: any) => ({
+          id: r.id,
+          noKunjungan: r.no_kunjungan || null,
+          noRujukan: r.no_rujukan || null,
+          queueId: r.queue_id || null,
+          noKartu: r.no_kartu || '',
+          nik: r.nik || null,
+          namaPasien: r.nama_pasien || '',
+          poliKode: r.poli_kode || '',
+          poliNama: r.poli_nama || '',
+          sistole: r.sistole ?? undefined,
+          diastole: r.diastole ?? undefined,
+          heartRate: r.heart_rate ?? undefined,
+          respRate: r.resp_rate ?? undefined,
+          suhu: r.suhu || undefined,
+          beratBadan: r.berat_badan !== null && r.berat_badan !== undefined ? Number(r.berat_badan) : null,
+          tinggiBadan: r.tinggi_badan !== null && r.tinggi_badan !== undefined ? Number(r.tinggi_badan) : null,
+          kesadaran: r.kesadaran || '01',
+          anamnesa: r.anamnesa || null,
+          diagnosaKode: r.diagnosa_kode || '',
+          diagnosaNama: r.diagnosa_nama || '',
+          terapiObat: r.terapi_obat || null,
+          statusPulang: r.status_pulang || '',
+          ppkRujuk: r.ppk_rujuk || null,
+          namaPpkRujuk: r.nama_ppk_rujuk || null,
+          poliRujuk: r.poli_rujuk || null,
+          tglRencanaRujuk: r.tgl_rencana_rujuk || null,
+          catatanRujukan: r.catatan_rujukan || null,
+          isBridged: r.is_bridged === 1 || r.is_bridged === true,
+          bridgingStatus: r.bridging_status || 'SAVED_MYSQL_PENDING_BRIDGING',
+          bpjsResponse: r.bpjs_response ? (typeof r.bpjs_response === 'string' ? JSON.parse(r.bpjs_response) : r.bpjs_response) : null,
+          createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+        })),
+      };
+    } catch (err: any) {
+      lastConnectionStatus.connected = false;
+      lastConnectionStatus.error = err?.message;
+      return {
+        success: false,
+        source: 'MYSQL',
+        visits: [],
+        error: err?.message || 'Gagal membaca tabel pcare_visits dari MySQL',
+      };
+    }
+  },
+
+  async addPcareVisit(visit: PcareVisitRecord): Promise<{
+    success: boolean;
+    visit?: PcareVisitRecord;
+    error?: string;
+  }> {
+    try {
+      const pool = getMySqlPool();
+      await this.ensurePcareVisitsTable(pool);
+      await pool.query(
+        `INSERT INTO pcare_visits (
+          id, no_kunjungan, no_rujukan, queue_id, no_kartu, nik, nama_pasien,
+          poli_kode, poli_nama, sistole, diastole, heart_rate, resp_rate, suhu,
+          berat_badan, tinggi_badan, kesadaran, anamnesa, diagnosa_kode, diagnosa_nama,
+          terapi_obat, status_pulang, ppk_rujuk, nama_ppk_rujuk, poli_rujuk,
+          tgl_rencana_rujuk, catatan_rujukan, is_bridged, bridging_status, bpjs_response
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          no_kunjungan = VALUES(no_kunjungan),
+          no_rujukan = VALUES(no_rujukan),
+          is_bridged = VALUES(is_bridged),
+          bridging_status = VALUES(bridging_status),
+          bpjs_response = VALUES(bpjs_response)`,
+        [
+          visit.id,
+          visit.noKunjungan || null,
+          visit.noRujukan || null,
+          visit.queueId || null,
+          visit.noKartu,
+          visit.nik || null,
+          visit.namaPasien,
+          visit.poliKode,
+          visit.poliNama,
+          visit.sistole ?? null,
+          visit.diastole ?? null,
+          visit.heartRate ?? null,
+          visit.respRate ?? null,
+          visit.suhu || null,
+          visit.beratBadan ?? null,
+          visit.tinggiBadan ?? null,
+          visit.kesadaran || '01',
+          visit.anamnesa || null,
+          visit.diagnosaKode,
+          visit.diagnosaNama,
+          visit.terapiObat || null,
+          visit.statusPulang,
+          visit.ppkRujuk || null,
+          visit.namaPpkRujuk || null,
+          visit.poliRujuk || null,
+          visit.tglRencanaRujuk || null,
+          visit.catatanRujukan || null,
+          visit.isBridged ? 1 : 0,
+          visit.bridgingStatus,
+          visit.bpjsResponse ? JSON.stringify(visit.bpjsResponse) : null,
+        ]
+      );
+      lastConnectionStatus.connected = true;
+      lastConnectionStatus.error = undefined;
+      return { success: true, visit };
+    } catch (err: any) {
+      lastConnectionStatus.connected = false;
+      lastConnectionStatus.error = err?.message;
+      return {
+        success: false,
+        error: err?.message || 'Gagal menyimpan kunjungan PCare ke MySQL',
       };
     }
   },

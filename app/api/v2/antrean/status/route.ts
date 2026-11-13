@@ -7,9 +7,9 @@ async function handleStatusV2(kodepoli?: string | null, tanggalperiksa?: string 
     const pool = getMySqlPool();
 
     // Query data poli dari MySQL
-    let namaPoli = 'POLI UMUM';
-    let namaDokter = 'dr. Machmujur, M.Kes';
-    let kuotaTotal = 50;
+    let namaPoli = '';
+    let namaDokter = '';
+    let kuotaTotal = 0;
     let kuotaTerpakai = 0;
 
     const [poliRows]: [any, any] = await pool.query(
@@ -19,8 +19,8 @@ async function handleStatusV2(kodepoli?: string | null, tanggalperiksa?: string 
 
     if (poliRows && poliRows.length > 0) {
       namaPoli = poliRows[0].nama;
-      namaDokter = poliRows[0].dokter_nama || namaDokter;
-      kuotaTotal = poliRows[0].kuota_total || 50;
+      namaDokter = poliRows[0].dokter_nama || '';
+      kuotaTotal = poliRows[0].kuota_total || 0;
       kuotaTerpakai = poliRows[0].kuota_terpakai || 0;
     }
 

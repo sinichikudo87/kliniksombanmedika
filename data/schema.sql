@@ -215,6 +215,46 @@ CREATE TABLE IF NOT EXISTS `rs_rujukan` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
+-- 8. TABEL RIWAYAT KUNJUNGAN & RUJUKAN PCARE (pcare_visits)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `pcare_visits` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `no_kunjungan` VARCHAR(50) DEFAULT NULL,
+  `no_rujukan` VARCHAR(50) DEFAULT NULL,
+  `queue_id` VARCHAR(50) DEFAULT NULL,
+  `no_kartu` VARCHAR(20) NOT NULL,
+  `nik` VARCHAR(16) DEFAULT NULL,
+  `nama_pasien` VARCHAR(150) NOT NULL,
+  `poli_kode` VARCHAR(20) NOT NULL,
+  `poli_nama` VARCHAR(100) NOT NULL,
+  `sistole` INT DEFAULT 120,
+  `diastole` INT DEFAULT 80,
+  `heart_rate` INT DEFAULT 78,
+  `resp_rate` INT DEFAULT 18,
+  `suhu` VARCHAR(10) DEFAULT '36.5',
+  `berat_badan` DECIMAL(5,2) DEFAULT NULL,
+  `tinggi_badan` DECIMAL(5,2) DEFAULT NULL,
+  `kesadaran` VARCHAR(10) DEFAULT '01',
+  `anamnesa` TEXT DEFAULT NULL,
+  `diagnosa_kode` VARCHAR(20) NOT NULL,
+  `diagnosa_nama` VARCHAR(255) NOT NULL,
+  `terapi_obat` TEXT DEFAULT NULL,
+  `status_pulang` VARCHAR(80) NOT NULL,
+  `ppk_rujuk` VARCHAR(20) DEFAULT NULL,
+  `nama_ppk_rujuk` VARCHAR(200) DEFAULT NULL,
+  `poli_rujuk` VARCHAR(20) DEFAULT NULL,
+  `tgl_rencana_rujuk` VARCHAR(20) DEFAULT NULL,
+  `catatan_rujukan` TEXT DEFAULT NULL,
+  `is_bridged` TINYINT(1) NOT NULL DEFAULT 0,
+  `bridging_status` VARCHAR(60) NOT NULL DEFAULT 'SAVED_MYSQL_PENDING_BRIDGING',
+  `bpjs_response` JSON DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_pcare_nokunjungan` (`no_kunjungan`),
+  INDEX `idx_pcare_nokartu` (`no_kartu`),
+  INDEX `idx_pcare_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------------------------
 -- SEED DATA AWAL: MASTER POLIKLINIK & DOKTER (poliklinik)
 -- ------------------------------------------------------------------------------
 INSERT INTO `poliklinik` (`kode`, `nama`, `prefix`, `dokter_nama`, `sip`, `ruang`, `durasi_rata_rata_menit`, `kuota_total`, `kuota_terpakai`, `badge_color`, `icon_name`)

@@ -233,6 +233,7 @@ const BridgingSettingsModalInner: React.FC<{
         customBaseUrl: customWsDomain,
         namaFaskes,
         kdFaskes,
+        devUser: userPcareDev,
         environment,
       });
       if (ok) {
@@ -761,7 +762,7 @@ const BridgingSettingsModalInner: React.FC<{
                   }`}
                 >
                   <option value="pending">Nonaktif / Default Off — Menunggu Whitelist Domain BPJS</option>
-                  <option value="online">Aktif — Sudah Di-Whitelist (Domain https://kliniksombanmedika.id/)</option>
+                  <option value="online">Aktif — Sudah Di-Whitelist ({customWsDomain})</option>
                 </select>
                 <p className="text-[11px] text-slate-500">
                   {isOnline
@@ -807,7 +808,7 @@ const BridgingSettingsModalInner: React.FC<{
                         </div>
                       </div>
                       <p className="text-slate-500 font-sans text-xs">
-                        Kredensial valid dan Domain https://kliniksombanmedika.id/ telah terhubung ke Web Service BPJS ({environment === 'tester' ? 'Development / Tester' : 'Production'}).
+                        Kredensial valid dan domain {customWsDomain} telah terhubung ke Web Service BPJS ({environment === 'tester' ? 'Development / Tester' : 'Production'}).
                       </p>
                     </div>
                   ) : (
@@ -842,8 +843,8 @@ const BridgingSettingsModalInner: React.FC<{
                       {JSON.stringify(
                         pingResult.raw || {
                           response: {
-                            faskes: namaFaskes || 'KLINIK SOMBAN MEDIKA',
-                            kdFaskes: kdFaskes || '019U901',
+                            faskes: namaFaskes || '-',
+                            kdFaskes: kdFaskes || '-',
                             environment: environment === 'tester' ? 'development' : 'production',
                             mode: environment === 'tester' ? 'Development / Tester (Trustmark Dev)' : 'Production (BPJS Live)',
                             status: pingResult.isWhitelisted ? 'ACTIVE_BRIDGED' : 'PENDING_WHITELIST',
@@ -928,7 +929,7 @@ const BridgingSettingsModalInner: React.FC<{
             <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3">
               <h4 className="font-bold text-slate-900 text-xs flex items-center gap-2">
                 <ArrowRight className="w-4 h-4 text-emerald-600" />
-                <span>Bagaimana Antrean Online 2 Arah Bekerja di Klinik Somban Medika?</span>
+                <span>Bagaimana Antrean Online 2 Arah Bekerja di {namaFaskes || 'Faskes'}?</span>
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
@@ -942,7 +943,7 @@ const BridgingSettingsModalInner: React.FC<{
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900">Inbound (9 WS FKTP)</span>
                   </div>
                   <p className="text-slate-700 leading-relaxed text-[11px]">
-                    Ketika pasien membuka aplikasi <strong>Mobile JKN</strong> di smartphone dan memilih <strong>Klinik Somban Medika</strong>:
+                    Ketika pasien membuka aplikasi <strong>Mobile JKN</strong> di smartphone dan memilih <strong>{namaFaskes || 'Faskes'}</strong>:
                   </p>
                   <ul className="list-disc pl-4 space-y-1 text-slate-600 text-[10.5px]">
                     <li>Server BPJS memanggil <code>/api/antrean/status</code> untuk melihat sisa kuota poli.</li>
@@ -1165,8 +1166,8 @@ const BridgingSettingsModalInner: React.FC<{
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 text-[11px]">
                 <div className="bg-white/10 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">
                   <span className="text-emerald-200 block text-[10px]">Faskes:</span>
-                  <strong className="text-white block font-semibold truncate">{namaFaskes || 'TPMD DR MACHMUJUR'}</strong>
-                  <span className="font-mono text-emerald-300">{kdFaskes || '019U901'}</span>
+                  <strong className="text-white block font-semibold truncate">{namaFaskes || '-'}</strong>
+                  <span className="font-mono text-emerald-300">{kdFaskes || '-'}</span>
                 </div>
                 <div className="bg-white/10 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">
                   <span className="text-emerald-200 block text-[10px]">Mode Server:</span>
@@ -1181,7 +1182,7 @@ const BridgingSettingsModalInner: React.FC<{
                 <div className="bg-white/10 backdrop-blur-xs p-2.5 rounded-xl border border-white/10">
                   <span className="text-emerald-200 block text-[10px]">User Bridging:</span>
                   <div className="flex items-center gap-2 font-mono text-emerald-300">
-                    <span>User: <strong className="text-white">{userPcareDev || '0195U091-dev'}</strong></span>
+                    <span>User: <strong className="text-white">{userPcareDev || '-'}</strong></span>
                   </div>
                 </div>
               </div>
@@ -1303,13 +1304,13 @@ const BridgingSettingsModalInner: React.FC<{
                                 rowSpan={WS_FKTP_ENDPOINTS.length}
                                 className="py-3 px-3 border-r border-slate-300 font-mono font-bold text-slate-800 bg-slate-50/50 align-top"
                               >
-                                {kdFaskes || '019U901'}
+                                {kdFaskes || '-'}
                               </td>
                               <td
                                 rowSpan={WS_FKTP_ENDPOINTS.length}
                                 className="py-3 px-3 border-r border-slate-300 font-bold text-slate-900 bg-slate-50/50 align-top"
                               >
-                                {namaFaskes || 'TPMD DR MACHMUJUR'}
+                                {namaFaskes || '-'}
                               </td>
                               <td
                                 rowSpan={WS_FKTP_ENDPOINTS.length}
@@ -1327,7 +1328,7 @@ const BridgingSettingsModalInner: React.FC<{
                                 rowSpan={WS_FKTP_ENDPOINTS.length}
                                 className="py-3 px-3 border-r border-slate-300 font-medium text-slate-800 bg-slate-50/50 align-top"
                               >
-                                {namaFaskes || 'TPMD DR MACHMUJUR'}
+                                {namaFaskes || '-'}
                               </td>
                               <td
                                 rowSpan={WS_FKTP_ENDPOINTS.length}
@@ -1389,7 +1390,7 @@ const BridgingSettingsModalInner: React.FC<{
                                 rowSpan={WS_FKTP_ENDPOINTS.length}
                                 className="py-3 px-3 border-r border-slate-300 font-mono font-bold text-slate-800 bg-slate-50/50 align-top"
                               >
-                                {userPcareDev || '0195U091-dev'}
+                                {userPcareDev || '-'}
                               </td>
                               <td
                                 rowSpan={WS_FKTP_ENDPOINTS.length}

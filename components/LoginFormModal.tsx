@@ -23,14 +23,6 @@ interface LoginFormModalProps {
   onClose: () => void;
 }
 
-const REGISTERED_ACCOUNTS = [
-  { username: 'dr.machmujur', label: 'Dokter', role: 'DOKTER' },
-  { username: 'admin', label: 'Admin RME', role: 'ADMIN_RME' },
-  { username: 'loket01', label: 'Loket 01', role: 'PETUGAS_LOKET' },
-  { username: 'farmasi01', label: 'Farmasi', role: 'PETUGAS_FARMASI' },
-  { username: '0195U091-dev', label: 'Bridging BPJS', role: 'ADMIN_BRIDGING' },
-];
-
 export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose }) => {
   const { login, isLoading } = useAuth();
 
@@ -130,33 +122,6 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
 
         {/* Form Body */}
         <div className="p-4 sm:p-5 space-y-3.5 relative z-10">
-          {/* Quick Account Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-semibold text-slate-500">Pilih Akun Cepat:</span>
-              <span className="text-[10px] text-emerald-700 font-mono font-medium">Awal: 000000</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {REGISTERED_ACCOUNTS.map((acc) => (
-                <button
-                  key={acc.username}
-                  type="button"
-                  onClick={() => {
-                    setUsername(acc.username);
-                    if (!password) setPassword('000000');
-                  }}
-                  className={`text-[11px] px-2.5 py-1 rounded-lg border font-mono font-medium transition-colors cursor-pointer ${
-                    username === acc.username
-                      ? 'bg-emerald-50 border-emerald-500 text-emerald-900 ring-1 ring-emerald-500/20'
-                      : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                  }`}
-                >
-                  {acc.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-3 pt-1">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
@@ -168,7 +133,7 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Contoh: dr.machmujur, admin, loket01..."
+                  placeholder="Masukkan username akun petugas"
                   className="w-full text-xs py-2.5 pl-9 pr-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono focus:border-emerald-600 focus:bg-white focus:outline-none transition-colors"
                 />
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
@@ -180,7 +145,6 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
                 <label className="block text-xs font-bold text-slate-700 uppercase">
                   Password Akun
                 </label>
-                <span className="text-[10px] text-slate-500 font-mono">Password awal: 000000</span>
               </div>
               <div className="relative">
                 <input
@@ -245,7 +209,7 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Sistem Faskes Terhubung</span>
             </span>
-            <span>TPMD DR MACHMUJUR</span>
+            <span>Autentikasi MySQL</span>
           </div>
         </div>
       </div>

@@ -499,7 +499,7 @@ export const SecurityDatabaseView: React.FC = () => {
   };
 
   // Encryption Playground
-  const [plainInput, setPlainInput] = useState<string>('Diagnosa: ISPA Akut (J06.9). Terapi: Paracetamol 500mg 3x1, Amoxicillin 500mg 3x1.');
+  const [plainInput, setPlainInput] = useState<string>('');
   const [encryptedOutput, setEncryptedOutput] = useState<string>('');
   const [decryptedOutput, setDecryptedOutput] = useState<string>('');
   const [copied, setCopied] = useState<boolean>(false);
@@ -673,7 +673,7 @@ export const SecurityDatabaseView: React.FC = () => {
               }`}
             >
               <KeyRound className="w-3.5 h-3.5 text-amber-200" />
-              <span>Kelola User & Reset Password ({usersList.length || 5})</span>
+              <span>Kelola User & Reset Password ({usersList.length})</span>
             </button>
 
             <button
@@ -823,7 +823,7 @@ export const SecurityDatabaseView: React.FC = () => {
               <div>
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
                   <Users className="w-4 h-4 text-slate-600" />
-                  <span>Daftar Akun Petugas Terdaftar ({usersList.length || 5})</span>
+                  <span>Daftar Akun Petugas Terdaftar ({usersList.length})</span>
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">Akun Petugas Terverifikasi Sistem Faskes</p>
               </div>
@@ -858,7 +858,7 @@ export const SecurityDatabaseView: React.FC = () => {
                         <tr key={u.id || u.username} className="hover:bg-slate-50/70 transition-colors">
                           <td className="py-3.5 px-4">
                             <div className="font-bold text-slate-900">{u.nama_lengkap || u.namaLengkap}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">Faskes: {u.kd_faskes || u.kdFaskes || '019U901'}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">Faskes: {u.kd_faskes || u.kdFaskes || bpjsConfig.kdFaskes || '-'}</div>
                           </td>
                           <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
                             {u.username}
@@ -1006,7 +1006,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   ) : (
                     <tr>
                       <td colSpan={6} className="text-center py-6 text-slate-400">
-                        Memuat data poliklinik dari database...
+                        Belum ada data poliklinik di database MySQL (atau koneksi MySQL belum aktif).
                       </td>
                     </tr>
                   )}
@@ -1046,7 +1046,7 @@ export const SecurityDatabaseView: React.FC = () => {
                       type="text"
                       value={editNamaLengkap}
                       onChange={(e) => setEditNamaLengkap(e.target.value)}
-                      placeholder="Contoh: dr. Machmujur, M.Kes"
+                      placeholder="Nama lengkap dan gelar petugas / dokter"
                       className="w-full py-2 px-3 rounded-xl border border-slate-300 font-medium text-slate-900 text-xs focus:ring-2 focus:ring-blue-500 bg-white"
                     />
                     <p className="text-[10px] text-slate-400 mt-1">Nama ini akan tampil di seluruh layar (Kios, TV Display, Loket, & RME).</p>
@@ -1164,7 +1164,7 @@ export const SecurityDatabaseView: React.FC = () => {
                       type="text"
                       value={editPoliSip}
                       onChange={(e) => setEditPoliSip(e.target.value)}
-                      placeholder="Contoh: 446/102/SIP-D/2024"
+                      placeholder="Nomor SIP / lisensi praktik"
                       className="w-full py-2 px-3 rounded-xl border border-slate-300 font-mono text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
                     />
                   </div>
@@ -1175,7 +1175,7 @@ export const SecurityDatabaseView: React.FC = () => {
                       type="text"
                       value={editPoliRuang}
                       onChange={(e) => setEditPoliRuang(e.target.value)}
-                      placeholder="Contoh: Ruang 01 (Lantai 1)"
+                      placeholder="Nama ruangan atau loket pelayanan"
                       className="w-full py-2 px-3 rounded-xl border border-slate-300 font-medium text-slate-900 text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
                     />
                   </div>
@@ -1661,7 +1661,7 @@ export const SecurityDatabaseView: React.FC = () => {
                     <div className="font-bold text-slate-900 flex items-center justify-between">
                       <span>Akun Petugas</span>
                       <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
-                        {usersList.length || 5} akun
+                        {usersList.length} akun
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1">
@@ -1808,7 +1808,7 @@ export const SecurityDatabaseView: React.FC = () => {
               <div>
                 <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
                   <Database className="w-4 h-4 text-emerald-600" />
-                  <span>Struktur Layanan Data TPMD DR. MACHMUJUR</span>
+                  <span>Struktur Layanan Data {bpjsConfig.namaFaskes || 'Faskes'}</span>
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Data faskes tersimpan secara terstruktur, terotomatisasi, dan tersinkron ke seluruh antarmuka klinik.
@@ -1857,11 +1857,11 @@ export const SecurityDatabaseView: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900">3. Konfigurasi Sistem & BPJS</span>
                   <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">
-                    KD 019U901
+                    KD {bpjsConfig.kdFaskes || '-'}
                   </span>
                 </div>
                 <p className="text-slate-600 text-[11px] leading-relaxed">
-                  Menyimpan konfigurasi bridging BPJS (ConsID 11495, SecretKey, UserKey, Environment Tester/Production).
+                  Menyimpan konfigurasi bridging BPJS ({bpjsConfig.consId ? `ConsID ${bpjsConfig.consId}` : 'ConsID MySQL'}, SecretKey, UserKey, Environment Tester/Production).
                 </p>
               </div>
 
@@ -1933,7 +1933,7 @@ export const SecurityDatabaseView: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-slate-900 text-sm">Rekam Data Pasien Faskes (TPMD Dr. Machmujur)</h3>
+              <h3 className="font-bold text-slate-900 text-sm">Rekam Data Pasien Faskes ({bpjsConfig.namaFaskes || 'MySQL'})</h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Mode saat ini:{' '}
                 <strong className={isUnlocked ? 'text-emerald-700' : 'text-slate-700'}>
@@ -2011,6 +2011,7 @@ export const SecurityDatabaseView: React.FC = () => {
                 value={plainInput}
                 onChange={(e) => setPlainInput(e.target.value)}
                 rows={4}
+                placeholder="Ketik teks sensitif / catatan medis untuk diuji enkripsi AES-256-GCM..."
                 className="w-full p-3 text-xs border border-slate-300 rounded-xl font-mono focus:border-emerald-600 focus:outline-none"
               />
               <button

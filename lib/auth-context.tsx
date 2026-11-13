@@ -29,16 +29,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState<boolean>(false);
 
-  // Restore saved session from MySQL server endpoint & clear all localStorage
+  // Restore saved session purely from MySQL server endpoint
   useEffect(() => {
     let isMounted = true;
-
-    // Purge browser localStorage completely - no client storage used
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.clear();
-      } catch {}
-    }
 
     const restoreSession = async () => {
       try {
@@ -90,13 +83,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(updatedUser);
         setLastLoginSource(data.source || 'MYSQL');
         setIsLoginModalOpen(false);
-
-        // Ensure localStorage remains empty
-        if (typeof window !== 'undefined') {
-          try {
-            window.localStorage.clear();
-          } catch {}
-        }
 
         if (mustChange) {
           setIsChangePasswordModalOpen(true);
@@ -152,13 +138,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(updatedUser);
         setIsChangePasswordModalOpen(false);
 
-        // Ensure localStorage remains empty
-        if (typeof window !== 'undefined') {
-          try {
-            window.localStorage.clear();
-          } catch {}
-        }
-
         return {
           success: true,
           message: data.message || 'Password baru berhasil disimpan di MySQL database.',
@@ -187,13 +166,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
     setLastLoginSource(null);
     setIsChangePasswordModalOpen(false);
-
-    // Completely clear any localStorage keys
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.clear();
-      } catch {}
-    }
   };
 
   return (

@@ -291,7 +291,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
           <div className="p-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
             <span className="text-[10px] text-slate-500 flex items-center gap-1">
               <Database className="w-3 h-3 text-emerald-600" />
-              <span>Sumber: {dataSource === 'MYSQL' ? 'MySQL Server (rs_rujukan)' : 'Master RS Indonesia'}</span>
+              <span>Sumber: {dataSource === 'MYSQL' ? 'MySQL Server (rs_rujukan)' : 'Database MySQL'}</span>
             </span>
             <button
               type="button"
@@ -337,7 +337,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                     required
                     value={newKode}
                     onChange={(e) => setNewKode(e.target.value.toUpperCase())}
-                    placeholder="Contoh: 0195R015"
+                    placeholder="Masukkan kode faskes BPJS RS"
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:border-emerald-600 focus:outline-none"
                   />
                 </div>
@@ -364,7 +364,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                   required
                   value={newNama}
                   onChange={(e) => setNewNama(e.target.value)}
-                  placeholder="Contoh: RSUD Dr. Soetomo Surabaya"
+                  placeholder="Masukkan nama lengkap rumah sakit"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-emerald-600 focus:outline-none"
                 />
               </div>
@@ -391,7 +391,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                     required
                     value={newKota}
                     onChange={(e) => setNewKota(e.target.value)}
-                    placeholder="Contoh: Kab. Sidoarjo"
+                    placeholder="Nama kota atau kabupaten"
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:border-emerald-600 focus:outline-none"
                   />
                 </div>

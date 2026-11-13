@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { useQueue } from '@/lib/queue-context';
 import { QueueItem } from '@/types/queue';
 import { Printer, X, QrCode, CheckCircle2 } from 'lucide-react';
 
@@ -11,6 +12,7 @@ interface ThermalTicketModalProps {
 }
 
 export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueItem, onClose }) => {
+  const { bpjsConfig } = useQueue();
   if (!queueItem) return null;
 
   const handlePrint = () => {
@@ -59,8 +61,8 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
                 referrerPolicy="no-referrer"
               />
             </div>
-            <h2 className="font-bold text-sm tracking-wide text-slate-900">KLINIK SOMBAN MEDIKA</h2>
-            <p className="text-[10px] text-slate-600">Kode Faskes: 019U901 · Bridging BPJS</p>
+            <h2 className="font-bold text-sm tracking-wide text-slate-900">{bpjsConfig.namaFaskes || 'FASKES'}</h2>
+            <p className="text-[10px] text-slate-600">Kode Faskes: {bpjsConfig.kdFaskes || '-'} · Bridging BPJS</p>
             <p className="text-[10px] text-slate-500">Layanan Antrean Pasien Terpadu</p>
           </div>
 

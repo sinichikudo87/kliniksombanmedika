@@ -9,17 +9,17 @@ export async function GET(req: NextRequest) {
     const defaultAppUrl = req.nextUrl.origin || 'https://kliniksombanmedika.id';
     const customBaseUrl = searchParams.get('baseUrl') || defaultAppUrl;
 
-    let kdFaskes = '019U901';
-    let namaFaskes = 'TPMD DR MACHMUJUR';
-    let devUser = '0195U091-dev';
+    let kdFaskes = '';
+    let namaFaskes = '';
+    let devUser = '';
 
     try {
       const pool = getMySqlPool();
       const [rows]: [any, any] = await pool.query('SELECT * FROM faskes_config LIMIT 1');
       if (rows && rows.length > 0) {
-        kdFaskes = rows[0].kd_faskes || kdFaskes;
-        namaFaskes = rows[0].nama_faskes || namaFaskes;
-        devUser = rows[0].dev_user || devUser;
+        kdFaskes = rows[0].kd_faskes || '';
+        namaFaskes = rows[0].nama_faskes || '';
+        devUser = rows[0].dev_user || '';
       }
     } catch (dbErr) {
       console.warn('MySQL faskes_config query in download route:', dbErr);

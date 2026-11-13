@@ -12,11 +12,12 @@ export async function GET(req: NextRequest) {
     const result = await mySqlDb.getReferralHospitals(q, provinsi);
 
     return NextResponse.json({
-      success: true,
+      success: !result.error,
       source: result.source,
       total: result.hospitals.length,
       hospitals: result.hospitals,
       provinces: INDONESIA_PROVINCES,
+      ...(result.error ? { message: result.error } : {}),
     });
   } catch (error: any) {
     return NextResponse.json(

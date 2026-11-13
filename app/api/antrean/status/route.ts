@@ -7,7 +7,7 @@ async function handleStatus(kodepoli?: string | null, tanggalperiksa?: string | 
     const pool = getMySqlPool();
 
     // Query poli dari MySQL
-    let namaPoli = 'POLI UMUM';
+    let namaPoli = '';
     if (kodepoli) {
       const [poliRows]: [any, any] = await pool.query(
         'SELECT nama FROM poliklinik WHERE kode = ? OR prefix = ? LIMIT 1',
