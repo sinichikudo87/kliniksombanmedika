@@ -57,9 +57,43 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [currentCalled, setCurrentCalled] = useState<QueueItem | null>(null);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
 
+  const hasAutoCheckedPingRef = React.useRef(false);
+
   // Synchronize state exclusively with MySQL Server Database on mount and live polling
   useEffect(() => {
     let isMounted = true;
+
+    const verifyInitialBpjsConnectivity = async (cfg: BpjsBridgingConfig) => {
+      if (hasAutoCheckedPingRef.current || !cfg?.consId || !cfg?.secretKey || !cfg?.userKey) return;
+      hasAutoCheckedPingRef.current = true;
+      try {
+        const res = await fetch('/api/bpjs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'ping',
+            consId: cfg.consId,
+            secretKey: cfg.secretKey,
+            userKey: cfg.userKey,
+            kdFaskes: cfg.kdFaskes,
+            userPcareDev: cfg.userPcareDev,
+            passPcareDev: cfg.passPcareDev,
+            baseUrl: cfg.baseUrl,
+            environment: cfg.environment,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        const meta = json.metadata || json.metaData || {};
+        const isConnected = Boolean(
+          json.response?.isConnected ?? (meta.code === 200 && json.response?.isWhitelisted === true)
+        );
+        if (isMounted) {
+          setBpjsConfig((prev) => ({ ...prev, isOnline: isConnected }));
+        }
+      } catch {
+        // Keep current status on initial check error
+      }
+    };
 
     const fetchServerDb = async () => {
       try {
@@ -72,6 +106,9 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setPoliList(Array.isArray(json.data.poliList) ? json.data.poliList : []);
             if (json.data.config) {
               setBpjsConfig(json.data.config);
+              verifyInitialBpjsConnectivity(json.data.config);
+            } else {
+              verifyInitialBpjsConnectivity(DEFAULT_BPJS_CONFIG);
             }
             if (Array.isArray(json.data.securityLogs)) setSecurityLogs(json.data.securityLogs);
             if (Array.isArray(json.data.bridgingLogs)) setBridgingLogs(json.data.bridgingLogs);
@@ -85,7 +122,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           }
         }
       } catch {
-        // Keep empty/latest server state without fabricating static fallback data
+        verifyInitialBpjsConnectivity(DEFAULT_BPJS_CONFIG);
       }
     };
 
@@ -174,7 +211,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         requestPayload,
         responseStatus: 201,
         responsePayload: {
-          metaData: { code: 201, message: 'Pending Bridging (Bridging BPJS Nonaktif / Default Off)' },
+          metaData: { code: 202, message: 'Pending Bridging (Belum terhubung ke API BPJS)' },
           response: { status: fallbackDescription },
         },
         durationMs: Math.round(performance.now() - start),
@@ -312,6 +349,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     newQueueItem.estimasiWaktuTungguMenit = estimate.menitTunggu;
     newQueueItem.estimasiJamPanggil = estimate.jamEstimasiPanggil;
 
+    const todayWib = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
     await dispatchBridgingTask(
       '/antrean/add',
       {
@@ -319,14 +357,17 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         jenispasien: data.tipePasien,
         nomorkartu: cleanNoBpjs,
         nik: data.nik,
+        nohp: cleanNoHp || '080000000000',
         kodepoli: poli.kode,
         namapoli: poli.nama,
+        norm: patientId,
+        tanggalperiksa: todayWib,
         nomorantrean: nomorAntrean,
         angkaantrean: nextNumber,
         estimasidilayani: Date.now() + estimate.menitTunggu * 60000,
-        namadokter: poli.dokter || '',
+        namadokter: poli.dokter || 'Dokter Umum',
       },
-      'Antrean tersimpan di MySQL (Bridging API BPJS Nonaktif / Default Off)'
+      'Antrean tersimpan di MySQL (Belum terhubung ke API BPJS)'
     );
 
     addSecurityLog(
@@ -409,10 +450,14 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       '/antrean/updatewaktu',
       {
         kodebooking: updatedItem.kodeBooking,
+        kodepoli: updatedItem.poliKode,
+        nomorkartu: updatedItem.noBpjs || '',
+        nomorantrean: updatedItem.nomorAntrean,
+        tanggalperiksa: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }),
         taskid: 4,
         waktu: Date.now(),
       },
-      `Task 4 (Panggil Poli) untuk ${updatedItem.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+      `Task 4 (Panggil Poli) untuk ${updatedItem.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
     );
   };
 
@@ -456,10 +501,14 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         '/antrean/updatewaktu',
         {
           kodebooking: item.kodeBooking,
+          kodepoli: item.poliKode,
+          nomorkartu: item.noBpjs || '',
+          nomorantrean: item.nomorAntrean,
+          tanggalperiksa: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }),
           taskid: 5,
           waktu: Date.now(),
         },
-        `Task 5 (Mulai Layanan Dokter) untuk ${item.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+        `Task 5 (Mulai Layanan Dokter) untuk ${item.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
       );
     }
   };
@@ -506,10 +555,14 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         '/antrean/updatewaktu',
         {
           kodebooking: item.kodeBooking,
+          kodepoli: item.poliKode,
+          nomorkartu: item.noBpjs || '',
+          nomorantrean: item.nomorAntrean,
+          tanggalperiksa: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }),
           taskid: targetTask,
           waktu: Date.now(),
         },
-        `Task ${targetTask} (Selesai Layanan) untuk ${item.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+        `Task ${targetTask} (Selesai Layanan) untuk ${item.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
       );
     }
   };
@@ -549,9 +602,13 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         '/antrean/batal',
         {
           kodebooking: item.kodeBooking,
+          kodepoli: item.poliKode,
+          nomorkartu: item.noBpjs || '',
+          nomorantrean: item.nomorAntrean,
+          tanggalperiksa: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }),
           keterangan: 'Dibatalkan oleh petugas faskes/pasien',
         },
-        `Pembatalan antrean ${item.nomorAntrean} tercatat di MySQL (Bridging BPJS Nonaktif)`
+        `Pembatalan antrean ${item.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
       );
     }
   };
@@ -634,16 +691,19 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           secretKey: activeCfg.secretKey,
           userKey: activeCfg.userKey,
           kdFaskes: activeCfg.kdFaskes,
+          userPcareDev: activeCfg.userPcareDev,
+          passPcareDev: activeCfg.passPcareDev,
           baseUrl: activeCfg.baseUrl,
           environment: activeCfg.environment,
-          isWhitelisted: activeCfg.isOnline === true,
         }),
       });
 
       const json = await res.json().catch(() => ({}));
       const latencyMs = Math.round(performance.now() - start);
       const meta = json.metadata || json.metaData || {};
-      const isWhitelisted = Boolean(meta.code === 200 && json.response?.isWhitelisted === true);
+      const isConnected = Boolean(
+        json.response?.isConnected ?? (meta.code === 200 && json.response?.isWhitelisted === true)
+      );
 
       addBridgingLog({
         timestamp: new Date().toISOString(),
@@ -655,13 +715,17 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         durationMs: latencyMs,
       });
 
-      updateBpjsConfig({ ...customConfig, isOnline: isWhitelisted });
+      updateBpjsConfig({ ...customConfig, isOnline: isConnected });
 
       return {
-        success: isWhitelisted,
-        isWhitelisted,
+        success: isConnected,
+        isWhitelisted: isConnected,
         latencyMs,
-        message: meta.message || (isWhitelisted ? 'Terhubung ke Web Service BPJS' : 'Bridging BPJS Nonaktif / Menunggu Whitelist'),
+        message:
+          meta.message ||
+          (isConnected
+            ? 'Terhubung ke Web Service BPJS'
+            : 'Gagal terhubung ke Web Service BPJS'),
         details: json.response || json,
         raw: json,
       };
@@ -672,7 +736,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         success: false,
         isWhitelisted: false,
         latencyMs,
-        message: 'Koneksi ke endpoint BPJS ditolak / belum aktif: ' + err.message,
+        message: 'Koneksi ke endpoint BPJS gagal: ' + err.message,
       };
     }
   };

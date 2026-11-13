@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ReferralHospital, INDONESIA_PROVINCES } from '@/lib/indonesia-hospitals';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
@@ -51,7 +52,44 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
   const [newTelepon, setNewTelepon] = useState('');
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const [dropdownStyle, setDropdownStyle] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    openUpward: boolean;
+  } | null>(null);
+
+  const updateDropdownPosition = useCallback(() => {
+    if (!triggerRef.current || typeof window === 'undefined') return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUpward = spaceBelow < 360 && spaceAbove > spaceBelow;
+    const width = Math.max(rect.width, 320);
+    const maxLeft = Math.max(8, window.innerWidth - width - 8);
+    const left = Math.min(Math.max(8, rect.left), maxLeft);
+
+    if (openUpward) {
+      setDropdownStyle({
+        bottom: window.innerHeight - rect.top + 6,
+        left,
+        width,
+        openUpward: true,
+      });
+    } else {
+      setDropdownStyle({
+        top: rect.bottom + 6,
+        left,
+        width,
+        openUpward: false,
+      });
+    }
+  }, []);
 
   const selectedHospital = useMemo(
     () => hospitals.find((rs) => rs.kodeFaskes === value),
@@ -72,7 +110,10 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const inContainer = containerRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inContainer && !inDropdown) {
         setIsOpen(false);
       }
     };
@@ -90,10 +131,16 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => searchInputRef.current?.focus(), 40);
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    window.addEventListener('scroll', updateDropdownPosition, true);
+    window.addEventListener('resize', updateDropdownPosition);
+    const timer = setTimeout(() => searchInputRef.current?.focus(), 40);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', updateDropdownPosition, true);
+      window.removeEventListener('resize', updateDropdownPosition);
+    };
+  }, [isOpen, updateDropdownPosition]);
 
   const handleOpenAddForm = () => {
     setIsOpen(false);
@@ -160,8 +207,14 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
     <div ref={containerRef} className="relative w-full">
       {/* Trigger Button */}
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={() => {
+          if (!isOpen) {
+            updateDropdownPosition();
+          }
+          setIsOpen((prev) => !prev);
+        }}
         className={`w-full px-3 py-2.5 bg-white border ${borderClass} rounded-xl text-left text-xs flex items-center justify-between gap-2 transition-all hover:bg-slate-50 cursor-pointer shadow-2xs`}
       >
         <div className="min-w-0 flex-1">
@@ -182,9 +235,19 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
         <ChevronDown className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown Panel with Search & Province Filter */}
-      {isOpen && (
-        <div className="absolute z-50 mt-1.5 w-full min-w-[300px] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+      {/* Dropdown Panel via Portal (auto-flips above/below so it never collides with footer) */}
+      {isOpen && dropdownStyle && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{
+            position: 'fixed',
+            top: dropdownStyle.top,
+            bottom: dropdownStyle.bottom,
+            left: dropdownStyle.left,
+            width: dropdownStyle.width,
+          }}
+          className="z-[90] bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden"
+        >
           {/* Search & Filter Header */}
           <div className="p-2.5 bg-slate-50 border-b border-slate-200 space-y-2">
             <div className="relative">
@@ -302,7 +365,8 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
               <span>Tambah RS ke DB</span>
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Tambah RS Rujukan ke MySQL */}

@@ -95,6 +95,8 @@ export async function verifyBpjsParticipant(query: string, config: BpjsBridgingC
         secretKey: config.secretKey,
         userKey: config.userKey,
         kdFaskes: config.kdFaskes,
+        userPcareDev: config.userPcareDev,
+        passPcareDev: config.passPcareDev,
         baseUrl: config.baseUrl,
         environment: config.environment,
         isOnline: config.isOnline === true,

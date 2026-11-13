@@ -48,15 +48,15 @@ function MainApp() {
     setIsPinging(true);
     try {
       const res = await testBridgingPing();
-      if (res && res.success && res.isWhitelisted) {
+      if (res && res.success) {
         showSwalSuccess(
-          res.message || `Tes koneksi ke Web Service BPJS terverifikasi terhubung (${res.latencyMs} ms). Domain https://kliniksombanmedika.id/ aktif di-whitelist.`,
+          res.message || `Tes koneksi ke Web Service BPJS terverifikasi terhubung (${res.latencyMs} ms).`,
           'Bridging Terhubung'
         );
       } else {
         showSwalError(
-          res.message || 'Koneksi ke endpoint BPJS belum terbuka. Pastikan domain faskes (https://kliniksombanmedika.id/) telah di-whitelist oleh tim BPJS Kesehatan.',
-          'Status Bridging'
+          res?.message || 'Gagal terhubung ke endpoint BPJS Kesehatan.',
+          'Koneksi BPJS Gagal'
         );
       }
     } catch (err: any) {
@@ -174,7 +174,7 @@ function MainApp() {
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between font-sans overflow-hidden">
+    <div className="relative min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between font-sans overflow-x-hidden">
       {/* Large Transparent Background Watermark Logo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none overflow-hidden select-none z-0">
         <div className="relative w-[500px] h-[500px] sm:w-[700px] sm:h-[700px] lg:w-[880px] lg:h-[880px] opacity-[0.035] grayscale transform -rotate-12">
@@ -188,7 +188,7 @@ function MainApp() {
         </div>
       </div>
 
-      <div className="relative z-10">
+      <div className="relative z-20">
         <Navbar
           currentTab={currentTab}
           setCurrentTab={setCurrentTab}
@@ -271,9 +271,9 @@ function MainApp() {
                   Kredensial Bridging Terverifikasi
                 </p>
                 <ul className="space-y-1.5 text-slate-600">
-                  <li>Consumer ID: <strong className="font-mono text-slate-900">******</strong></li>
-                  <li>User Key: <strong className="font-mono text-slate-900">4a1a8423...</strong></li>
-                  <li>User Dev: <strong className="font-mono text-slate-900">{bpjsConfig.userPcareDev}</strong></li>
+                  <li>Consumer ID: <strong className="font-mono text-slate-900">{bpjsConfig.consId ? '******' : '-'}</strong></li>
+                  <li>User Key: <strong className="font-mono text-slate-900">{bpjsConfig.userKey ? `${bpjsConfig.userKey.slice(0, 8)}...` : '-'}</strong></li>
+                  <li>User Dev: <strong className="font-mono text-slate-900">{bpjsConfig.userPcareDev || '-'}</strong></li>
                   <li className="pt-1">
                     <div className="flex flex-col gap-1.5">
                       <span className="font-semibold text-slate-700">Status Bridging:</span>
@@ -284,9 +284,9 @@ function MainApp() {
                             <span>Bridging Terhubung (Live)</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs" title="IP Server faskes belum di-whitelist oleh tim TI BPJS">
-                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                            <span>Menunggu Whitelist IP BPJS</span>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-300 shadow-2xs" title="Klik Uji Ping BPJS untuk memeriksa koneksi ke Web Service BPJS">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span>Belum Terhubung ke API BPJS</span>
                           </span>
                         )}
                       </div>
@@ -312,7 +312,7 @@ function MainApp() {
                   Layanan Antrean & RME
                 </p>
                 <ul className="space-y-1.5 text-slate-600">
-                  <li>Klinik Somban Medika</li>
+                  <li>{bpjsConfig.namaFaskes || 'Faskes Terpadu'}</li>
                   <li>Poli Umum, Gigi, KIA & Laboratorium</li>
                   <li className="text-emerald-700 font-medium">Terintegrasi Sistem BPJS Kesehatan</li>
                 </ul>

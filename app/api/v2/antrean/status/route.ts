@@ -3,7 +3,7 @@ import { getMySqlPool } from '@/lib/mysql-db';
 
 async function handleStatusV2(kodepoli?: string | null, tanggalperiksa?: string | null) {
   try {
-    const tgl = tanggalperiksa || new Date().toISOString().split('T')[0];
+    const tgl = tanggalperiksa || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
     const pool = getMySqlPool();
 
     // Query data poli dari MySQL

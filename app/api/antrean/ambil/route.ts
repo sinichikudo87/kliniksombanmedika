@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const poli = poliRows[0];
 
     // 3. Hitung nomor urut antrean hari ini untuk poli ini
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
     const [countRows]: [any, any] = await pool.query(
       'SELECT COUNT(*) as total FROM queues WHERE poli_kode = ? AND DATE(waktu_daftar) = ?',
       [poli.kode, todayStr]

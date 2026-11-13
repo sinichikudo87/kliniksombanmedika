@@ -243,6 +243,8 @@ export const PcareView: React.FC<PcareViewProps> = ({
           secretKey: bpjsConfig.secretKey,
           userKey: bpjsConfig.userKey,
           kdFaskes: bpjsConfig.kdFaskes,
+          userPcareDev: bpjsConfig.userPcareDev,
+          passPcareDev: bpjsConfig.passPcareDev,
           baseUrl: bpjsConfig.baseUrl,
           environment: bpjsConfig.environment,
           isOnline: bpjsConfig.isOnline === true,
@@ -312,6 +314,8 @@ export const PcareView: React.FC<PcareViewProps> = ({
           secretKey: bpjsConfig.secretKey,
           userKey: bpjsConfig.userKey,
           kdFaskes: bpjsConfig.kdFaskes,
+          userPcareDev: bpjsConfig.userPcareDev,
+          passPcareDev: bpjsConfig.passPcareDev,
           baseUrl: bpjsConfig.baseUrl,
           environment: bpjsConfig.environment,
           isOnline: bpjsConfig.isOnline === true,
@@ -379,6 +383,8 @@ export const PcareView: React.FC<PcareViewProps> = ({
           secretKey: bpjsConfig.secretKey,
           userKey: bpjsConfig.userKey,
           kdFaskes: bpjsConfig.kdFaskes,
+          userPcareDev: bpjsConfig.userPcareDev,
+          passPcareDev: bpjsConfig.passPcareDev,
           baseUrl: bpjsConfig.baseUrl,
           environment: bpjsConfig.environment,
           isOnline: bpjsConfig.isOnline === true,
@@ -487,6 +493,8 @@ export const PcareView: React.FC<PcareViewProps> = ({
           secretKey: bpjsConfig.secretKey,
           userKey: bpjsConfig.userKey,
           kdFaskes: bpjsConfig.kdFaskes,
+          userPcareDev: bpjsConfig.userPcareDev,
+          passPcareDev: bpjsConfig.passPcareDev,
           baseUrl: bpjsConfig.baseUrl,
           environment: bpjsConfig.environment,
           isOnline: bpjsConfig.isOnline === true,
@@ -579,7 +587,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                   : 'bg-amber-400/20 text-amber-200 border border-amber-400/30'
               }`}>
                 <span className={`w-2 h-2 rounded-full ${bpjsConfig.isOnline === true ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                <span>{bpjsConfig.isOnline === true ? 'Bridging Aktif' : 'Bridging Nonaktif (Default Off)'}</span>
+                <span>{bpjsConfig.isOnline === true ? 'Bridging Aktif' : 'Belum Terhubung'}</span>
               </span>
             </div>
 

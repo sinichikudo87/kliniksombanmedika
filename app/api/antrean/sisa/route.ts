@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMySqlPool } from '@/lib/mysql-db';
 
-export async function POST(req: NextRequest) {
+async function handleSisa(kodebooking?: string | null) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const { kodebooking } = body;
-
     if (!kodebooking) {
       return NextResponse.json(
         { metadata: { code: 400, message: 'Parameter kodebooking wajib disertakan' } },
@@ -77,6 +74,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  return handleSisa(body.kodebooking);
+}
+
 export async function GET(req: NextRequest) {
-  return POST(req);
+  const kodebooking = req.nextUrl.searchParams.get('kodebooking');
+  return handleSisa(kodebooking);
 }

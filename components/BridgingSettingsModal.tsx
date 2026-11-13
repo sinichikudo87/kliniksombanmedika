@@ -192,7 +192,7 @@ const BridgingSettingsModalInner: React.FC<{
   const [passPcareDev, setPassPcareDev] = useState(bpjsConfig.passPcareDev);
   const [emailFaskes, setEmailFaskes] = useState(bpjsConfig.emailFaskes);
   const [environment, setEnvironment] = useState<'tester' | 'production'>(bpjsConfig.environment);
-  const [isOnline, setIsOnline] = useState<boolean>(bpjsConfig.isOnline === true);
+  const isOnline = bpjsConfig.isOnline === true;
 
   const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
   const baseUrl = customBaseUrl !== null ? customBaseUrl : (bpjsConfig.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev');
@@ -209,8 +209,8 @@ const BridgingSettingsModalInner: React.FC<{
   const [pingResult, setPingResult] = useState<any>(null);
   const [sandboxHeaders, setSandboxHeaders] = useState<Record<string, string> | null>(null);
 
-  const handleSave = () => {
-    updateBpjsConfig({
+  const handleSave = async () => {
+    const nextCfg = {
       consId,
       secretKey,
       userKey,
@@ -221,9 +221,20 @@ const BridgingSettingsModalInner: React.FC<{
       emailFaskes,
       environment,
       baseUrl,
-      isOnline,
-    });
-    showSwalSuccess('Konfigurasi Bridging BPJS berhasil diperbarui.');
+    };
+    updateBpjsConfig(nextCfg);
+    setIsTestingPing(true);
+    try {
+      const res = await testBridgingPing(nextCfg);
+      setPingResult(res);
+      if (res?.success) {
+        showSwalSuccess(`Konfigurasi tersimpan & koneksi BPJS aktif terhubung (${res.latencyMs} ms).`, 'Konfigurasi & Koneksi Aktif');
+      } else {
+        showSwalSuccess('Konfigurasi tersimpan ke MySQL. Status koneksi BPJS: belum terhubung (cek detail Test Ping).', 'Konfigurasi Tersimpan');
+      }
+    } finally {
+      setIsTestingPing(false);
+    }
   };
 
   const handleDownloadExcel = () => {
@@ -263,18 +274,17 @@ const BridgingSettingsModalInner: React.FC<{
         emailFaskes,
         baseUrl,
         environment,
-        isOnline,
       });
       setPingResult(res);
-      if (res && res.success && res.isWhitelisted) {
+      if (res && res.success) {
         const matched = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
         const modTitle = matched?.moduleName || 'Web Service BPJS';
         showSwalSuccess(`Koneksi ${modTitle} mode ${environment === 'tester' ? 'Development / Tester' : 'Production'} terhubung normal (${res.latencyMs} ms)!`, 'Ping Berhasil');
       } else {
-        showSwalError(res?.message || 'Bridging BPJS saat ini Nonaktif (Default: Off / Menunggu Whitelist).', 'Status Bridging Nonaktif');
+        showSwalError(res?.message || 'Gagal terhubung ke Web Service BPJS Kesehatan.', 'Ping BPJS Gagal');
       }
     } catch (e: any) {
-      setPingResult({ success: false, error: e.message });
+      setPingResult({ success: false, isWhitelisted: false, message: e.message, error: e.message });
       showSwalError('Error: ' + e.message, 'Koneksi BPJS Gagal');
     } finally {
       setIsTestingPing(false);
@@ -747,27 +757,28 @@ const BridgingSettingsModalInner: React.FC<{
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="block font-bold text-slate-700">Status Bridging API BPJS &amp; Whitelist Domain (Default: Off)</label>
-                <select
-                  value={isOnline ? 'online' : 'pending'}
-                  onChange={(e) => {
-                    const val = e.target.value === 'online';
-                    setIsOnline(val);
-                    updateBpjsConfig({ isOnline: val });
-                  }}
-                  className={`w-full py-2 px-3 border rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+                <label className="block font-bold text-slate-700">Status Koneksi Bridging API BPJS (Otomatis dari Hasil Koneksi API)</label>
+                <div
+                  className={`w-full py-2.5 px-3.5 border rounded-xl font-bold text-xs flex flex-wrap items-center justify-between gap-2 ${
                     isOnline
                       ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                       : 'bg-amber-50 border-amber-300 text-amber-800'
                   }`}
                 >
-                  <option value="pending">Nonaktif / Default Off — Menunggu Whitelist Domain BPJS</option>
-                  <option value="online">Aktif — Sudah Di-Whitelist ({customWsDomain})</option>
-                </select>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span>
+                      {isOnline
+                        ? `Terhubung ke Server BPJS (isOnline = true · ${environment === 'production' ? 'Production' : 'Development'})`
+                        : `Belum Terhubung ke Server BPJS (isOnline = false)`}
+                    </span>
+                  </div>
+                  <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-white/80 border border-current/20">
+                    {isOnline ? 'ACTIVE_BRIDGED' : 'DISCONNECTED'}
+                  </span>
+                </div>
                 <p className="text-[11px] text-slate-500">
-                  {isOnline
-                    ? 'Bridging API BPJS diaktifkan. Sistem akan mengirim transmisi data ke endpoint BPJS terpilih.'
-                    : 'Status default adalah Nonaktif (false) sampai IP/Domain faskes di-whitelist oleh tim TI BPJS Kesehatan atau diaktifkan secara manual oleh Admin.'}
+                  Status ini otomatis mengikuti hasil uji koneksi aktual ke endpoint Web Service BPJS Kesehatan. Klik <strong>Test Ping Bridging</strong> di bawah untuk memverifikasi koneksi secara langsung.
                 </p>
               </div>
             </div>
@@ -785,18 +796,18 @@ const BridgingSettingsModalInner: React.FC<{
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isTestingPing ? 'animate-spin' : ''}`} />
-                  <span>Test Ping Bridging</span>
+                  <span>{isTestingPing ? 'Menguji Koneksi...' : 'Test Ping Bridging'}</span>
                 </button>
               </div>
 
               {pingResult && (
                 <div className="mt-3 p-3 bg-white rounded-xl border border-slate-200 font-mono text-[11px] text-slate-700 space-y-2">
-                  {pingResult.isWhitelisted ? (
+                  {pingResult.success ? (
                     <div>
                       <div className="flex items-center justify-between font-bold text-emerald-700 mb-1">
                         <span className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Status: 200 OK (Terhubung Live)</span>
+                          <span>Status: 200 OK (Terhubung Live · isOnline = true)</span>
                         </span>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -807,16 +818,16 @@ const BridgingSettingsModalInner: React.FC<{
                           <span>Latensi: {pingResult.latencyMs} ms</span>
                         </div>
                       </div>
-                      <p className="text-slate-500 font-sans text-xs">
-                        Kredensial valid dan domain {customWsDomain} telah terhubung ke Web Service BPJS ({environment === 'tester' ? 'Development / Tester' : 'Production'}).
+                      <p className="text-slate-600 font-sans text-xs">
+                        {pingResult.message}
                       </p>
                     </div>
                   ) : (
                     <div>
-                      <div className="flex items-center justify-between font-bold text-amber-700 mb-1">
+                      <div className="flex items-center justify-between font-bold text-red-700 mb-1">
                         <span className="flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Status: 201 Menunggu Whitelist IP/Domain</span>
+                          <span>Status: HTTP {pingResult.details?.httpStatus || 503} Gagal Terhubung (isOnline = false)</span>
                         </span>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -827,8 +838,8 @@ const BridgingSettingsModalInner: React.FC<{
                           <span>{pingResult.latencyMs ? `${pingResult.latencyMs} ms` : ''}</span>
                         </div>
                       </div>
-                      <p className="text-amber-800 text-xs font-sans mt-1">
-                        {pingResult.message || 'Koneksi ke endpoint BPJS Kesehatan ditolak atau timeout karena IP server faskes belum di-whitelist oleh tim TI BPJS Kesehatan.'}
+                      <p className="text-red-700 text-xs font-sans mt-1">
+                        {pingResult.message || 'Gagal menghubungi server BPJS Kesehatan.'}
                       </p>
                     </div>
                   )}
@@ -837,7 +848,9 @@ const BridgingSettingsModalInner: React.FC<{
                   <div className="pt-2 border-t border-slate-200">
                     <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1 font-sans">
                       <span className="font-bold text-slate-700">Response Callback Server BPJS (Standar JSON):</span>
-                      <span className="font-mono text-[9px] text-slate-400">Endpoint: {baseUrl}</span>
+                      <span className="font-mono text-[9px] text-slate-400">
+                        Endpoint: {pingResult.details?.endpointTested || baseUrl}
+                      </span>
                     </div>
                     <pre className="bg-slate-900 text-slate-100 p-2.5 rounded-xl text-[10px] font-mono overflow-x-auto max-h-40 select-all">
                       {JSON.stringify(
@@ -846,13 +859,12 @@ const BridgingSettingsModalInner: React.FC<{
                             faskes: namaFaskes || '-',
                             kdFaskes: kdFaskes || '-',
                             environment: environment === 'tester' ? 'development' : 'production',
-                            mode: environment === 'tester' ? 'Development / Tester (Trustmark Dev)' : 'Production (BPJS Live)',
-                            status: pingResult.isWhitelisted ? 'ACTIVE_BRIDGED' : 'PENDING_WHITELIST',
-                            isWhitelisted: pingResult.isWhitelisted,
+                            status: pingResult.success ? 'ACTIVE_BRIDGED' : 'DISCONNECTED',
+                            isConnected: Boolean(pingResult.success),
                           },
                           metadata: {
-                            code: pingResult.isWhitelisted ? 200 : 201,
-                            message: pingResult.message || (pingResult.isWhitelisted ? 'Ok' : 'Pending Whitelist'),
+                            code: pingResult.success ? 200 : 503,
+                            message: pingResult.message || 'Tidak terhubung',
                           },
                         },
                         null,
