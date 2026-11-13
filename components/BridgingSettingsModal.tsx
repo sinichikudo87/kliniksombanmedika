@@ -849,7 +849,13 @@ const BridgingSettingsModalInner: React.FC<{
                       <div className="flex items-center justify-between font-bold text-red-700 mb-1">
                         <span className="flex items-center gap-1.5">
                           <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Status: HTTP {pingResult.details?.httpStatus || 503} Gagal Terhubung (isOnline = false)</span>
+                          <span>
+                            Kode {pingResult.details?.bpjsMetaCode || pingResult.details?.httpStatus || 503} ·{' '}
+                            {pingResult.details?.isWhitelisted
+                              ? 'IP Tembus BPJS, Kredensial/Service Ditolak'
+                              : 'Gagal Terhubung'}{' '}
+                            (isOnline = false)
+                          </span>
                         </span>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${

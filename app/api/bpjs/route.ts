@@ -227,22 +227,36 @@ export async function POST(req: NextRequest) {
 
       await persistBpjsOnlineStatus(false);
 
+      const bpjsErrObj = lastBpjsData?.metadata || lastBpjsData?.metaData;
+      const bpjsCodeNum = bpjsErrObj?.code !== undefined ? Number(bpjsErrObj.code) : NaN;
       const bpjsErrMsg =
-        lastBpjsData?.metadata?.message ||
-        lastBpjsData?.metaData?.message ||
+        bpjsErrObj?.message ||
         lastBpjsData?.message ||
         lastBpjsData?.rawText ||
         '';
+      const isGatewayReached = lastHttpStatus > 0;
+      const effectiveErrorCode =
+        !Number.isNaN(bpjsCodeNum) && bpjsCodeNum >= 400
+          ? bpjsCodeNum
+          : lastHttpStatus >= 400
+          ? lastHttpStatus
+          : isGatewayReached
+          ? 401
+          : 503;
 
       let diagnosticMessage = '';
-      if (lastHttpStatus > 0) {
-        diagnosticMessage = `Server BPJS (${lastTestedUrl}) merespons HTTP ${lastHttpStatus}${bpjsErrMsg ? `: ${bpjsErrMsg}` : ''}. Periksa Cons ID, Secret Key, User Key, atau header otorisasi.`;
+      if (isGatewayReached) {
+        if (bpjsErrMsg.toLowerCase().includes('not registered for this service') || effectiveErrorCode === 401) {
+          diagnosticMessage = `IP server sudah tembus ke gateway BPJS (HTTP ${lastHttpStatus}), namun Cons ID (${actualConsId}) & User Key belum terdaftar/aktif untuk layanan "${moduleName}" mode ${envModeText} (BPJS: "${bpjsErrMsg || 'Unauthorized'}"). Di BPJS Trustmark, User Key berbeda antara PCare vs Antrean FKTP dan antara Development vs Production — silakan gunakan User Key & Cons ID khusus ${moduleName} ${isDev ? 'Development' : 'Production'}.`;
+        } else {
+          diagnosticMessage = `Server BPJS (${lastTestedUrl}) merespons HTTP ${lastHttpStatus} (Kode BPJS ${effectiveErrorCode})${bpjsErrMsg ? `: ${bpjsErrMsg}` : ''}. Periksa Cons ID, Secret Key, User Key, atau header otorisasi.`;
+        }
       } else {
         diagnosticMessage = `Koneksi ke ${lastTestedUrl} timeout (${lastNetworkError || 'TCP Timeout'}). Firewall BPJS Kesehatan hanya menerima request dari IP server/VPS faskes yang sudah di-whitelist — bukan IP pratinjau cloud (Cloud Run).`;
       }
 
       const bpjsMeta = {
-        code: lastHttpStatus || 503,
+        code: effectiveErrorCode,
         message: diagnosticMessage,
       };
 
@@ -250,16 +264,18 @@ export async function POST(req: NextRequest) {
         faskes: actualNamaFaskes,
         kdFaskes: actualKdFaskes,
         module: moduleName,
+        consId: actualConsId,
         baseUrl: targetBaseUrl,
         endpointTested: lastTestedUrl,
         httpStatus: lastHttpStatus || 503,
+        bpjsMetaCode: !Number.isNaN(bpjsCodeNum) ? bpjsCodeNum : undefined,
         networkError: lastNetworkError || undefined,
         bpjsRawResponse: lastBpjsData || undefined,
         environment: envType,
         mode: envModeText,
         status: 'DISCONNECTED',
         isConnected: false,
-        isWhitelisted: false,
+        isWhitelisted: isGatewayReached,
       };
 
       return NextResponse.json({
