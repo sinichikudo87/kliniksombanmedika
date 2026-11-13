@@ -142,7 +142,7 @@ export async function POST(req: NextRequest) {
           const bpjsRes = await fetch(pingUrl, {
             method: 'GET',
             headers: requestHeaders,
-            signal: AbortSignal.timeout(8000),
+            signal: AbortSignal.timeout(12000),
           });
 
           lastHttpStatus = bpjsRes.status;
@@ -158,7 +158,9 @@ export async function POST(req: NextRequest) {
           const metaObj = bpjsData?.metadata || bpjsData?.metaData;
           const metaCodeNum = metaObj?.code !== undefined ? Number(metaObj.code) : NaN;
           const isValidBpjsGatewayResponse =
-            bpjsRes.ok || metaCodeNum === 200 || metaCodeNum === 201;
+            (bpjsRes.ok && (Number.isNaN(metaCodeNum) || metaCodeNum < 400)) ||
+            metaCodeNum === 200 ||
+            metaCodeNum === 201;
 
           if (isValidBpjsGatewayResponse) {
             await persistBpjsOnlineStatus(true);
@@ -212,7 +214,12 @@ export async function POST(req: NextRequest) {
           const causeCode = err?.cause?.code ? ` (${err.cause.code})` : '';
           lastNetworkError = `${err?.name || 'NetworkError'}: ${err?.message || 'Gagal menghubungi server BPJS'}${causeCode}`;
           // Timeout or connection refusal applies to host, no need to retry multiple paths on same host
-          if (err?.name === 'TimeoutError' || err?.name === 'AbortError' || err?.cause?.code === 'ECONNREFUSED') {
+          if (
+            err?.name === 'TimeoutError' ||
+            err?.name === 'AbortError' ||
+            err?.cause?.code === 'ECONNREFUSED' ||
+            err?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT'
+          ) {
             break;
           }
         }
@@ -231,7 +238,7 @@ export async function POST(req: NextRequest) {
       if (lastHttpStatus > 0) {
         diagnosticMessage = `Server BPJS (${lastTestedUrl}) merespons HTTP ${lastHttpStatus}${bpjsErrMsg ? `: ${bpjsErrMsg}` : ''}. Periksa Cons ID, Secret Key, User Key, atau header otorisasi.`;
       } else {
-        diagnosticMessage = `Gagal terhubung ke ${lastTestedUrl} (${lastNetworkError || 'Timeout'}). Jika IP server faskes sudah di-whitelist BPJS, pastikan request dijalankan dari server/VPS dengan IP ter-whitelist tersebut.`;
+        diagnosticMessage = `Koneksi ke ${lastTestedUrl} timeout (${lastNetworkError || 'TCP Timeout'}). Firewall BPJS Kesehatan hanya menerima request dari IP server/VPS faskes yang sudah di-whitelist — bukan IP pratinjau cloud (Cloud Run).`;
       }
 
       const bpjsMeta = {

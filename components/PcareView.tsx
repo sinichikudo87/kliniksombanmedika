@@ -88,7 +88,8 @@ export const PcareView: React.FC<PcareViewProps> = ({
   onOpenSettings,
   onNavigateToOperator,
 }) => {
-  const { queues, poliList, bpjsConfig, addQueue, finishQueue, testBridgingPing } = useQueue();
+  const { queues, poliList, bpjsConfig, addQueue, finishQueue, testBridgingPing, switchBpjsEnvironment } = useQueue();
+  const [isSwitchingEnv, setIsSwitchingEnv] = useState<boolean>(false);
 
   // Active sub-tab
   const [activeTab, setActiveTab] = useState<'PELAYANAN' | 'PENDAFTARAN' | 'RUJUKAN' | 'RIWAYAT'>('PELAYANAN');
@@ -614,10 +615,64 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 <span className="text-slate-400">KD Faskes:</span>
                 <span className="font-mono font-bold text-emerald-300">{bpjsConfig.kdFaskes}</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-black/25 px-2.5 py-1 rounded-lg border border-white/10">
+              <label
+                title="Geser untuk memilih koneksi Development (Tester) atau Production (Live)"
+                className={`flex items-center gap-2 bg-black/30 px-2.5 py-1 rounded-lg border border-white/15 select-none ${
+                  isSwitchingEnv ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:border-emerald-400/50'
+                }`}
+              >
                 <span className="text-slate-400">Mode:</span>
-                <span className="font-semibold text-amber-300 capitalize">{bpjsConfig.environment === 'production' ? 'Production' : 'Development (Tester)'}</span>
-              </div>
+                <span
+                  className={`text-[10px] font-extrabold ${
+                    bpjsConfig.environment !== 'production' ? 'text-amber-300' : 'text-slate-400'
+                  }`}
+                >
+                  DEV
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  aria-label="Pilih mode koneksi PCare Dev atau Production"
+                  checked={bpjsConfig.environment === 'production'}
+                  disabled={isSwitchingEnv}
+                  onChange={async (e) => {
+                    const targetEnv: 'tester' | 'production' = e.target.checked ? 'production' : 'tester';
+                    setIsSwitchingEnv(true);
+                    try {
+                      const res = await switchBpjsEnvironment(targetEnv);
+                      const label = targetEnv === 'production' ? 'Production (Live)' : 'Development (Tester)';
+                      if (res.success) {
+                        showSwalSuccess(
+                          `Koneksi PCare mode ${label} terhubung (${res.latencyMs} ms).`,
+                          `Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'} Aktif`
+                        );
+                      } else {
+                        showSwalInfo(
+                          `Mode dialihkan ke ${label} & tersimpan. Ping: ${res.message || 'menunggu whitelist IP server aktif'}.`,
+                          `Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'} Disimpan`
+                        );
+                      }
+                    } finally {
+                      setIsSwitchingEnv(false);
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <span className="relative inline-flex h-4 w-8 shrink-0 items-center rounded-full bg-amber-500 transition-colors peer-checked:bg-emerald-500">
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-xs transition-transform ${
+                      bpjsConfig.environment === 'production' ? 'translate-x-[17px]' : 'translate-x-[3px]'
+                    }`}
+                  />
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold ${
+                    bpjsConfig.environment === 'production' ? 'text-emerald-300' : 'text-slate-400'
+                  }`}
+                >
+                  PROD
+                </span>
+              </label>
             </div>
           </div>
 

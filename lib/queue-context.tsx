@@ -9,7 +9,7 @@ import {
   BridgingLog,
   AuditSecurityLog,
 } from '@/types/queue';
-import { DEFAULT_BPJS_CONFIG, getBpjsHeaders } from './bpjs-bridging';
+import { DEFAULT_BPJS_CONFIG, getBpjsHeaders, resolveBpjsBaseUrlForEnv } from './bpjs-bridging';
 import { calculateEstimatedWaitTime } from './queue-estimator';
 import { speakIndonesianQueue } from './tts-announcer';
 import { encryptData } from './encrypted-db';
@@ -41,6 +41,7 @@ interface QueueContextType {
   transferToPharmacy: (id: string) => Promise<QueueItem>;
   updateBpjsConfig: (newConfig: Partial<BpjsBridgingConfig>) => void;
   testBridgingPing: (customConfig?: Partial<BpjsBridgingConfig>) => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any }>;
+  switchBpjsEnvironment: (targetEnv: 'tester' | 'production') => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any; baseUrl: string; environment: 'tester' | 'production' }>;
   addSecurityLog: (action: AuditSecurityLog['action'], details: string, status?: 'SUCCESS' | 'DENIED') => void;
   refreshFromDb: () => Promise<void>;
 }
@@ -741,6 +742,21 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  const switchBpjsEnvironment = async (targetEnv: 'tester' | 'production') => {
+    const nextBaseUrl = resolveBpjsBaseUrlForEnv(bpjsConfig.baseUrl, targetEnv);
+    const updates: Partial<BpjsBridgingConfig> = {
+      environment: targetEnv,
+      baseUrl: nextBaseUrl,
+    };
+    updateBpjsConfig(updates);
+    const pingRes = await testBridgingPing(updates);
+    return {
+      ...pingRes,
+      environment: targetEnv,
+      baseUrl: nextBaseUrl,
+    };
+  };
+
   const refreshFromDb = async () => {
     try {
       const res = await fetch('/api/db', { cache: 'no-store' });
@@ -781,6 +797,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         transferToPharmacy,
         updateBpjsConfig,
         testBridgingPing,
+        switchBpjsEnvironment,
         addSecurityLog,
         refreshFromDb,
       }}

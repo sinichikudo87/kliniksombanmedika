@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useQueue } from '@/lib/queue-context';
-import { getBpjsHeaders } from '@/lib/bpjs-bridging';
+import { getBpjsHeaders, resolveBpjsBaseUrlForEnv } from '@/lib/bpjs-bridging';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
   X,
@@ -568,29 +568,51 @@ const BridgingSettingsModalInner: React.FC<{
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Lingkungan (Environment)</label>
-                <select
-                  value={environment}
-                  onChange={(e) => {
-                    const newEnv = e.target.value as 'tester' | 'production';
-                    setEnvironment(newEnv);
-                    const currentMatch = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
-                    if (currentMatch) {
-                      const counterpart = BPJS_BRIDGING_ENDPOINT_OPTIONS.find(
-                        (o) => o.moduleKey === currentMatch.moduleKey && o.env === newEnv && o.targetFaskes === currentMatch.targetFaskes
-                      ) || BPJS_BRIDGING_ENDPOINT_OPTIONS.find(
-                        (o) => o.moduleKey === currentMatch.moduleKey && o.env === newEnv
-                      );
-                      if (counterpart) {
-                        setBaseUrl(counterpart.value);
-                      }
-                    }
-                  }}
-                  className="w-full py-2 px-3 border border-slate-300 rounded-xl bg-white font-semibold text-slate-800"
-                >
-                  <option value="tester">Development / Tester (Trustmark Dev)</option>
-                  <option value="production">Production (BPJS Live)</option>
-                </select>
+                <label className="block font-bold text-slate-700 mb-1">Lingkungan (Mode Koneksi)</label>
+                <label className="flex items-center justify-between gap-3 py-2 px-3 border border-slate-300 rounded-xl bg-slate-50/80 cursor-pointer select-none hover:border-emerald-500 transition-colors">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-md transition-colors ${
+                        environment === 'tester'
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      DEV / Tester
+                    </span>
+                    <span className="text-slate-300 text-xs">/</span>
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-md transition-colors ${
+                        environment === 'production'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      Production
+                    </span>
+                  </div>
+                  <div className="relative inline-flex items-center shrink-0">
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      aria-label="Pilih mode Development atau Production"
+                      checked={environment === 'production'}
+                      onChange={(e) => {
+                        const newEnv: 'tester' | 'production' = e.target.checked ? 'production' : 'tester';
+                        setEnvironment(newEnv);
+                        setBaseUrl(resolveBpjsBaseUrlForEnv(baseUrl, newEnv));
+                      }}
+                      className="sr-only peer"
+                    />
+                    <span className="relative inline-flex h-6 w-11 items-center rounded-full bg-amber-500 transition-colors peer-checked:bg-emerald-600">
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                          environment === 'production' ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </span>
+                  </div>
+                </label>
               </div>
 
               {/* Endpoint Base URL Select Option & Modul Info */}

@@ -18,6 +18,51 @@ export const DEFAULT_BPJS_CONFIG: BpjsBridgingConfig = {
 };
 
 /**
+ * Automatically resolve matching BPJS Development vs Production Base URL for the active module
+ */
+export function resolveBpjsBaseUrlForEnv(
+  currentBaseUrl: string | undefined,
+  targetEnv: 'tester' | 'production'
+): string {
+  const url = (currentBaseUrl || '').trim();
+  const isProd = targetEnv === 'production';
+
+  if (!url) {
+    return isProd
+      ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+      : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+  }
+
+  if (url.includes('pcare')) {
+    return isProd
+      ? 'https://apijkn.bpjs-kesehatan.go.id/pcare-rest'
+      : 'https://apijkn-dev.bpjs-kesehatan.go.id/pcare-rest-dev';
+  }
+  if (url.includes('vclaim')) {
+    return isProd
+      ? 'https://apijkn.bpjs-kesehatan.go.id/vclaim-rest'
+      : 'https://apijkn-dev.bpjs-kesehatan.go.id/vclaim-rest-dev';
+  }
+  if (url.includes('aplicare')) {
+    return isProd
+      ? 'https://apijkn.bpjs-kesehatan.go.id/aplicaresws/rest'
+      : 'https://apijkn-dev.bpjs-kesehatan.go.id/aplicaresws/rest';
+  }
+  if (url.includes('antreanrs')) {
+    return isProd
+      ? 'https://apijkn.bpjs-kesehatan.go.id/antreanrs'
+      : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanrs_dev';
+  }
+  if (url.includes('antreanfktp') || url.includes('bpjs-kesehatan.go.id')) {
+    return isProd
+      ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+      : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+  }
+
+  return url;
+}
+
+/**
  * Generate HMAC-SHA256 signature as required by BPJS Kesehatan Trustmark specs
  * Signature = Base64(HMAC-SHA256(ConsID + "&" + Timestamp, SecretKey))
  */

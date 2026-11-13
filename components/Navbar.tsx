@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { LoginFormModal } from '@/components/LoginFormModal';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { chimePlayer } from '@/lib/tts-announcer';
-import { showSwalSuccess } from '@/lib/swal';
+import { showSwalSuccess, showSwalInfo } from '@/lib/swal';
 import {
   CreditCard,
   Tv,
@@ -33,7 +33,7 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpenSettings }) => {
-  const { bpjsConfig, audioEnabled, setAudioEnabled } = useQueue();
+  const { bpjsConfig, switchBpjsEnvironment, audioEnabled, setAudioEnabled } = useQueue();
   const {
     user,
     isAuthenticated,
@@ -45,6 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
   } = useAuth();
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [isSwitchingEnv, setIsSwitchingEnv] = useState<boolean>(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isRmeAdmin = Boolean(user && (user.role === 'ADMIN_RME' || user.role === 'ADMIN'));
@@ -88,6 +89,31 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
       nextVal ? 'Audio bel & suara panggil TTS diaktifkan.' : 'Audio dinonaktifkan (hening).',
       nextVal ? 'Audio Aktif' : 'Audio Nonaktif'
     );
+  };
+
+  const isProdMode = bpjsConfig.environment === 'production';
+
+  const handleToggleBpjsMode = async (checked: boolean) => {
+    if (isSwitchingEnv) return;
+    const targetEnv: 'tester' | 'production' = checked ? 'production' : 'tester';
+    setIsSwitchingEnv(true);
+    try {
+      const res = await switchBpjsEnvironment(targetEnv);
+      const label = targetEnv === 'production' ? 'Production (Live)' : 'Development (Tester)';
+      if (res.success) {
+        showSwalSuccess(
+          `Mode ${label} aktif dan terhubung ke BPJS (${res.latencyMs} ms).`,
+          `BPJS Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'}`
+        );
+      } else {
+        showSwalInfo(
+          `Mode dialihkan ke ${label} & tersimpan (${res.baseUrl}). Ping status: ${res.message || 'server cloud preview tidak masuk whitelist IP BPJS'}.`,
+          `Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'} Disimpan`
+        );
+      }
+    } finally {
+      setIsSwitchingEnv(false);
+    }
   };
 
   const userDisplayName = user?.namaLengkap || (user as any)?.nama_lengkap || user?.username || 'Petugas';
@@ -175,8 +201,54 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
               )}
             </nav>
 
-            {/* Right: Audio Toggle & Unified Account/Menu Dropdown */}
+            {/* Right: Mode Slide Switch, Audio Toggle & Unified Account/Menu Dropdown */}
             <div className="flex items-center gap-2 shrink-0" ref={menuRef}>
+              <label
+                title={
+                  isProdMode
+                    ? 'Mode Koneksi BPJS: Production (Live) — geser untuk kembali ke Dev/Tester'
+                    : 'Mode Koneksi BPJS: Development (Tester) — geser untuk beralih ke Production'
+                }
+                className={`hidden sm:inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl border transition-colors select-none ${
+                  isSwitchingEnv ? 'opacity-60 cursor-wait' : 'cursor-pointer'
+                } ${
+                  isProdMode
+                    ? 'bg-emerald-50/90 border-emerald-200'
+                    : 'bg-amber-50/90 border-amber-200'
+                }`}
+              >
+                <span
+                  className={`text-[10px] font-extrabold tracking-wide ${
+                    !isProdMode ? 'text-amber-800' : 'text-slate-400'
+                  }`}
+                >
+                  DEV
+                </span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  aria-label="Pilih Mode Koneksi BPJS Dev atau Production"
+                  checked={isProdMode}
+                  disabled={isSwitchingEnv}
+                  onChange={(e) => handleToggleBpjsMode(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-amber-500 transition-colors peer-checked:bg-emerald-600">
+                  <span
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
+                      isProdMode ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                    }`}
+                  />
+                </span>
+                <span
+                  className={`text-[10px] font-extrabold tracking-wide ${
+                    isProdMode ? 'text-emerald-800' : 'text-slate-400'
+                  }`}
+                >
+                  PROD
+                </span>
+              </label>
+
               <button
                 onClick={handleToggleAudio}
                 title={audioEnabled ? 'Audio Notifikasi Aktif' : 'Audio Dinonaktifkan'}
@@ -247,6 +319,43 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                         <span>Login Petugas Faskes</span>
                       </button>
                     )}
+
+                    <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-2">
+                      <div>
+                        <div className="text-[11px] font-bold text-slate-800">Mode BPJS</div>
+                        <div className="text-[10px] text-slate-500">
+                          {isProdMode ? 'Production (Live)' : 'Development (Tester)'}
+                        </div>
+                      </div>
+                      <label
+                        className={`inline-flex items-center gap-1.5 select-none ${
+                          isSwitchingEnv ? 'opacity-60 cursor-wait' : 'cursor-pointer'
+                        }`}
+                      >
+                        <span className={`text-[10px] font-bold ${!isProdMode ? 'text-amber-700' : 'text-slate-400'}`}>
+                          DEV
+                        </span>
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          aria-label="Mode Koneksi BPJS Dev atau Production"
+                          checked={isProdMode}
+                          disabled={isSwitchingEnv}
+                          onChange={(e) => handleToggleBpjsMode(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-amber-500 transition-colors peer-checked:bg-emerald-600">
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
+                              isProdMode ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                            }`}
+                          />
+                        </span>
+                        <span className={`text-[10px] font-bold ${isProdMode ? 'text-emerald-700' : 'text-slate-400'}`}>
+                          PROD
+                        </span>
+                      </label>
+                    </div>
 
                     {isAdministrator && (
                       <button
