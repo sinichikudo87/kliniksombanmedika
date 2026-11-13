@@ -173,6 +173,14 @@ interface BridgingSettingsModalProps {
 }
 
 export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ isOpen, onClose, onOpenPcare }) => {
+  if (!isOpen) return null;
+  return <BridgingSettingsModalInner onClose={onClose} onOpenPcare={onOpenPcare} />;
+};
+
+const BridgingSettingsModalInner: React.FC<{
+  onClose: () => void;
+  onOpenPcare?: () => void;
+}> = ({ onClose, onOpenPcare }) => {
   const { bpjsConfig, updateBpjsConfig, testBridgingPing, bridgingLogs } = useQueue();
 
   const [consId, setConsId] = useState(bpjsConfig.consId);
@@ -184,8 +192,8 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   const [passPcareDev, setPassPcareDev] = useState(bpjsConfig.passPcareDev);
   const [emailFaskes, setEmailFaskes] = useState(bpjsConfig.emailFaskes);
   const [environment, setEnvironment] = useState<'tester' | 'production'>(bpjsConfig.environment);
-  const [isOnline, setIsOnline] = useState<boolean>(bpjsConfig.isOnline !== false);
-  
+  const [isOnline, setIsOnline] = useState<boolean>(bpjsConfig.isOnline === true);
+
   const [customBaseUrl, setCustomBaseUrl] = useState<string | null>(null);
   const baseUrl = customBaseUrl !== null ? customBaseUrl : (bpjsConfig.baseUrl || 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev');
   const setBaseUrl = (val: string) => setCustomBaseUrl(val);
@@ -200,8 +208,6 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
   const [isDownloadingExcel, setIsDownloadingExcel] = useState(false);
   const [pingResult, setPingResult] = useState<any>(null);
   const [sandboxHeaders, setSandboxHeaders] = useState<Record<string, string> | null>(null);
-
-  if (!isOpen) return null;
 
   const handleSave = () => {
     updateBpjsConfig({
@@ -259,12 +265,12 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
         isOnline,
       });
       setPingResult(res);
-      if (res && res.success) {
+      if (res && res.success && res.isWhitelisted) {
         const matched = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
         const modTitle = matched?.moduleName || 'Web Service BPJS';
         showSwalSuccess(`Koneksi ${modTitle} mode ${environment === 'tester' ? 'Development / Tester' : 'Production'} terhubung normal (${res.latencyMs} ms)!`, 'Ping Berhasil');
       } else {
-        showSwalError('Gagal terhubung ke Web Service BPJS.', 'Ping Gagal');
+        showSwalError(res?.message || 'Bridging BPJS saat ini Nonaktif (Default: Off / Menunggu Whitelist).', 'Status Bridging Nonaktif');
       }
     } catch (e: any) {
       setPingResult({ success: false, error: e.message });
@@ -740,7 +746,7 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
               </div>
 
               <div className="space-y-1.5 sm:col-span-2">
-                <label className="block font-bold text-slate-700">Status Whitelist Domain & Koneksi BPJS</label>
+                <label className="block font-bold text-slate-700">Status Bridging API BPJS &amp; Whitelist Domain (Default: Off)</label>
                 <select
                   value={isOnline ? 'online' : 'pending'}
                   onChange={(e) => {
@@ -754,13 +760,13 @@ export const BridgingSettingsModal: React.FC<BridgingSettingsModalProps> = ({ is
                       : 'bg-amber-50 border-amber-300 text-amber-800'
                   }`}
                 >
-                  <option value="online">🟢 Sudah Di-Whitelist (Domain https://kliniksombanmedika.id/)</option>
-                  <option value="pending">🟡 Menunggu Whitelist Domain BPJS (Belum Terhubung)</option>
+                  <option value="pending">Nonaktif / Default Off — Menunggu Whitelist Domain BPJS</option>
+                  <option value="online">Aktif — Sudah Di-Whitelist (Domain https://kliniksombanmedika.id/)</option>
                 </select>
                 <p className="text-[11px] text-slate-500">
                   {isOnline
-                    ? 'Domain resmi https://kliniksombanmedika.id/ telah terdaftar dan disetujui di BPJS Kesehatan. Sistem aktif terhubung dan 9 endpoint siap melayani transaksi.'
-                    : 'Pilih "Sudah Di-Whitelist" jika BPJS Kesehatan telah membuka izin akses untuk domain faskes Anda.'}
+                    ? 'Bridging API BPJS diaktifkan. Sistem akan mengirim transmisi data ke endpoint BPJS terpilih.'
+                    : 'Status default adalah Nonaktif (false) sampai IP/Domain faskes di-whitelist oleh tim TI BPJS Kesehatan atau diaktifkan secara manual oleh Admin.'}
                 </p>
               </div>
             </div>

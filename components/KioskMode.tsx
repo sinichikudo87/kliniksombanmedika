@@ -144,7 +144,7 @@ export const KioskMode: React.FC = () => {
             estimasiJamPanggil: 'Sesuai Jadwal Mobile JKN',
             bpjsTaskId: 1,
             kodeBooking: clean,
-            isSyncedBpjs: true,
+            isSyncedBpjs: Boolean(bpjsConfig.isOnline),
             panggilanKe: 0,
           };
           setPrintedItem(item);

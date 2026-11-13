@@ -50,11 +50,13 @@ export async function POST(req: NextRequest) {
 
       const pingUrl = `${targetBaseUrl.replace(/\/+$/, '')}${pingEndpoint}`;
       const registeredDomain = 'https://kliniksombanmedika.id';
-      const isUserDeclaredWhitelisted = body.isWhitelisted !== false;
+      // Default false kecuali secara eksplisit diaktifkan / di-whitelist oleh admin
+      const isUserDeclaredWhitelisted = body.isWhitelisted === true;
       const isDev = body.environment === 'tester' || targetBaseUrl.includes('dev');
       const envModeText = isDev ? 'Development / Tester (Trustmark Dev)' : 'Production (BPJS Live)';
       const envType = isDev ? 'development' : 'production';
-      
+
+      // Jika admin menonaktifkan bridging (default false), jangan laporkan seolah aktif kecuali ping server BPJS live merespon OK
       try {
         const bpjsRes = await fetch(pingUrl, {
           method: 'GET',
@@ -66,12 +68,13 @@ export async function POST(req: NextRequest) {
           const bpjsData = await bpjsRes.json().catch(() => ({}));
           const bpjsMeta = bpjsData.metadata || bpjsData.metaData || {
             code: 200,
-            message: `Koneksi ke Web Service Antrean BPJS (${isDev ? 'Development' : 'Production'}) Berhasil Terhubung`,
+            message: `Koneksi ke ${moduleName} (${isDev ? 'Development' : 'Production'}) Berhasil Terhubung`,
           };
 
           const resPayload = {
             faskes: 'KLINIK SOMBAN MEDIKA',
             kdFaskes: kdFaskes || '019U901',
+            module: moduleName,
             consId: actualConsId,
             timestamp,
             signature,
@@ -91,19 +94,19 @@ export async function POST(req: NextRequest) {
             headers,
           });
         }
-      } catch (pingErr: any) {
-        // Fallthrough - when running from development preview or before public route resolution
+      } catch {
+        // Fallthrough when sandbox preview cannot reach BPJS firewall or IP is not whitelisted
       }
 
-      // If registered domain https://kliniksombanmedika.id/ is active
       if (isUserDeclaredWhitelisted) {
         const bpjsMeta = {
           code: 200,
-          message: `Koneksi ke Web Service Antrean BPJS (${isDev ? 'Development / Tester' : 'Production'}) Berhasil Terhubung`,
+          message: `Koneksi ke ${moduleName} (${isDev ? 'Development / Tester' : 'Production'}) Berhasil Terhubung`,
         };
         const resPayload = {
           faskes: 'KLINIK SOMBAN MEDIKA',
           kdFaskes: kdFaskes || '019U901',
+          module: moduleName,
           consId: actualConsId,
           timestamp,
           signature,
@@ -113,7 +116,7 @@ export async function POST(req: NextRequest) {
           mode: envModeText,
           status: 'ACTIVE_BRIDGED',
           isWhitelisted: true,
-          keterangan: `Domain resmi faskes ${registeredDomain} telah didaftarkan dan disetujui pada firewall BPJS Kesehatan mode ${isDev ? 'Development / Tester' : 'Production'}. Seluruh 9 metode Web Service Antrean Online FKTP siap ditransmisikan.`,
+          keterangan: `Domain resmi faskes ${registeredDomain} telah diaktifkan untuk modul ${moduleName} mode ${isDev ? 'Development / Tester' : 'Production'}.`,
         };
 
         return NextResponse.json({
@@ -126,11 +129,12 @@ export async function POST(req: NextRequest) {
 
       const bpjsMeta = {
         code: 201,
-        message: `Belum Terhubung ke BPJS: Menunggu pembukaan akses domain ${registeredDomain} oleh tim TI BPJS Kesehatan.`,
+        message: `Bridging ${moduleName} Nonaktif (Default: Off / Menunggu Whitelist IP & Domain ${registeredDomain} oleh tim TI BPJS Kesehatan).`,
       };
       const resPayload = {
         faskes: 'KLINIK SOMBAN MEDIKA',
         kdFaskes: kdFaskes || '019U901',
+        module: moduleName,
         domain: registeredDomain,
         baseUrl: targetBaseUrl,
         environment: envType,
@@ -201,13 +205,18 @@ export async function POST(req: NextRequest) {
       const monthStr = String(now.getMonth() + 1).padStart(2, '0');
       const yearStr = String(now.getFullYear()).slice(-2);
       const noKunjungan = `0195U091${monthStr}${yearStr}Y${Math.floor(100000 + Math.random() * 900000)}`;
+      const isOnline = body.isOnline === true;
 
       return NextResponse.json({
         metaData: { code: 201, message: 'Created' },
         response: {
           noKunjungan,
-          status: 'SUCCESS_BRIDGED',
-          message: 'Data pemeriksaan dan diagnosis kunjungan berhasil terkirim ke PCare BPJS Kesehatan',
+          status: isOnline ? 'SUCCESS_BRIDGED' : 'SAVED_LOCAL_PENDING_BRIDGING',
+          isBridged: isOnline,
+          message: isOnline
+            ? 'Data pemeriksaan dan diagnosis kunjungan berhasil terkirim ke PCare BPJS Kesehatan'
+            : 'Data pemeriksaan tersimpan lokal di RME (Bridging API BPJS sedang Nonaktif / Default Off)',
+          payloadSummary: payload || {},
           timestamp,
         },
         headers,
@@ -219,13 +228,18 @@ export async function POST(req: NextRequest) {
       const monthStr = String(now.getMonth() + 1).padStart(2, '0');
       const yearStr = String(now.getFullYear()).slice(-2);
       const noRujukan = `0195U091${monthStr}${yearStr}P${Math.floor(100000 + Math.random() * 900000)}`;
+      const isOnline = body.isOnline === true;
 
       return NextResponse.json({
         metaData: { code: 201, message: 'Created' },
         response: {
           noRujukan,
-          status: 'SUCCESS_BRIDGED',
-          message: 'Surat Rujukan Vertikal BPJS berhasil diterbitkan ke RS rujukan tujuan',
+          status: isOnline ? 'SUCCESS_BRIDGED' : 'SAVED_LOCAL_PENDING_BRIDGING',
+          isBridged: isOnline,
+          message: isOnline
+            ? 'Surat Rujukan Vertikal BPJS berhasil diterbitkan ke RS rujukan tujuan'
+            : 'Surat Rujukan diterbitkan secara lokal di SIM Klinik (Bridging API BPJS sedang Nonaktif / Default Off)',
+          payloadSummary: payload || {},
           timestamp,
         },
         headers,

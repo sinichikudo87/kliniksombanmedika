@@ -246,7 +246,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       bpjsTaskId: 1, // Task 1: Check-in Kios
       kodeBooking,
       keluhan: data.keluhan,
-      isSyncedBpjs: true,
+      isSyncedBpjs: Boolean(bpjsConfig.isOnline),
       panggilanKe: 0,
     };
 
@@ -257,6 +257,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // Log BPJS Bridging sync
     const headers = await getBpjsHeaders(bpjsConfig);
+    const isBridgingActive = bpjsConfig.isOnline === true;
     addBridgingLog({
       timestamp: new Date().toISOString(),
       endpoint: '/antrean/add',
@@ -276,10 +277,14 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         namadokter: poli.dokter,
         jampraktek: '08:00-16:00',
       },
-      responseStatus: 200,
+      responseStatus: isBridgingActive ? 200 : 201,
       responsePayload: {
-        metaData: { code: 200, message: 'Ok' },
-        response: { status: 'Nomor Antrean Berhasil Disinkronkan ke Antrean Online BPJS (Mobile JKN)' },
+        metaData: { code: isBridgingActive ? 200 : 201, message: isBridgingActive ? 'Ok' : 'Pending Bridging' },
+        response: {
+          status: isBridgingActive
+            ? 'Nomor Antrean Berhasil Disinkronkan ke Antrean Online BPJS (Mobile JKN)'
+            : 'Antrean tersimpan di database lokal (Bridging API BPJS Nonaktif / Default Off)',
+        },
       },
       durationMs: 84,
     });
@@ -596,7 +601,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       bpjsTaskId: 6, // Resep siap
       kodeBooking: item.kodeBooking,
       keluhan: `Resep lanjutan dari ${item.poliNama}`,
-      isSyncedBpjs: true,
+      isSyncedBpjs: Boolean(bpjsConfig.isOnline),
       panggilanKe: 0,
     };
 
@@ -648,18 +653,18 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           kdFaskes: activeCfg.kdFaskes,
           baseUrl: activeCfg.baseUrl,
           environment: activeCfg.environment,
-          isWhitelisted: activeCfg.isOnline !== false,
+          isWhitelisted: activeCfg.isOnline === true,
         }),
       });
 
       const json = await res.json().catch(() => ({}));
       const latencyMs = Math.round(performance.now() - start);
       const meta = json.metadata || json.metaData || {};
-      const isWhitelisted = (meta.code === 200 && json.response?.isWhitelisted === true) || activeCfg.isOnline === true;
+      const isWhitelisted = Boolean(meta.code === 200 && json.response?.isWhitelisted === true);
 
       addBridgingLog({
         timestamp: new Date().toISOString(),
-        endpoint: '/ref/poli (Ping BPJS)',
+        endpoint: `${activeCfg.baseUrl} (Ping BPJS)`,
         method: 'GET',
         requestHeader: headers,
         responseStatus: meta.code || res.status,
@@ -668,26 +673,24 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
 
       // Update state isOnline
-      updateBpjsConfig({ isOnline: isWhitelisted, ...customConfig });
+      updateBpjsConfig({ ...customConfig, isOnline: isWhitelisted });
 
       return {
         success: isWhitelisted,
         isWhitelisted,
         latencyMs,
-        message: meta.message || (isWhitelisted ? 'Terhubung ke Web Service BPJS' : 'Belum di-whitelist oleh BPJS'),
+        message: meta.message || (isWhitelisted ? 'Terhubung ke Web Service BPJS' : 'Bridging BPJS Nonaktif / Menunggu Whitelist'),
         details: json.response || json,
         raw: json,
       };
     } catch (err: any) {
       const latencyMs = Math.round(performance.now() - start);
-      const isWhitelisted = activeCfg.isOnline === true;
+      updateBpjsConfig({ ...customConfig, isOnline: false });
       return {
-        success: isWhitelisted,
-        isWhitelisted,
+        success: false,
+        isWhitelisted: false,
         latencyMs,
-        message: isWhitelisted
-          ? 'Koneksi bridging BPJS aktif (Domain https://kliniksombanmedika.id/ telah terdaftar dan di-whitelist BPJS).'
-          : 'Koneksi ke endpoint BPJS ditolak / belum di-whitelist: ' + err.message,
+        message: 'Koneksi ke endpoint BPJS ditolak / belum aktif: ' + err.message,
       };
     }
   };

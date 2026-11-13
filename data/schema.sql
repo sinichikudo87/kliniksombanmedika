@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS `faskes_config` (
   `dev_pass` VARCHAR(50) DEFAULT NULL,
   `environment` ENUM('tester', 'production') DEFAULT 'tester',
   `base_url` VARCHAR(255) NOT NULL,
+  `is_online` TINYINT(1) NOT NULL DEFAULT 0,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_kd_faskes` (`kd_faskes`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -178,18 +179,40 @@ ON DUPLICATE KEY UPDATE `nama_lengkap` = VALUES(`nama_lengkap`), `role` = VALUES
 -- ------------------------------------------------------------------------------
 -- SEED DATA AWAL: KONFIGURASI FASKES TPMD DR MACHMUJUR
 -- ------------------------------------------------------------------------------
-INSERT INTO `faskes_config` (`id`, `kd_faskes`, `nama_faskes`, `cons_id`, `secret_key`, `user_key`, `dev_user`, `dev_pass`, `environment`, `base_url`)
+INSERT INTO `faskes_config` (`id`, `kd_faskes`, `nama_faskes`, `cons_id`, `secret_key`, `user_key`, `dev_user`, `dev_pass`, `environment`, `base_url`, `is_online`)
 VALUES (
   'cfg-default',
   '019U901',
-  'TPMD DR MACHMUJUR',
+  'KLINIK SOMBAN MEDIKA',
   '11495',
   '4xHABA0A84',
   '4a1a84234ffc19f0c77750cebfa2444e',
   '0195U091-dev',
   'Dev1234#',
   'tester',
-) ON DUPLICATE KEY UPDATE `kd_faskes` = VALUES(`kd_faskes`), `base_url` = IF(`base_url` LIKE '%vclaim%', 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev', VALUES(`base_url`));
+  'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev',
+  0
+) ON DUPLICATE KEY UPDATE `kd_faskes` = VALUES(`kd_faskes`), `base_url` = IF(`base_url` LIKE '%vclaim%', 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev', `base_url`);
+
+-- ------------------------------------------------------------------------------
+-- 7. TABEL MASTER RS RUJUKAN SELURUH INDONESIA (rs_rujukan)
+-- ------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `rs_rujukan` (
+  `id` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `kode_faskes` VARCHAR(20) NOT NULL UNIQUE,
+  `nama` VARCHAR(200) NOT NULL,
+  `kelas` ENUM('A', 'B', 'C', 'D', 'Khusus') NOT NULL DEFAULT 'B',
+  `jenis` VARCHAR(80) NOT NULL DEFAULT 'RSUD',
+  `kota` VARCHAR(120) NOT NULL,
+  `provinsi` VARCHAR(120) NOT NULL,
+  `alamat` TEXT DEFAULT NULL,
+  `telepon` VARCHAR(50) DEFAULT NULL,
+  `is_bpjs` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_rs_provinsi` (`provinsi`),
+  INDEX `idx_rs_kota` (`kota`),
+  INDEX `idx_rs_nama` (`nama`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------------------------
 -- SEED DATA AWAL: MASTER POLIKLINIK & DOKTER (poliklinik)

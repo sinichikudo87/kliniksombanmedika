@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMySqlPool } from '@/lib/mysql-db';
 
-export async function POST(req: NextRequest) {
+async function handleStatusV2(kodepoli?: string | null, tanggalperiksa?: string | null) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const { kodepoli, tanggalperiksa } = body;
-
     const tgl = tanggalperiksa || new Date().toISOString().split('T')[0];
     const pool = getMySqlPool();
 
@@ -70,6 +67,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  return handleStatusV2(body.kodepoli, body.tanggalperiksa);
+}
+
 export async function GET(req: NextRequest) {
-  return POST(req);
+  const kodepoli = req.nextUrl.searchParams.get('kodepoli');
+  const tanggalperiksa = req.nextUrl.searchParams.get('tanggalperiksa');
+  return handleStatusV2(kodepoli, tanggalperiksa);
 }

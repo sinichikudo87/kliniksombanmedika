@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import { QueueItem, Patient, BpjsBridgingConfig, AuditSecurityLog, BridgingLog, PoliInfo } from '@/types/queue';
+import { INDONESIA_REFERRAL_HOSPITALS, ReferralHospital } from '@/lib/indonesia-hospitals';
 import fs from 'fs';
 import path from 'path';
 
@@ -74,7 +75,7 @@ function mapConfigRow(row: any) {
     passPcareDev: row.dev_pass,
     environment: row.environment || 'tester',
     baseUrl,
-    isOnline: row.is_online !== 0,
+    isOnline: row.is_online === 1 || row.is_online === true,
   };
 }
 
@@ -282,7 +283,25 @@ export async function initMySqlSchema() {
       dev_pass VARCHAR(50) NULL,
       environment ENUM('tester', 'production') DEFAULT 'tester',
       base_url VARCHAR(255) NOT NULL,
+      is_online TINYINT(1) NOT NULL DEFAULT 0,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    CREATE TABLE IF NOT EXISTS rs_rujukan (
+      id VARCHAR(50) PRIMARY KEY,
+      kode_faskes VARCHAR(20) NOT NULL UNIQUE,
+      nama VARCHAR(200) NOT NULL,
+      kelas ENUM('A', 'B', 'C', 'D', 'Khusus') NOT NULL DEFAULT 'B',
+      jenis VARCHAR(80) NOT NULL DEFAULT 'RSUD',
+      kota VARCHAR(120) NOT NULL,
+      provinsi VARCHAR(120) NOT NULL,
+      alamat TEXT NULL,
+      telepon VARCHAR(50) NULL,
+      is_bpjs TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_rs_provinsi (provinsi),
+      INDEX idx_rs_kota (kota),
+      INDEX idx_rs_nama (nama)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
     INSERT INTO users (id, username, password_hash, nama_lengkap, role, nip, kd_faskes, is_active)
@@ -302,11 +321,11 @@ export async function initMySqlSchema() {
       ('FAR', 'Apotek & Farmasi', 'F', 'Apt. Hendra Pratama, S.Farm', '', 'Loket Farmasi Utama', 6, 100, 0, 'amber', 'Pill')
     ON DUPLICATE KEY UPDATE nama = VALUES(nama);
 
-    INSERT INTO faskes_config (id, kd_faskes, nama_faskes, cons_id, secret_key, user_key, dev_user, dev_pass, environment, base_url)
+    INSERT INTO faskes_config (id, kd_faskes, nama_faskes, cons_id, secret_key, user_key, dev_user, dev_pass, environment, base_url, is_online)
     VALUES (
       'cfg-default', '019U901', 'KLINIK SOMBAN MEDIKA', '11495', '4xHABA0A84',
       '4a1a84234ffc19f0c77750cebfa2444e', '0195U091-dev', 'Dev1234#', 'tester',
-      'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev'
+      'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev', 0
     ) ON DUPLICATE KEY UPDATE base_url = IF(base_url LIKE '%vclaim%', 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev', base_url);
 
     UPDATE faskes_config SET base_url = 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev' WHERE base_url LIKE '%vclaim%' OR base_url = '' OR base_url IS NULL;
@@ -318,10 +337,49 @@ export async function initMySqlSchema() {
     for (const sql of statements) {
       await pool.query(sql);
     }
+
+    // Ensure is_online column exists on legacy faskes_config tables
+    const [colRows]: [any, any] = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'faskes_config' AND COLUMN_NAME = 'is_online'`
+    );
+    if ((colRows[0]?.cnt || 0) === 0) {
+      await pool.query('ALTER TABLE faskes_config ADD COLUMN is_online TINYINT(1) NOT NULL DEFAULT 0 AFTER base_url');
+    }
+
+    // Seed rs_rujukan across all 38 provinces if empty
+    const [rsCount]: [any, any] = await pool.query('SELECT COUNT(*) AS cnt FROM rs_rujukan');
+    if ((rsCount[0]?.cnt || 0) === 0) {
+      await seedReferralHospitalsToPool(pool);
+    }
+
     return { success: true, message: 'Schema tabel MySQL berhasil diverifikasi/dibuat di database' };
   } catch (err: any) {
     return { success: false, error: err.message };
   }
+}
+
+async function seedReferralHospitalsToPool(pool: mysql.Pool) {
+  if (INDONESIA_REFERRAL_HOSPITALS.length === 0) return;
+  const values = INDONESIA_REFERRAL_HOSPITALS.map((rs, idx) => [
+    `rs-${String(idx + 1).padStart(4, '0')}`,
+    rs.kodeFaskes,
+    rs.nama,
+    rs.kelas,
+    rs.jenis,
+    rs.kota,
+    rs.provinsi,
+    rs.alamat || null,
+    rs.telepon || null,
+    rs.isBpjs === false ? 0 : 1,
+  ]);
+
+  await pool.query(
+    `INSERT IGNORE INTO rs_rujukan
+      (id, kode_faskes, nama, kelas, jenis, kota, provinsi, alamat, telepon, is_bpjs)
+     VALUES ?`,
+    [values]
+  );
 }
 
 /**
@@ -575,6 +633,10 @@ export const mySqlDb = {
     if (config.baseUrl) {
       fields.push('base_url = ?');
       vals.push(config.baseUrl.trim());
+    }
+    if (config.isOnline !== undefined) {
+      fields.push('is_online = ?');
+      vals.push(config.isOnline ? 1 : 0);
     }
 
     if (fields.length > 0) {
@@ -850,6 +912,169 @@ export const mySqlDb = {
     }
 
     return { success: true, message: 'Poliklinik berhasil diupdate di database MySQL' };
+  },
+
+  async getReferralHospitals(search?: string, province?: string): Promise<{
+    source: 'MYSQL' | 'MASTER_DATASET';
+    hospitals: ReferralHospital[];
+  }> {
+    const cleanSearch = (search || '').trim().toLowerCase();
+    const cleanProv = (province || '').trim();
+
+    try {
+      const pool = getMySqlPool();
+      // Ensure rs_rujukan exists and has initial Indonesian hospitals seed
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS rs_rujukan (
+          id VARCHAR(50) PRIMARY KEY,
+          kode_faskes VARCHAR(20) NOT NULL UNIQUE,
+          nama VARCHAR(200) NOT NULL,
+          kelas ENUM('A', 'B', 'C', 'D', 'Khusus') NOT NULL DEFAULT 'B',
+          jenis VARCHAR(80) NOT NULL DEFAULT 'RSUD',
+          kota VARCHAR(120) NOT NULL,
+          provinsi VARCHAR(120) NOT NULL,
+          alamat TEXT NULL,
+          telepon VARCHAR(50) NULL,
+          is_bpjs TINYINT(1) NOT NULL DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_rs_provinsi (provinsi),
+          INDEX idx_rs_kota (kota),
+          INDEX idx_rs_nama (nama)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+
+      const [countRows]: [any, any] = await pool.query('SELECT COUNT(*) AS cnt FROM rs_rujukan');
+      if ((countRows[0]?.cnt || 0) === 0) {
+        await seedReferralHospitalsToPool(pool);
+      }
+
+      const whereClauses: string[] = [];
+      const params: any[] = [];
+      if (cleanProv && cleanProv !== 'ALL') {
+        whereClauses.push('provinsi = ?');
+        params.push(cleanProv);
+      }
+      if (cleanSearch) {
+        whereClauses.push('(LOWER(nama) LIKE ? OR LOWER(kode_faskes) LIKE ? OR LOWER(kota) LIKE ? OR LOWER(provinsi) LIKE ?)');
+        const likeTerm = `%${cleanSearch}%`;
+        params.push(likeTerm, likeTerm, likeTerm, likeTerm);
+      }
+
+      const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+      const [rows]: [any, any] = await pool.query(
+        `SELECT * FROM rs_rujukan ${whereSql} ORDER BY provinsi = 'Jawa Timur' DESC, kota LIKE '%Sidoarjo%' DESC, provinsi ASC, nama ASC`,
+        params
+      );
+
+      lastConnectionStatus.connected = true;
+      return {
+        source: 'MYSQL',
+        hospitals: (rows || []).map((r: any) => ({
+          id: r.id,
+          kodeFaskes: r.kode_faskes,
+          nama: r.nama,
+          kelas: r.kelas || 'B',
+          jenis: r.jenis || 'RSUD',
+          kota: r.kota,
+          provinsi: r.provinsi,
+          alamat: r.alamat || '',
+          telepon: r.telepon || '',
+          isBpjs: r.is_bpjs === 1,
+        })),
+      };
+    } catch {
+      const filtered = INDONESIA_REFERRAL_HOSPITALS.filter((rs) => {
+        if (cleanProv && cleanProv !== 'ALL' && rs.provinsi !== cleanProv) return false;
+        if (cleanSearch) {
+          const hay = `${rs.kodeFaskes} ${rs.nama} ${rs.kota} ${rs.provinsi} ${rs.jenis}`.toLowerCase();
+          return hay.includes(cleanSearch);
+        }
+        return true;
+      });
+      return {
+        source: 'MASTER_DATASET',
+        hospitals: filtered,
+      };
+    }
+  },
+
+  async addReferralHospital(hospital: ReferralHospital): Promise<{
+    success: boolean;
+    source?: 'MYSQL';
+    hospital?: ReferralHospital;
+    message: string;
+  }> {
+    try {
+      const pool = getMySqlPool();
+      const id = hospital.id || `rs-${Date.now()}`;
+      const kodeFaskes = hospital.kodeFaskes.trim().toUpperCase();
+      const nama = hospital.nama.trim();
+      const kelas = hospital.kelas || 'B';
+      const jenis = (hospital.jenis || 'RSUD').trim();
+      const kota = hospital.kota.trim();
+      const provinsi = hospital.provinsi.trim();
+      const alamat = (hospital.alamat || '').trim() || null;
+      const telepon = (hospital.telepon || '').trim() || null;
+      const isBpjs = hospital.isBpjs === false ? 0 : 1;
+
+      await pool.query(
+        `INSERT INTO rs_rujukan
+          (id, kode_faskes, nama, kelas, jenis, kota, provinsi, alamat, telepon, is_bpjs)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           nama = VALUES(nama),
+           kelas = VALUES(kelas),
+           jenis = VALUES(jenis),
+           kota = VALUES(kota),
+           provinsi = VALUES(provinsi),
+           alamat = VALUES(alamat),
+           telepon = VALUES(telepon),
+           is_bpjs = VALUES(is_bpjs)`,
+        [id, kodeFaskes, nama, kelas, jenis, kota, provinsi, alamat, telepon, isBpjs]
+      );
+
+      lastConnectionStatus.connected = true;
+      return {
+        success: true,
+        source: 'MYSQL',
+        hospital: {
+          id,
+          kodeFaskes,
+          nama,
+          kelas,
+          jenis,
+          kota,
+          provinsi,
+          alamat: alamat || '',
+          telepon: telepon || '',
+          isBpjs: isBpjs === 1,
+        },
+        message: `RS Rujukan "${nama}" (${kodeFaskes}) berhasil disimpan ke database MySQL.`,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Gagal menyimpan RS Rujukan ke database MySQL: ${err?.message || 'Koneksi MySQL tidak aktif'}`,
+      };
+    }
+  },
+
+  async seedAllReferralHospitals() {
+    try {
+      const pool = getMySqlPool();
+      await seedReferralHospitalsToPool(pool);
+      const [cnt]: [any, any] = await pool.query('SELECT COUNT(*) AS total FROM rs_rujukan');
+      return {
+        success: true,
+        total: cnt[0]?.total || INDONESIA_REFERRAL_HOSPITALS.length,
+        message: 'Master RS Rujukan seluruh Indonesia berhasil disinkronkan ke MySQL.',
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: `Gagal seed RS Rujukan ke MySQL: ${err?.message || 'Koneksi gagal'}`,
+      };
+    }
   },
 
   getSchemaSql(): string {

@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQueue } from '@/lib/queue-context';
 import { useAuth } from '@/lib/auth-context';
 import { showSwalSuccess, showSwalInfo, showSwalError } from '@/lib/swal';
+import { INDONESIA_REFERRAL_HOSPITALS, INDONESIA_PROVINCES, ReferralHospital } from '@/lib/indonesia-hospitals';
+import { SearchableHospitalSelect } from '@/components/SearchableHospitalSelect';
 import {
   Stethoscope,
   Activity,
@@ -50,14 +52,8 @@ const POPULAR_ICD10 = [
   { code: 'K02.9', name: 'Dental caries, unspecified (Karies Gigi / Gigi Berlubang)' },
 ];
 
-// Hospital referral targets (FKRTL Sidoarjo & sekitar)
-const REFERRAL_HOSPITALS = [
-  { kode: '0195R001', nama: 'RSUD Sidoarjo (Kelas B)', jarak: '4.2 km' },
-  { kode: '0195R002', nama: 'RS Siti Hajar Sidoarjo (Kelas C)', jarak: '3.1 km' },
-  { kode: '0195R003', nama: 'RS Delta Surya Sidoarjo (Kelas B)', jarak: '5.0 km' },
-  { kode: '0195R004', nama: 'RS Mitra Keluarga Waru (Kelas B)', jarak: '8.4 km' },
-  { kode: '0195R005', nama: 'RS Anwar Medika Krian (Kelas C)', jarak: '12.0 km' },
-];
+// Fallback referral hospitals across Indonesia loaded initially before /api/rs-rujukan response
+const DEFAULT_REFERRAL_HOSPITALS = INDONESIA_REFERRAL_HOSPITALS;
 
 const SPECIALIST_POLIS = [
   { kode: 'INT', nama: 'Spesialis Penyakit Dalam (Internis)' },
@@ -130,11 +126,29 @@ export const PcareView: React.FC<PcareViewProps> = ({
   const [terapiObat, setTerapiObat] = useState<string>('Amlodipine 5mg 1x1 tab pagi, Paracetamol 500mg 3x1 bila pusing.');
   const [statusPulang, setStatusPulang] = useState<string>('1'); // 1 = Berobat Jalan, 2 = Rujuk Vertikal, 3 = Rujuk Horizontal
 
-  // Referral State
+  // Referral State (All Indonesian Hospitals backed by MySQL)
+  const [referralHospitals, setReferralHospitals] = useState<ReferralHospital[]>(DEFAULT_REFERRAL_HOSPITALS);
+  const [hospitalDataSource, setHospitalDataSource] = useState<string>('MASTER_DATASET');
   const [targetRs, setTargetRs] = useState<string>('0195R001');
   const [targetPoliRs, setTargetPoliRs] = useState<string>('INT');
   const [catatanRujukan, setCatatanRujukan] = useState<string>('Memerlukan penanganan spesialis lebih lanjut.');
   const [tglRencanaKunjungan, setTglRencanaKunjungan] = useState<string>('2026-11-13');
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/rs-rujukan')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (active && json?.success && Array.isArray(json.hospitals) && json.hospitals.length > 0) {
+          setReferralHospitals(json.hospitals);
+          setHospitalDataSource(json.source || 'MYSQL');
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Registration State
   const [regSearchQuery, setRegSearchQuery] = useState<string>('');
@@ -257,15 +271,44 @@ export const PcareView: React.FC<PcareViewProps> = ({
     setIsSubmitting(true);
     try {
       const currentCount = pcareVisitLogs.length + 1;
-      const generatedNoKunjungan = getFormattedPcareVisitNumber(currentCount + 10);
       const diagnosaLabel = customIcd10.trim()
         ? customIcd10
         : POPULAR_ICD10.find((d) => d.code === selectedIcd10)?.name || selectedIcd10;
+      const selectedHospital = referralHospitals.find((rs) => rs.kodeFaskes === targetRs);
 
-      let generatedRujukanNo: string | undefined = undefined;
-      if (statusPulang === '2') {
-        generatedRujukanNo = getFormattedPcareReferralNumber(currentCount + 5);
-      }
+      const bpjsRes = await fetch('/api/bpjs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: statusPulang === '2' ? 'pcare_rujukan' : 'pcare_kunjungan',
+          consId: bpjsConfig.consId,
+          secretKey: bpjsConfig.secretKey,
+          userKey: bpjsConfig.userKey,
+          kdFaskes: bpjsConfig.kdFaskes,
+          isOnline: bpjsConfig.isOnline === true,
+          payload: {
+            noKartu: selectedPatient.noBpjs || '0001234567890',
+            kdPoli: selectedPatient.poliKode,
+            keluhan: anamnesa,
+            kdDiag1: selectedIcd10,
+            sistole: Number(sistole),
+            diastole: Number(diastole),
+            suhu,
+            statusPulang,
+            ppkRujuk: statusPulang === '2' ? targetRs : undefined,
+            namaPpkRujuk: statusPulang === '2' ? selectedHospital?.nama : undefined,
+            poliRujuk: statusPulang === '2' ? targetPoliRs : undefined,
+          },
+        }),
+      });
+
+      const bpjsJson = await bpjsRes.json().catch(() => ({}));
+      const generatedNoKunjungan =
+        bpjsJson?.response?.noKunjungan || getFormattedPcareVisitNumber(currentCount + 10);
+      const generatedRujukanNo =
+        statusPulang === '2'
+          ? bpjsJson?.response?.noRujukan || getFormattedPcareReferralNumber(currentCount + 5)
+          : undefined;
 
       // Add to local history
       const newEntry = {
@@ -284,14 +327,19 @@ export const PcareView: React.FC<PcareViewProps> = ({
       // Complete queue in context (Task ID 6 Selesai Pelayanan Poli)
       await finishQueue(selectedPatient.id);
 
+      const bridgeNote =
+        bpjsConfig.isOnline === true
+          ? 'Data telah terkirim ke server Bridging BPJS Kesehatan.'
+          : 'Data tersimpan di database RME lokal (Bridging API BPJS sedang Nonaktif / Default Off).';
+
       if (statusPulang === '2') {
         showSwalSuccess(
-          `Kunjungan PCare berhasil tersimpan!\n\nNo. Kunjungan: ${generatedNoKunjungan}\nNo. Rujukan RS: ${generatedRujukanNo}\nDiagnosa: ${diagnosaLabel}\n\nData telah sinkron dengan server BPJS Kesehatan.`,
-          'Rujukan & PCare Berhasil'
+          `Kunjungan & Rujukan PCare tersimpan!\n\nNo. Kunjungan: ${generatedNoKunjungan}\nNo. Rujukan RS: ${generatedRujukanNo}\nRS Tujuan: ${selectedHospital?.nama || targetRs}\nDiagnosa: ${diagnosaLabel}\n\n${bridgeNote}`,
+          'Rujukan & PCare Tersimpan'
         );
       } else {
         showSwalSuccess(
-          `Pelayanan Dokter PCare berhasil disubmit ke BPJS!\n\nNo. Kunjungan PCare: ${generatedNoKunjungan}\nPasien: ${selectedPatient.namaPasien}\nDiagnosa: ${diagnosaLabel}\nStatus: Berobat Jalan (Selesai)`,
+          `Pelayanan Dokter PCare berhasil disimpan!\n\nNo. Kunjungan PCare: ${generatedNoKunjungan}\nPasien: ${selectedPatient.namaPasien}\nDiagnosa: ${diagnosaLabel}\n\n${bridgeNote}`,
           'Kunjungan PCare Tersimpan'
         );
       }
@@ -340,9 +388,13 @@ export const PcareView: React.FC<PcareViewProps> = ({
               <span className="px-2.5 py-0.5 rounded-full bg-white/10 text-slate-200 text-xs font-mono">
                 FKTP / Klinik Pratama &amp; TPMD
               </span>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-400/20 text-emerald-300 text-xs font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>Web Service Live</span>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
+                bpjsConfig.isOnline === true
+                  ? 'bg-emerald-400/20 text-emerald-300'
+                  : 'bg-amber-400/20 text-amber-200 border border-amber-400/30'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${bpjsConfig.isOnline === true ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span>{bpjsConfig.isOnline === true ? 'Bridging Aktif' : 'Bridging Nonaktif (Default Off)'}</span>
               </span>
             </div>
 
@@ -828,27 +880,30 @@ export const PcareView: React.FC<PcareViewProps> = ({
                         <Building2 className="w-4 h-4 text-amber-700" />
                         <span>Form Rujukan Vertikal BPJS (FKRTL):</span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[11px] text-amber-800 font-semibold mb-1">Rumah Sakit Tujuan:</label>
-                          <select
+                          <label className="block text-[11px] text-amber-800 font-semibold mb-1">
+                            Rumah Sakit Tujuan (Seluruh Indonesia · {referralHospitals.length} RS):
+                          </label>
+                          <SearchableHospitalSelect
                             value={targetRs}
-                            onChange={(e) => setTargetRs(e.target.value)}
-                            className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs"
-                          >
-                            {REFERRAL_HOSPITALS.map((rs) => (
-                              <option key={rs.kode} value={rs.kode}>
-                                {rs.nama} ({rs.jarak})
-                              </option>
-                            ))}
-                          </select>
+                            onChange={(kode) => setTargetRs(kode)}
+                            hospitals={referralHospitals}
+                            provinces={INDONESIA_PROVINCES}
+                            dataSource={hospitalDataSource}
+                            accentColor="amber"
+                            onHospitalAdded={(newRs) => {
+                              setReferralHospitals((prev) => [newRs, ...prev.filter((r) => r.kodeFaskes !== newRs.kodeFaskes)]);
+                              setHospitalDataSource('MYSQL');
+                            }}
+                          />
                         </div>
                         <div>
                           <label className="block text-[11px] text-amber-800 font-semibold mb-1">Poli Spesialis RS:</label>
                           <select
                             value={targetPoliRs}
                             onChange={(e) => setTargetPoliRs(e.target.value)}
-                            className="w-full p-2 bg-white border border-amber-300 rounded-lg text-xs"
+                            className="w-full p-2.5 bg-white border border-amber-300 rounded-xl text-xs"
                           >
                             {SPECIALIST_POLIS.map((sp) => (
                               <option key={sp.kode} value={sp.kode}>
@@ -1059,18 +1114,20 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Rumah Sakit Rujukan Tujuan:</label>
-              <select
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Rumah Sakit Rujukan Tujuan (Seluruh Indonesia · {referralHospitals.length} RS):
+              </label>
+              <SearchableHospitalSelect
                 value={targetRs}
-                onChange={(e) => setTargetRs(e.target.value)}
-                className="w-full p-2.5 bg-white border border-slate-300 rounded-xl text-xs font-medium"
-              >
-                {REFERRAL_HOSPITALS.map((rs) => (
-                  <option key={rs.kode} value={rs.kode}>
-                    {rs.nama} ({rs.jarak})
-                  </option>
-                ))}
-              </select>
+                onChange={(kode) => setTargetRs(kode)}
+                hospitals={referralHospitals}
+                provinces={INDONESIA_PROVINCES}
+                dataSource={hospitalDataSource}
+                onHospitalAdded={(newRs) => {
+                  setReferralHospitals((prev) => [newRs, ...prev.filter((r) => r.kodeFaskes !== newRs.kodeFaskes)]);
+                  setHospitalDataSource('MYSQL');
+                }}
+              />
             </div>
 
             <div>
@@ -1133,7 +1190,12 @@ export const PcareView: React.FC<PcareViewProps> = ({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600">
               <div>Faskes Asal: <strong className="text-slate-900">{bpjsConfig.namaFaskes}</strong></div>
-              <div>Faskes Rujukan: <strong className="text-slate-900">{REFERRAL_HOSPITALS.find((r) => r.kode === targetRs)?.nama}</strong></div>
+              <div>
+                Faskes Rujukan:{' '}
+                <strong className="text-slate-900">
+                  {referralHospitals.find((r) => r.kodeFaskes === targetRs)?.nama || targetRs}
+                </strong>
+              </div>
               <div>Poli Tujuan: <strong className="text-slate-900">{SPECIALIST_POLIS.find((s) => s.kode === targetPoliRs)?.nama}</strong></div>
               <div>Masa Berlaku: <strong className="text-slate-900">90 Hari</strong></div>
             </div>
@@ -1151,10 +1213,32 @@ export const PcareView: React.FC<PcareViewProps> = ({
             </button>
 
             <button
-              onClick={() => {
-                const noRuj = getFormattedPcareReferralNumber(pcareVisitLogs.length + 8);
+              onClick={async () => {
+                const selectedRs = referralHospitals.find((r) => r.kodeFaskes === targetRs);
+                const res = await fetch('/api/bpjs', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    action: 'pcare_rujukan',
+                    consId: bpjsConfig.consId,
+                    secretKey: bpjsConfig.secretKey,
+                    userKey: bpjsConfig.userKey,
+                    kdFaskes: bpjsConfig.kdFaskes,
+                    isOnline: bpjsConfig.isOnline === true,
+                    payload: {
+                      ppkRujuk: targetRs,
+                      namaPpkRujuk: selectedRs?.nama,
+                      poliRujuk: targetPoliRs,
+                      tglEstRujuk: tglRencanaKunjungan,
+                      kdDiag: selectedIcd10,
+                      catatan: catatanRujukan,
+                    },
+                  }),
+                });
+                const json = await res.json().catch(() => ({}));
+                const noRuj = json?.response?.noRujukan || getFormattedPcareReferralNumber(pcareVisitLogs.length + 8);
                 showSwalSuccess(
-                  `Surat Rujukan PCare berhasil diterbitkan!\nNo. Rujukan: ${noRuj}\nFaskes Tujuan: ${REFERRAL_HOSPITALS.find((r) => r.kode === targetRs)?.nama}\nData terintegrasi ke VClaim Rumah Sakit tujuan.`,
+                  `Surat Rujukan PCare berhasil diterbitkan!\nNo. Rujukan: ${noRuj}\nFaskes Tujuan: ${selectedRs?.nama || targetRs} (${selectedRs?.kota || ''}, ${selectedRs?.provinsi || ''})\nStatus Bridging: ${bpjsConfig.isOnline === true ? 'Terkirim ke BPJS' : 'Tersimpan Lokal (Bridging Default Off)'}`,
                   'Rujukan Terbit'
                 );
               }}
