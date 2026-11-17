@@ -27,6 +27,7 @@ import {
   Database,
   AlertCircle,
   X,
+  UploadCloud,
 } from 'lucide-react';
 
 // Referensi Kode Diagnosa ICD-10 Standar FKTP (PCare BPJS)
@@ -89,7 +90,18 @@ export const PcareView: React.FC<PcareViewProps> = ({
   onOpenSettings,
   onNavigateToOperator,
 }) => {
-  const { queues, poliList, bpjsConfig, addQueue, finishQueue, testBridgingPing, switchBpjsEnvironment } = useQueue();
+  const {
+    queues,
+    poliList,
+    bpjsConfig,
+    addQueue,
+    finishQueue,
+    testBridgingPing,
+    switchBpjsEnvironment,
+    isSyncingPending,
+    pendingSyncSummary,
+    syncPendingToBpjs,
+  } = useQueue();
   const [isSwitchingEnv, setIsSwitchingEnv] = useState<boolean>(false);
 
   // Active sub-tab
@@ -207,17 +219,17 @@ export const PcareView: React.FC<PcareViewProps> = ({
       if (res.ok && json?.success && Array.isArray(json.visits)) {
         setPcareVisitLogs(json.visits);
         if (showFeedback) {
-          showSwalSuccess(`Berhasil memuat ${json.visits.length} riwayat kunjungan PCare dari database MySQL.`, 'Data Disegarkan');
+          showSwalSuccess(`Berhasil memuat ${json.visits.length} riwayat kunjungan PCare.`, 'Data Disegarkan');
         }
       } else {
-        const msg = json?.message || 'Gagal memuat riwayat kunjungan PCare dari database MySQL.';
+        const msg = json?.message || 'Gagal memuat riwayat kunjungan PCare.';
         setVisitsLoadError(msg);
         if (showFeedback) {
-          showSwalError(msg, 'Error MySQL');
+          showSwalError(msg, 'Gagal Memuat');
         }
       }
     } catch (err: any) {
-      const msg = err?.message || 'Koneksi ke server database MySQL terputus.';
+      const msg = err?.message || 'Koneksi ke server faskes terputus.';
       setVisitsLoadError(msg);
       if (showFeedback) {
         showSwalError(msg, 'Error Koneksi');
@@ -234,7 +246,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
       .then((json) => {
         if (active && json?.success && Array.isArray(json.hospitals)) {
           setReferralHospitals(json.hospitals);
-          setHospitalDataSource(json.source || 'MYSQL');
+          setHospitalDataSource(json.source || 'SERVER');
           if (json.hospitals.length > 0) {
             setTargetRs((prev) => prev || json.hospitals[0].kodeFaskes);
           }
@@ -254,7 +266,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
       })
       .catch(() => {
         if (active) {
-          setVisitsLoadError('Koneksi ke server database MySQL terputus.');
+          setVisitsLoadError('Koneksi ke server faskes terputus.');
         }
       });
 
@@ -307,7 +319,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
         setRegNoBpjsInput(peserta.noKartu || (cleanQuery.length === 13 ? cleanQuery : ''));
         setRegNamaInput(peserta.nama || '');
         showSwalSuccess(
-          `Peserta Ditemukan (${data.source === 'BPJS_BRIDGING_API' ? 'BPJS Bridging API' : 'Database MySQL'}): ${peserta.nama} (${peserta.statusPeserta?.keterangan || 'AKTIF'})`,
+          `Peserta Ditemukan (${data.source === 'BPJS_BRIDGING_API' ? 'BPJS Bridging API' : 'Data Terdaftar Faskes'}): ${peserta.nama} (${peserta.statusPeserta?.keterangan || 'AKTIF'})`,
           'Peserta Ditemukan'
         );
       } else {
@@ -315,26 +327,26 @@ export const PcareView: React.FC<PcareViewProps> = ({
         if (cleanQuery.length === 16) setRegNikInput(cleanQuery);
         if (cleanQuery.length === 13) setRegNoBpjsInput(cleanQuery);
         showSwalInfo(
-          data.metaData?.message || 'Peserta belum ditemukan di database MySQL maupun API BPJS. Lengkapi formulir di bawah untuk mendaftarkan pasien baru ke MySQL.',
+          data.metaData?.message || 'Peserta belum ditemukan di data faskes maupun API BPJS. Lengkapi formulir di bawah untuk mendaftarkan pasien baru.',
           'Peserta Belum Terdaftar'
         );
       }
     } catch {
       setSearchPesertaResult(null);
-      showSwalError('Gagal memeriksa data peserta ke server BPJS / MySQL', 'Pencarian');
+      showSwalError('Gagal memeriksa data peserta ke server faskes / BPJS', 'Pencarian');
     } finally {
       setIsSearchingPeserta(false);
     }
   };
 
-  // Register Patient & Visit to MySQL + BPJS PCare /pendaftaran
+  // Register Patient & Visit to Server + BPJS PCare /pendaftaran
   const handlePendaftaranPcare = async () => {
     const finalNik = (searchPesertaResult?.nik || regNikInput).trim().replace(/\D/g, '');
     const finalNoBpjs = (searchPesertaResult?.noKartu || regNoBpjsInput).trim().replace(/\D/g, '');
     const finalNama = (searchPesertaResult?.nama || regNamaInput).trim();
 
     if (!finalNik || finalNik.length !== 16) {
-      showSwalInfo('NIK 16 digit wajib diisi untuk pendaftaran ke MySQL dan PCare BPJS.', 'Validasi NIK');
+      showSwalInfo('NIK 16 digit wajib diisi untuk pendaftaran pasien dan PCare BPJS.', 'Validasi NIK');
       return;
     }
     if (!finalNama) {
@@ -391,12 +403,12 @@ export const PcareView: React.FC<PcareViewProps> = ({
       setSelectedQueueId(createdQueue.id);
       setRegKeluhan('');
       showSwalSuccess(
-        `Antrean & Pendaftaran tersimpan ke MySQL!\nNomor Antrean: ${createdQueue.nomorAntrean}\nPasien: ${createdQueue.namaPasien}\nStatus Bridging: ${regJson?.metaData?.message || 'Tersimpan di MySQL'}`,
+        `Antrean & Pendaftaran berhasil disimpan!\nNomor Antrean: ${createdQueue.nomorAntrean}\nPasien: ${createdQueue.namaPasien}\nStatus Bridging: ${regJson?.metaData?.message || 'Tersimpan di Sistem'}`,
         'Pendaftaran PCare Berhasil'
       );
       setActiveTab('PELAYANAN');
     } catch (err: any) {
-      showSwalError('Gagal mendaftarkan kunjungan ke MySQL / PCare: ' + (err?.message || ''), 'Error Pendaftaran');
+      showSwalError('Gagal mendaftarkan kunjungan ke sistem / PCare: ' + (err?.message || ''), 'Error Pendaftaran');
     } finally {
       setIsSubmittingReg(false);
     }
@@ -468,7 +480,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
       const bpjsJson = await bpjsRes.json().catch(() => ({}));
       if (!bpjsRes.ok || bpjsJson?.metaData?.code >= 400) {
-        throw new Error(bpjsJson?.metaData?.message || 'Gagal menyimpan kunjungan PCare ke database MySQL.');
+        throw new Error(bpjsJson?.metaData?.message || 'Gagal menyimpan kunjungan PCare.');
       }
 
       const returnedVisit: PcareVisitItem | undefined = bpjsJson?.response?.visit;
@@ -479,7 +491,6 @@ export const PcareView: React.FC<PcareViewProps> = ({
         setLastIssuedRujukanNo(officialNoRujukan);
       }
 
-      // Refresh riwayat langsung dari MySQL
       await fetchPcareVisits(false);
 
       // Complete queue in context (Task ID 6 Selesai Pelayanan Poli)
@@ -491,16 +502,16 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
       const bridgeNote = bpjsJson?.response?.isBridged
         ? `Terkirim ke BPJS Bridging API (${officialNoKunjungan ? `No. Kunjungan: ${officialNoKunjungan}` : '201 Created'}).`
-        : bpjsJson?.metaData?.message || 'Tersimpan di database MySQL (Bridging API BPJS sedang Nonaktif).';
+        : bpjsJson?.metaData?.message || 'Tersimpan di sistem faskes (Bridging API BPJS sedang Nonaktif).';
 
       if (statusPulang === '2') {
         showSwalSuccess(
-          `Kunjungan & Rujukan tersimpan ke MySQL!\n\nID MySQL: ${returnedVisit?.id || '-'}\n${officialNoKunjungan ? `No. Kunjungan BPJS: ${officialNoKunjungan}\n` : ''}${officialNoRujukan ? `No. Rujukan BPJS: ${officialNoRujukan}\n` : ''}RS Tujuan: ${selectedHospital?.nama || targetRs || '-'}\nDiagnosa: ${diagnosaLabel}\n\n${bridgeNote}`,
+          `Kunjungan & Rujukan berhasil disimpan!\n\nID Kunjungan: ${returnedVisit?.id || '-'}\n${officialNoKunjungan ? `No. Kunjungan BPJS: ${officialNoKunjungan}\n` : ''}${officialNoRujukan ? `No. Rujukan BPJS: ${officialNoRujukan}\n` : ''}RS Tujuan: ${selectedHospital?.nama || targetRs || '-'}\nDiagnosa: ${diagnosaLabel}\n\n${bridgeNote}`,
           'Kunjungan & Rujukan Tersimpan'
         );
       } else {
         showSwalSuccess(
-          `Pelayanan Dokter PCare tersimpan ke MySQL!\n\nID MySQL: ${returnedVisit?.id || '-'}\n${officialNoKunjungan ? `No. Kunjungan BPJS: ${officialNoKunjungan}\n` : ''}Pasien: ${selectedPatient.namaPasien}\nDiagnosa: ${diagnosaLabel}\n\n${bridgeNote}`,
+          `Pelayanan Dokter PCare berhasil disimpan!\n\nID Kunjungan: ${returnedVisit?.id || '-'}\n${officialNoKunjungan ? `No. Kunjungan BPJS: ${officialNoKunjungan}\n` : ''}Pasien: ${selectedPatient.namaPasien}\nDiagnosa: ${diagnosaLabel}\n\n${bridgeNote}`,
           'Kunjungan PCare Tersimpan'
         );
       }
@@ -569,7 +580,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.metaData?.code >= 400) {
-        throw new Error(json?.metaData?.message || 'Gagal menerbitkan surat rujukan ke MySQL / BPJS.');
+        throw new Error(json?.metaData?.message || 'Gagal menerbitkan surat rujukan.');
       }
 
       const returnedVisit: PcareVisitItem | undefined = json?.response?.visit;
@@ -579,7 +590,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
       await fetchPcareVisits(false);
 
       showSwalSuccess(
-        `Rujukan PCare tersimpan ke MySQL!\n\nPasien: ${patientNama}\nID MySQL: ${returnedVisit?.id || '-'}\n${officialNoRujukan ? `No. Rujukan BPJS: ${officialNoRujukan}\n` : ''}Faskes Tujuan: ${selectedRs?.nama || targetRs} (${selectedRs?.kota || ''}, ${selectedRs?.provinsi || ''})\nStatus: ${json?.metaData?.message || 'Tersimpan'}`,
+        `Rujukan PCare berhasil disimpan!\n\nPasien: ${patientNama}\nID Rujukan: ${returnedVisit?.id || '-'}\n${officialNoRujukan ? `No. Rujukan BPJS: ${officialNoRujukan}\n` : ''}Faskes Tujuan: ${selectedRs?.nama || targetRs} (${selectedRs?.kota || ''}, ${selectedRs?.provinsi || ''})\nStatus: ${json?.metaData?.message || 'Tersimpan'}`,
         'Rujukan PCare Diproses'
       );
     } catch (err: any) {
@@ -644,7 +655,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
             </h1>
 
             <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Modul resmi fasilitas kesehatan tingkat pertama yang terhubung langsung ke database MySQL faskes
+              Modul resmi fasilitas kesehatan tingkat pertama yang terhubung langsung ke sistem data faskes
               dan Web Service BPJS Kesehatan untuk pendaftaran peserta, pemeriksaan medis dokter, ICD-10, serta rujukan RS.
             </p>
 
@@ -823,7 +834,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                   <Users className="w-4 h-4 text-emerald-700" />
-                  <span>Pasien Antrean (MySQL)</span>
+                  <span>Pasien Antrean Aktif</span>
                 </h3>
                 <span className="text-[11px] bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
                   {activeQueues.length} Aktif
@@ -891,13 +902,9 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 <span>Spesifikasi Bridging PCare FKTP</span>
               </div>
               <p className="text-slate-600 text-[11px] leading-relaxed">
-                Setiap data kunjungan disimpan langsung ke tabel{' '}
+                Setiap data kunjungan tersimpan langsung di sistem rekam medis faskes dan dikirim ke layanan{' '}
                 <code className="text-emerald-800 bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-[10px]">
-                  pcare_visits
-                </code>{' '}
-                di MySQL dan dikirim ke endpoint{' '}
-                <code className="text-emerald-800 bg-white px-1 py-0.5 rounded border border-slate-200 font-mono text-[10px]">
-                  /kunjungan
+                  PCare /kunjungan
                 </code>{' '}
                 BPJS Trustmark apabila status Bridging BPJS diaktifkan.
               </p>
@@ -1219,7 +1226,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 {/* Action Submit Button */}
                 <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100">
                   <div className="text-xs text-slate-500">
-                    Disimpan ke tabel MySQL <code className="font-mono text-slate-700">pcare_visits</code> &amp; dikirim ke PCare Web Service bila Bridging aktif.
+                    Data tersimpan otomatis di sistem faskes &amp; dikirim ke PCare Web Service bila Bridging aktif.
                   </div>
 
                   <button
@@ -1228,7 +1235,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                     className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
                   >
                     <Send className={`w-4 h-4 ${isSubmitting ? 'animate-spin' : ''}`} />
-                    <span>{isSubmitting ? 'Menyimpan ke MySQL & PCare...' : 'Simpan ke MySQL & Kirim PCare BPJS'}</span>
+                    <span>{isSubmitting ? 'Menyimpan & Mengirim PCare...' : 'Simpan & Kirim PCare BPJS'}</span>
                   </button>
                 </div>
               </div>
@@ -1254,7 +1261,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
               <span>Pendaftaran Kunjungan PCare &amp; Validasi Kepesertaan BPJS</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Cek kepesertaan langsung dari Web Service PCare BPJS (bila Bridging aktif) &amp; tabel pasien MySQL faskes.
+              Cek kepesertaan langsung dari Web Service PCare BPJS (bila Bridging aktif) &amp; data pasien terdaftar faskes.
             </p>
           </div>
 
@@ -1281,7 +1288,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
               >
                 <Search className={`w-3.5 h-3.5 ${isSearchingPeserta ? 'animate-spin' : ''}`} />
-                <span>{isSearchingPeserta ? 'Memeriksa...' : 'Cek BPJS / MySQL'}</span>
+                <span>{isSearchingPeserta ? 'Memeriksa...' : 'Cek Data Peserta'}</span>
               </button>
             </div>
           </div>
@@ -1292,7 +1299,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
               <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-emerald-200">
                 <div className="font-bold text-emerald-950 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Data Peserta Terverifikasi (BPJS API / MySQL)</span>
+                  <span>Data Peserta Terverifikasi</span>
                 </div>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold text-[10px]">
                   {searchPesertaResult.statusPeserta?.keterangan || 'AKTIF'}
@@ -1331,7 +1338,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
           {/* Registration Form to Send to MySQL + PCare */}
           <div className="space-y-4 pt-2">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-              Form Registrasi Kunjungan ke MySQL &amp; PCare
+              Form Registrasi Kunjungan &amp; PCare
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1388,7 +1395,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                         </option>
                       ))
                   ) : (
-                    <option value="">Data poliklinik belum dimuat dari MySQL</option>
+                    <option value="">Data poliklinik belum tersedia</option>
                   )}
                 </select>
               </div>
@@ -1424,7 +1431,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 className="w-full py-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
               >
                 <PlusCircle className={`w-4 h-4 ${isSubmittingReg ? 'animate-spin' : ''}`} />
-                <span>{isSubmittingReg ? 'Mendaftarkan ke MySQL & PCare...' : 'Simpan Antrean ke MySQL & Kirim Pendaftaran PCare'}</span>
+                <span>{isSubmittingReg ? 'Mendaftarkan Antrean & PCare...' : 'Simpan Antrean & Kirim Pendaftaran PCare'}</span>
               </button>
             </div>
           </div>
@@ -1441,7 +1448,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 <span>Penerbitan Surat Rujukan Vertikal BPJS (FKTP ke RS / FKRTL)</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Rujukan berjenjang online berbasis kompetensi rumah sakit di MySQL dan Bridging PCare BPJS.
+                Rujukan berjenjang online berbasis kompetensi rumah sakit dan Bridging PCare BPJS.
               </p>
             </div>
             <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs border border-amber-200 shrink-0 max-w-full truncate">
@@ -1524,7 +1531,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-2 font-bold text-slate-800 pb-1 border-b border-slate-200">
               <span>Ringkasan Surat Rujukan PCare</span>
               <span className="font-mono text-emerald-700">
-                {lastIssuedRujukanNo ? `No. ${lastIssuedRujukanNo}` : 'Menunggu penerbitan BPJS / MySQL'}
+                {lastIssuedRujukanNo ? `No. ${lastIssuedRujukanNo}` : 'Menunggu penerbitan nomor rujukan'}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px] text-slate-600">
@@ -1560,35 +1567,62 @@ export const PcareView: React.FC<PcareViewProps> = ({
               className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md cursor-pointer"
             >
               <Send className={`w-3.5 h-3.5 ${isSubmittingRujukan ? 'animate-spin' : ''}`} />
-              <span>{isSubmittingRujukan ? 'Menyimpan Rujukan...' : 'Simpan ke MySQL & Terbitkan Rujukan BPJS'}</span>
+              <span>{isSubmittingRujukan ? 'Menyimpan Rujukan...' : 'Simpan & Terbitkan Rujukan BPJS'}</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* TAB 4: RIWAYAT KUNJUNGAN PCARE (LIVE DARI MYSQL) */}
+      {/* TAB 4: RIWAYAT KUNJUNGAN PCARE */}
       {activeTab === 'RIWAYAT' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <ClipboardList className="w-4 h-4 text-emerald-700" />
-                <span>Riwayat Kunjungan &amp; Transmisi PCare (Live MySQL)</span>
+                <span>Riwayat Kunjungan &amp; Transmisi PCare</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Data diambil langsung dari tabel MySQL <code className="font-mono">pcare_visits</code> &amp; log BPJS Bridging API.</span>
+                <span>Data diambil langsung dari arsip kunjungan terintegrasi &amp; log BPJS Bridging API.</span>
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              {(pcareVisitLogs.some((v) => !v.isBridged) || pendingSyncSummary.pendingVisitsCount > 0) && (
+                <button
+                  onClick={async () => {
+                    const res = await syncPendingToBpjs(undefined, { silent: false });
+                    await fetchPcareVisits(true);
+                    if (res.uploadedTotal > 0) {
+                      showSwalSuccess(res.message, 'Upload BPJS Berhasil');
+                    } else if (!res.dbConnected) {
+                      showSwalError('Penyimpanan server belum aktif di pratinjau cloud ini.', 'Penyimpanan Belum Siap');
+                    } else {
+                      showSwalInfo(res.message || 'Belum dapat terhubung ke server BPJS.', 'Status Sinkronisasi');
+                    }
+                  }}
+                  disabled={isSyncingPending}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <UploadCloud className={`w-3.5 h-3.5 ${isSyncingPending ? 'animate-bounce' : ''}`} />
+                  <span>
+                    {isSyncingPending
+                      ? 'Mengunggah ke BPJS...'
+                      : `Upload Tertunda ke BPJS (${Math.max(
+                          pcareVisitLogs.filter((v) => !v.isBridged).length,
+                          pendingSyncSummary.pendingVisitsCount
+                        )})`}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => fetchPcareVisits(true)}
                 disabled={isLoadingVisits}
                 className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingVisits ? 'animate-spin' : ''}`} />
-                <span>{isLoadingVisits ? 'Memuat...' : 'Refresh MySQL'}</span>
+                <span>{isLoadingVisits ? 'Memuat...' : 'Muat Ulang'}</span>
               </button>
             </div>
           </div>
@@ -1682,7 +1716,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
                 <tr>
-                  <th className="p-3">No. Kunjungan / ID MySQL</th>
+                  <th className="p-3">No. Kunjungan / ID</th>
                   <th className="p-3">No. Kartu BPJS</th>
                   <th className="p-3">Nama Pasien</th>
                   <th className="p-3">Poli Faskes</th>
@@ -1700,13 +1734,13 @@ export const PcareView: React.FC<PcareViewProps> = ({
                         <Database className="w-8 h-8 text-slate-300" />
                         <p className="font-semibold text-slate-700">
                           {isLoadingVisits
-                            ? 'Memuat data dari MySQL...'
+                            ? 'Memuat data kunjungan...'
                             : pcareVisitLogs.length > 0
                             ? 'Tidak ada kunjungan yang sesuai filter bulan, tahun, atau pencarian.'
-                            : 'Belum ada riwayat kunjungan PCare di database MySQL.'}
+                            : 'Belum ada riwayat kunjungan PCare.'}
                         </p>
                         <p className="text-[11px] text-slate-400">
-                          Lakukan pemeriksaan pasien pada tab Pelayanan &amp; Diagnosa atau terbitkan rujukan untuk mencatat data ke MySQL.
+                          Lakukan pemeriksaan pasien pada tab Pelayanan &amp; Diagnosa atau terbitkan rujukan untuk mencatat data kunjungan.
                         </p>
                       </div>
                     </td>
@@ -1718,7 +1752,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                         {log.noKunjungan ? (
                           <span>{log.noKunjungan}</span>
                         ) : (
-                          <span className="text-slate-600 text-[11px]" title="ID Record MySQL (Belum terbit No. Kunjungan BPJS)">
+                          <span className="text-slate-600 text-[11px]" title="ID Kunjungan Faskes (Belum terbit No. Kunjungan BPJS)">
                             {log.id}
                           </span>
                         )}
@@ -1771,12 +1805,12 @@ export const PcareView: React.FC<PcareViewProps> = ({
                         ) : log.bridgingStatus === 'BPJS_UNREACHABLE_SAVED_MYSQL' ? (
                           <span className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded-full border border-amber-200 font-bold">
                             <AlertCircle className="w-3 h-3 text-amber-600" />
-                            <span>Tersimpan MySQL (API BPJS Timeout)</span>
+                            <span>Tersimpan Sistem (API BPJS Timeout)</span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-200 font-bold">
                             <Database className="w-3 h-3 text-slate-500" />
-                            <span>Tersimpan MySQL (Bridging Off)</span>
+                            <span>Tersimpan Sistem (Bridging Off)</span>
                           </span>
                         )}
                       </td>

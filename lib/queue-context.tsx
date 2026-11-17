@@ -14,6 +14,41 @@ import { calculateEstimatedWaitTime } from './queue-estimator';
 import { speakIndonesianQueue } from './tts-announcer';
 import { encryptData } from './encrypted-db';
 
+export interface BpjsSyncItemResult {
+  type: 'ANTREAN' | 'PCARE';
+  id: string;
+  label: string;
+  status: 'UPLOADED' | 'FAILED';
+  httpStatus?: number;
+  noKunjungan?: string | null;
+  noRujukan?: string | null;
+  message: string;
+}
+
+export interface BpjsSyncResult {
+  success: boolean;
+  dbConnected: boolean;
+  totalPendingBefore: number;
+  queuesUploaded: number;
+  queuesFailed: number;
+  visitsUploaded: number;
+  visitsFailed: number;
+  uploadedTotal: number;
+  failedTotal: number;
+  remainingPending: number;
+  message: string;
+  results: BpjsSyncItemResult[];
+  syncedAt?: string;
+}
+
+export interface PendingBpjsSummary {
+  pendingQueuesCount: number;
+  pendingVisitsCount: number;
+  totalPending: number;
+  pendingQueues: Array<{ id: string; nomorAntrean: string; namaPasien: string; poliNama: string; status: string }>;
+  pendingVisits: Array<{ id: string; namaPasien: string; noKartu: string; poliNama: string; diagnosaKode: string; statusPulang: string }>;
+}
+
 interface QueueContextType {
   queues: QueueItem[];
   patients: Patient[];
@@ -24,6 +59,13 @@ interface QueueContextType {
   currentCalled: QueueItem | null;
   audioEnabled: boolean;
   setAudioEnabled: (val: boolean) => void;
+  autoUploadOnConnect: boolean;
+  setAutoUploadOnConnect: (val: boolean) => void;
+  isSyncingPending: boolean;
+  pendingSyncSummary: PendingBpjsSummary;
+  lastBpjsSyncResult: BpjsSyncResult | null;
+  refreshPendingSyncStatus: () => Promise<void>;
+  syncPendingToBpjs: (customConfig?: Partial<BpjsBridgingConfig>, options?: { silent?: boolean }) => Promise<BpjsSyncResult>;
   addQueue: (data: {
     nik: string;
     noBpjs?: string;
@@ -40,13 +82,21 @@ interface QueueContextType {
   cancelQueue: (id: string) => Promise<void>;
   transferToPharmacy: (id: string) => Promise<QueueItem>;
   updateBpjsConfig: (newConfig: Partial<BpjsBridgingConfig>) => void;
-  testBridgingPing: (customConfig?: Partial<BpjsBridgingConfig>) => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any }>;
-  switchBpjsEnvironment: (targetEnv: 'tester' | 'production') => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any; baseUrl: string; environment: 'tester' | 'production' }>;
+  testBridgingPing: (customConfig?: Partial<BpjsBridgingConfig>) => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any; syncResult?: BpjsSyncResult | null }>;
+  switchBpjsEnvironment: (targetEnv: 'tester' | 'production') => Promise<{ success: boolean; isWhitelisted?: boolean; latencyMs: number; message?: string; details?: any; raw?: any; baseUrl: string; environment: 'tester' | 'production'; syncResult?: BpjsSyncResult | null }>;
   addSecurityLog: (action: AuditSecurityLog['action'], details: string, status?: 'SUCCESS' | 'DENIED') => void;
   refreshFromDb: () => Promise<void>;
 }
 
 const QueueContext = createContext<QueueContextType | undefined>(undefined);
+
+const EMPTY_PENDING_SUMMARY: PendingBpjsSummary = {
+  pendingQueuesCount: 0,
+  pendingVisitsCount: 0,
+  totalPending: 0,
+  pendingQueues: [],
+  pendingVisits: [],
+};
 
 export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [queues, setQueues] = useState<QueueItem[]>([]);
@@ -57,12 +107,100 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [securityLogs, setSecurityLogs] = useState<AuditSecurityLog[]>([]);
   const [currentCalled, setCurrentCalled] = useState<QueueItem | null>(null);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
+  const [autoUploadOnConnect, setAutoUploadOnConnectState] = useState<boolean>(true);
+  const [isSyncingPending, setIsSyncingPending] = useState<boolean>(false);
+  const [serverPendingSummary, setServerPendingSummary] = useState<PendingBpjsSummary>(EMPTY_PENDING_SUMMARY);
+  const [lastBpjsSyncResult, setLastBpjsSyncResult] = useState<BpjsSyncResult | null>(null);
 
   const hasAutoCheckedPingRef = React.useRef(false);
+  const isSyncingRef = React.useRef(false);
+  const autoUploadOnConnectRef = React.useRef(true);
+  const prevOnlineStateRef = React.useRef<boolean>(false);
+  const bpjsConfigRef = React.useRef<BpjsBridgingConfig>(DEFAULT_BPJS_CONFIG);
+
+  const setAutoUploadOnConnect = (val: boolean) => {
+    autoUploadOnConnectRef.current = val;
+    setAutoUploadOnConnectState(val);
+  };
+
+  useEffect(() => {
+    bpjsConfigRef.current = bpjsConfig;
+  }, [bpjsConfig]);
 
   // Synchronize state exclusively with MySQL Server Database on mount and live polling
   useEffect(() => {
     let isMounted = true;
+
+    const fetchPendingStatusInternal = async () => {
+      try {
+        const res = await fetch('/api/bpjs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'pending_status' }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (json?.response && isMounted) {
+          setServerPendingSummary({
+            pendingQueuesCount: Number(json.response.pendingQueuesCount || 0),
+            pendingVisitsCount: Number(json.response.pendingVisitsCount || 0),
+            totalPending: Number(json.response.totalPending || 0),
+            pendingQueues: Array.isArray(json.response.pendingQueues) ? json.response.pendingQueues : [],
+            pendingVisits: Array.isArray(json.response.pendingVisits) ? json.response.pendingVisits : [],
+          });
+        }
+      } catch {
+        // Ignore if unreachable
+      }
+    };
+
+    const runSyncInternal = async (cfg: BpjsBridgingConfig) => {
+      if (isSyncingRef.current) return;
+      isSyncingRef.current = true;
+      if (isMounted) setIsSyncingPending(true);
+      try {
+        const res = await fetch('/api/bpjs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'sync_pending_bpjs',
+            consId: cfg.consId,
+            secretKey: cfg.secretKey,
+            userKey: cfg.userKey,
+            kdFaskes: cfg.kdFaskes,
+            userPcareDev: cfg.userPcareDev,
+            passPcareDev: cfg.passPcareDev,
+            baseUrl: cfg.baseUrl,
+            environment: cfg.environment,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        const meta = json.metaData || json.metadata || {};
+        const r = json.response || {};
+        if (isMounted && r) {
+          setLastBpjsSyncResult({
+            success: Number(r.uploadedTotal || 0) > 0 || Number(r.totalPendingBefore || 0) === 0,
+            dbConnected: r.dbConnected !== false,
+            totalPendingBefore: Number(r.totalPendingBefore || 0),
+            queuesUploaded: Number(r.queuesUploaded || 0),
+            queuesFailed: Number(r.queuesFailed || 0),
+            visitsUploaded: Number(r.visitsUploaded || 0),
+            visitsFailed: Number(r.visitsFailed || 0),
+            uploadedTotal: Number(r.uploadedTotal || 0),
+            failedTotal: Number(r.failedTotal || 0),
+            remainingPending: Number(r.remainingPending || 0),
+            message: meta.message || 'Sinkronisasi data tertunda selesai diproses.',
+            results: Array.isArray(r.results) ? r.results : [],
+            syncedAt: r.syncedAt || new Date().toISOString(),
+          });
+        }
+        await fetchPendingStatusInternal();
+      } catch {
+        // Ignore network errors during background auto-sync
+      } finally {
+        isSyncingRef.current = false;
+        if (isMounted) setIsSyncingPending(false);
+      }
+    };
 
     const verifyInitialBpjsConnectivity = async (cfg: BpjsBridgingConfig) => {
       if (hasAutoCheckedPingRef.current || !cfg?.consId || !cfg?.secretKey || !cfg?.userKey) return;
@@ -89,7 +227,11 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           json.response?.isConnected ?? (meta.code === 200 && json.response?.isWhitelisted === true)
         );
         if (isMounted) {
+          prevOnlineStateRef.current = isConnected;
           setBpjsConfig((prev) => ({ ...prev, isOnline: isConnected }));
+        }
+        if (isConnected && autoUploadOnConnectRef.current) {
+          await runSyncInternal(cfg);
         }
       } catch {
         // Keep current status on initial check error
@@ -107,6 +249,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setPoliList(Array.isArray(json.data.poliList) ? json.data.poliList : []);
             if (json.data.config) {
               setBpjsConfig(json.data.config);
+              prevOnlineStateRef.current = Boolean(json.data.config.isOnline);
               verifyInitialBpjsConnectivity(json.data.config);
             } else {
               verifyInitialBpjsConnectivity(DEFAULT_BPJS_CONFIG);
@@ -128,11 +271,14 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     fetchServerDb();
+    fetchPendingStatusInternal();
     const syncInterval = setInterval(fetchServerDb, 3500);
+    const pendingInterval = setInterval(fetchPendingStatusInternal, 10000);
 
     return () => {
       isMounted = false;
       clearInterval(syncInterval);
+      clearInterval(pendingInterval);
     };
   }, []);
 
@@ -198,7 +344,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     endpoint: string,
     requestPayload: Record<string, any>,
     fallbackDescription: string
-  ) => {
+  ): Promise<boolean> => {
     const headers = await getBpjsHeaders(bpjsConfig);
     const isBridgingActive = bpjsConfig.isOnline === true;
     const start = performance.now();
@@ -217,7 +363,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         },
         durationMs: Math.round(performance.now() - start),
       });
-      return;
+      return false;
     }
 
     try {
@@ -237,17 +383,18 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }),
       });
       const json = await res.json().catch(() => ({}));
-      const metaCode = json.metaData?.code || json.metadata?.code || res.status;
+      const metaCode = Number(json.metaData?.code || json.metadata?.code || res.status);
       addBridgingLog({
         timestamp: new Date().toISOString(),
         endpoint,
         method: 'POST',
         requestHeader: headers,
         requestPayload,
-        responseStatus: metaCode,
+        responseStatus: Number.isNaN(metaCode) ? res.status : metaCode,
         responsePayload: json,
         durationMs: Math.round(performance.now() - start),
       });
+      return res.ok && (Number.isNaN(metaCode) || metaCode < 400);
     } catch (err: any) {
       addBridgingLog({
         timestamp: new Date().toISOString(),
@@ -261,6 +408,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         },
         durationMs: Math.round(performance.now() - start),
       });
+      return false;
     }
   };
 
@@ -275,7 +423,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }): Promise<QueueItem> => {
     const poli = poliList.find((p) => p.kode === data.poliKode) || poliList[0];
     if (!poli) {
-      throw new Error('Data master poliklinik belum tersedia di database MySQL.');
+      throw new Error('Data master poliklinik belum tersedia.');
     }
 
     const prefix = poli.prefix;
@@ -342,7 +490,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       bpjsTaskId: 1,
       kodeBooking,
       keluhan: data.keluhan,
-      isSyncedBpjs: Boolean(bpjsConfig.isOnline),
+      isSyncedBpjs: false,
       panggilanKe: 0,
     };
 
@@ -351,7 +499,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     newQueueItem.estimasiJamPanggil = estimate.jamEstimasiPanggil;
 
     const todayWib = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
-    await dispatchBridgingTask(
+    const isSynced = await dispatchBridgingTask(
       '/antrean/add',
       {
         kodebooking: kodeBooking,
@@ -368,12 +516,13 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         estimasidilayani: Date.now() + estimate.menitTunggu * 60000,
         namadokter: poli.dokter || 'Dokter Umum',
       },
-      'Antrean tersimpan di MySQL (Belum terhubung ke API BPJS)'
+      'Antrean tersimpan di sistem (Belum terhubung ke API BPJS)'
     );
+    newQueueItem.isSyncedBpjs = isSynced;
 
     addSecurityLog(
       'ENCRYPT',
-      `Data pasien ${nomorAntrean} (${data.namaPasien}) terenkripsi AES-256-GCM dan dikirim ke MySQL.`
+      `Data pasien ${nomorAntrean} (${data.namaPasien}) terenkripsi AES-256-GCM dan disimpan ke server.`
     );
 
     setPatients((prev) => [newPatient, ...prev]);
@@ -458,7 +607,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         taskid: 4,
         waktu: Date.now(),
       },
-      `Task 4 (Panggil Poli) untuk ${updatedItem.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
+      `Task 4 (Panggil Poli) untuk ${updatedItem.nomorAntrean} tercatat di sistem (Belum terhubung ke API BPJS)`
     );
   };
 
@@ -509,7 +658,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           taskid: 5,
           waktu: Date.now(),
         },
-        `Task 5 (Mulai Layanan Dokter) untuk ${item.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
+        `Task 5 (Mulai Layanan Dokter) untuk ${item.nomorAntrean} tercatat di sistem (Belum terhubung ke API BPJS)`
       );
     }
   };
@@ -563,7 +712,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           taskid: targetTask,
           waktu: Date.now(),
         },
-        `Task ${targetTask} (Selesai Layanan) untuk ${item.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
+        `Task ${targetTask} (Selesai Layanan) untuk ${item.nomorAntrean} tercatat di sistem (Belum terhubung ke API BPJS)`
       );
     }
   };
@@ -609,7 +758,7 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           tanggalperiksa: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }),
           keterangan: 'Dibatalkan oleh petugas faskes/pasien',
         },
-        `Pembatalan antrean ${item.nomorAntrean} tercatat di MySQL (Belum terhubung ke API BPJS)`
+        `Pembatalan antrean ${item.nomorAntrean} tercatat di sistem (Belum terhubung ke API BPJS)`
       );
     }
   };
@@ -663,13 +812,150 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateBpjsConfig = (newConfig: Partial<BpjsBridgingConfig>) => {
     setBpjsConfig((prev) => ({ ...prev, ...newConfig }));
-    addSecurityLog('KEY_ROTATE', 'Konfigurasi kredensial BPJS Bridging diperbarui di MySQL.');
+    addSecurityLog('KEY_ROTATE', 'Konfigurasi kredensial BPJS Bridging diperbarui.');
 
     fetch('/api/db', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'update_config', payload: newConfig }),
     }).catch(() => {});
+  };
+
+  const refreshPendingSyncStatus = async () => {
+    try {
+      const res = await fetch('/api/bpjs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pending_status' }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (json?.response) {
+        setServerPendingSummary({
+          pendingQueuesCount: Number(json.response.pendingQueuesCount || 0),
+          pendingVisitsCount: Number(json.response.pendingVisitsCount || 0),
+          totalPending: Number(json.response.totalPending || 0),
+          pendingQueues: Array.isArray(json.response.pendingQueues) ? json.response.pendingQueues : [],
+          pendingVisits: Array.isArray(json.response.pendingVisits) ? json.response.pendingVisits : [],
+        });
+      }
+    } catch {
+      // Ignore if unreachable
+    }
+  };
+
+  const refreshFromDb = async () => {
+    try {
+      const res = await fetch('/api/db', { cache: 'no-store' });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          setQueues(json.data.queues || []);
+          setPatients(json.data.patients || []);
+          if (json.data.config) setBpjsConfig(json.data.config);
+          if (Array.isArray(json.data.poliList)) setPoliList(json.data.poliList);
+          if (Array.isArray(json.data.securityLogs)) setSecurityLogs(json.data.securityLogs);
+          if (Array.isArray(json.data.bridgingLogs)) setBridgingLogs(json.data.bridgingLogs);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal memuat ulang data:', e);
+    }
+  };
+
+  const syncPendingToBpjs = async (
+    customConfig?: Partial<BpjsBridgingConfig>,
+    options?: { silent?: boolean }
+  ): Promise<BpjsSyncResult> => {
+    const activeCfg = { ...bpjsConfigRef.current, ...customConfig };
+    if (isSyncingRef.current) {
+      return (
+        lastBpjsSyncResult || {
+          success: false,
+          dbConnected: true,
+          totalPendingBefore: 0,
+          queuesUploaded: 0,
+          queuesFailed: 0,
+          visitsUploaded: 0,
+          visitsFailed: 0,
+          uploadedTotal: 0,
+          failedTotal: 0,
+          remainingPending: 0,
+          message: 'Proses sinkronisasi data tertunda sedang berjalan...',
+          results: [],
+        }
+      );
+    }
+
+    isSyncingRef.current = true;
+    setIsSyncingPending(true);
+    try {
+      const res = await fetch('/api/bpjs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'sync_pending_bpjs',
+          consId: activeCfg.consId,
+          secretKey: activeCfg.secretKey,
+          userKey: activeCfg.userKey,
+          kdFaskes: activeCfg.kdFaskes,
+          userPcareDev: activeCfg.userPcareDev,
+          passPcareDev: activeCfg.passPcareDev,
+          baseUrl: activeCfg.baseUrl,
+          environment: activeCfg.environment,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      const meta = json.metaData || json.metadata || {};
+      const r = json.response || {};
+
+      const syncSummary: BpjsSyncResult = {
+        success: Number(r.uploadedTotal || 0) > 0 || Number(r.totalPendingBefore || 0) === 0,
+        dbConnected: r.dbConnected !== false,
+        totalPendingBefore: Number(r.totalPendingBefore || 0),
+        queuesUploaded: Number(r.queuesUploaded || 0),
+        queuesFailed: Number(r.queuesFailed || 0),
+        visitsUploaded: Number(r.visitsUploaded || 0),
+        visitsFailed: Number(r.visitsFailed || 0),
+        uploadedTotal: Number(r.uploadedTotal || 0),
+        failedTotal: Number(r.failedTotal || 0),
+        remainingPending: Number(r.remainingPending || 0),
+        message: meta.message || 'Sinkronisasi data tertunda selesai.',
+        results: Array.isArray(r.results) ? r.results : [],
+        syncedAt: r.syncedAt || new Date().toISOString(),
+      };
+
+      setLastBpjsSyncResult(syncSummary);
+
+      if (syncSummary.uploadedTotal > 0 && !options?.silent) {
+        addSecurityLog(
+          'EXPORT',
+          `Sinkronisasi manual berhasil mengunggah ${syncSummary.uploadedTotal} data tertunda ke BPJS Bridging.`
+        );
+      }
+
+      await Promise.all([refreshFromDb(), refreshPendingSyncStatus()]);
+      return syncSummary;
+    } catch (err: any) {
+      const errRes: BpjsSyncResult = {
+        success: false,
+        dbConnected: false,
+        totalPendingBefore: 0,
+        queuesUploaded: 0,
+        queuesFailed: 0,
+        visitsUploaded: 0,
+        visitsFailed: 0,
+        uploadedTotal: 0,
+        failedTotal: 0,
+        remainingPending: 0,
+        message: 'Gagal mengunggah data tertunda: ' + (err?.message || 'Koneksi terputus'),
+        results: [],
+      };
+      setLastBpjsSyncResult(errRes);
+      return errRes;
+    } finally {
+      isSyncingRef.current = false;
+      setIsSyncingPending(false);
+    }
   };
 
   const testBridgingPing = async (customConfig?: Partial<BpjsBridgingConfig>) => {
@@ -716,7 +1002,13 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         durationMs: latencyMs,
       });
 
+      prevOnlineStateRef.current = isConnected;
       updateBpjsConfig({ ...customConfig, isOnline: isConnected });
+
+      let syncResult: BpjsSyncResult | null = null;
+      if (isConnected && autoUploadOnConnectRef.current) {
+        syncResult = await syncPendingToBpjs(activeCfg, { silent: true });
+      }
 
       return {
         success: isConnected,
@@ -729,15 +1021,18 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             : 'Gagal terhubung ke Web Service BPJS'),
         details: json.response || json,
         raw: json,
+        syncResult,
       };
     } catch (err: any) {
       const latencyMs = Math.round(performance.now() - start);
+      prevOnlineStateRef.current = false;
       updateBpjsConfig({ ...customConfig, isOnline: false });
       return {
         success: false,
         isWhitelisted: false,
         latencyMs,
         message: 'Koneksi ke endpoint BPJS gagal: ' + err.message,
+        syncResult: null,
       };
     }
   };
@@ -757,23 +1052,24 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   };
 
-  const refreshFromDb = async () => {
-    try {
-      const res = await fetch('/api/db', { cache: 'no-store' });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setQueues(json.data.queues || []);
-          setPatients(json.data.patients || []);
-          if (json.data.config) setBpjsConfig(json.data.config);
-          if (Array.isArray(json.data.poliList)) setPoliList(json.data.poliList);
-          if (Array.isArray(json.data.securityLogs)) setSecurityLogs(json.data.securityLogs);
-          if (Array.isArray(json.data.bridgingLogs)) setBridgingLogs(json.data.bridgingLogs);
-        }
-      }
-    } catch (e) {
-      console.warn('Gagal memuat ulang data dari database MySQL:', e);
-    }
+  // Combine server pending counts with reactive local unsynced queue count
+  const localUnsyncedQueues = queues.filter((q) => !q.isSyncedBpjs);
+  const effectivePendingQueuesCount = Math.max(serverPendingSummary.pendingQueuesCount, localUnsyncedQueues.length);
+  const pendingSyncSummary: PendingBpjsSummary = {
+    pendingQueuesCount: effectivePendingQueuesCount,
+    pendingVisitsCount: serverPendingSummary.pendingVisitsCount,
+    totalPending: effectivePendingQueuesCount + serverPendingSummary.pendingVisitsCount,
+    pendingQueues:
+      localUnsyncedQueues.length > 0
+        ? localUnsyncedQueues.slice(0, 20).map((q) => ({
+            id: q.id,
+            nomorAntrean: q.nomorAntrean,
+            namaPasien: q.namaPasien,
+            poliNama: q.poliNama,
+            status: q.status,
+          }))
+        : serverPendingSummary.pendingQueues,
+    pendingVisits: serverPendingSummary.pendingVisits,
   };
 
   return (
@@ -788,6 +1084,13 @@ export const QueueProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         currentCalled,
         audioEnabled,
         setAudioEnabled,
+        autoUploadOnConnect,
+        setAutoUploadOnConnect,
+        isSyncingPending,
+        pendingSyncSummary,
+        lastBpjsSyncResult,
+        refreshPendingSyncStatus,
+        syncPendingToBpjs,
         addQueue,
         callQueue,
         startService,

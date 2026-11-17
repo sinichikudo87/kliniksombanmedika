@@ -31,7 +31,6 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
   onChange,
   hospitals,
   provinces = INDONESIA_PROVINCES,
-  dataSource = 'MYSQL',
   onHospitalAdded,
   accentColor = 'emerald',
 }) => {
@@ -181,7 +180,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
           onHospitalAdded(created);
         }
         onChange(created.kodeFaskes, created);
-        showSwalSuccess(json.message || 'RS Rujukan berhasil disimpan ke database MySQL.', 'RS Rujukan Tersimpan');
+        showSwalSuccess(json.message || 'RS Rujukan berhasil disimpan.', 'RS Rujukan Tersimpan');
         setIsAddModalOpen(false);
         setNewKode('');
         setNewNama('');
@@ -189,7 +188,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
         setNewAlamat('');
         setNewTelepon('');
       } else {
-        showSwalError(json.message || 'Gagal menyimpan RS Rujukan ke database MySQL.', 'Gagal Menyimpan');
+        showSwalError(json.message || 'Gagal menyimpan RS Rujukan.', 'Gagal Menyimpan');
       }
     } catch (err: any) {
       showSwalError('Koneksi gagal: ' + (err?.message || 'Server error'), 'Error');
@@ -305,7 +304,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold cursor-pointer"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
-                  <span>Tambah RS Baru ke Database MySQL</span>
+                  <span>Tambah RS Rujukan Baru</span>
                 </button>
               </div>
             ) : (
@@ -354,7 +353,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
           <div className="p-2 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2">
             <span className="text-[10px] text-slate-500 flex items-center gap-1">
               <Database className="w-3 h-3 text-emerald-600" />
-              <span>Sumber: {dataSource === 'MYSQL' ? 'MySQL Server (rs_rujukan)' : 'Database MySQL'}</span>
+              <span>Daftar Master RS Rujukan</span>
             </span>
             <button
               type="button"
@@ -362,7 +361,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold transition-colors cursor-pointer"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>Tambah RS ke DB</span>
+              <span>Tambah RS Rujukan</span>
             </button>
           </div>
         </div>,
@@ -379,8 +378,8 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                   <Building2 className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-sm font-bold text-slate-900">Tambah RS Rujukan ke Database MySQL</h3>
-                  <p className="text-[11px] text-slate-500">Data akan tersimpan ke tabel master rs_rujukan BPJS</p>
+                  <h3 className="text-sm font-bold text-slate-900">Tambah RS Rujukan Baru</h3>
+                  <p className="text-[11px] text-slate-500">Data akan tersimpan ke daftar master faskes rujukan BPJS</p>
                 </div>
               </div>
               <button
@@ -513,7 +512,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                   className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{isSaving ? 'Menyimpan...' : 'Simpan ke Database'}</span>
+                  <span>{isSaving ? 'Menyimpan...' : 'Simpan RS Rujukan'}</span>
                 </button>
               </div>
             </form>

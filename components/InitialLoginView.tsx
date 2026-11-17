@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
 import { useQueue } from '@/lib/queue-context';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
+import { exportOperatingManualPdf } from '@/lib/client-pdf-manual';
 import {
   Lock,
   User,
@@ -18,6 +19,7 @@ import {
   Users,
   Building2,
   Check,
+  FileText,
 } from 'lucide-react';
 
 interface InitialLoginViewProps {
@@ -298,16 +300,36 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
             </div>
 
             {/* Direct Patient Kiosk Bypass */}
-            {onBypassToKiosk && (
+            <div className="space-y-2">
+              {onBypassToKiosk && (
+                <button
+                  type="button"
+                  onClick={onBypassToKiosk}
+                  className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-2xs cursor-pointer"
+                >
+                  <Users className="w-4 h-4 text-emerald-600" />
+                  <span>Buka Kios Mandiri Antrean (Mode Layanan Pasien)</span>
+                </button>
+              )}
+
               <button
                 type="button"
-                onClick={onBypassToKiosk}
-                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-2xs cursor-pointer"
+                onClick={() => {
+                  const ok = exportOperatingManualPdf({
+                    namaFaskes: bpjsConfig.namaFaskes,
+                    kdFaskes: bpjsConfig.kdFaskes,
+                    environment: bpjsConfig.environment,
+                  });
+                  if (ok) {
+                    showSwalSuccess('Buku Panduan Pengoperasian (PDF) berhasil diunduh.', 'Unduh Berhasil');
+                  }
+                }}
+                className="w-full py-2 px-4 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-800 text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <Users className="w-4 h-4 text-emerald-600" />
-                <span>Buka Kios Mandiri Antrean (Mode Layanan Pasien)</span>
+                <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Unduh Buku Panduan Pengoperasian (PDF)</span>
               </button>
-            )}
+            </div>
 
             {/* Faskes System Footnote */}
             <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-medium">

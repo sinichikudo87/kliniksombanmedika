@@ -272,7 +272,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           {/* Footer Security Note */}
           <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2 font-mono">
             <span>Standar Keamanan Akun Faskes</span>
-            <span>{user?.kdFaskes ? `Kode Faskes: ${user.kdFaskes}` : 'MySQL Auth System'}</span>
+            <span>{user?.kdFaskes ? `Kode Faskes: ${user.kdFaskes}` : 'Sistem Otentikasi Faskes'}</span>
           </div>
         </div>
       </div>

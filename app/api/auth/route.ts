@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       {
         metadata: {
           code: 500,
-          message: 'Gagal verifikasi kredensial di database MySQL: ' + err.message,
+          message: 'Gagal verifikasi kredensial akun: ' + err.message,
         },
       },
       { status: 500 }

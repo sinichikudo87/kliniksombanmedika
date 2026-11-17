@@ -30,9 +30,11 @@ import {
   WifiOff,
   CheckCircle2,
   AlertTriangle,
+  FileText,
 } from 'lucide-react';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import { exportWsFktpExcel } from '@/lib/client-excel-export';
+import { exportOperatingManualPdf } from '@/lib/client-pdf-manual';
 
 function MainApp() {
   const { user, isAuthenticated, isAuthLoaded } = useAuth();
@@ -245,9 +247,9 @@ function MainApp() {
                 display TV ruang tunggu, dan penyimpanan rekam medis terenkripsi AES-256-GCM.
               </p>
 
-              {/* Direct Excel Download Action in Footer - Hanya tampil jika sudah login */}
-              {isAuthenticated && (
-                <div className="pt-2 flex flex-wrap items-center gap-2">
+              {/* Direct Excel & PDF Manual Download Actions in Footer */}
+              <div className="pt-2 flex flex-wrap items-center gap-2">
+                {isAuthenticated && (
                   <button
                     onClick={handleDownloadExcel}
                     disabled={isDownloadingExcel}
@@ -258,12 +260,33 @@ function MainApp() {
                     <span>{isDownloadingExcel ? 'Menyiapkan File...' : 'Download Excel WS FKTP (.xlsx)'}</span>
                     <Download className="w-3.5 h-3.5 ml-0.5" />
                   </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ok = exportOperatingManualPdf({
+                      namaFaskes: bpjsConfig.namaFaskes,
+                      kdFaskes: bpjsConfig.kdFaskes,
+                      environment: bpjsConfig.environment,
+                    });
+                    if (ok) {
+                      showSwalSuccess('File PDF Panduan Pengoperasian berhasil diunduh.', 'Unduh Berhasil');
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs shadow-2xs transition-all cursor-pointer"
+                  title="Unduh Panduan Pengoperasian Aplikasi (PDF)"
+                >
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  <span>Panduan Pengoperasian (.pdf)</span>
+                  <Download className="w-3.5 h-3.5 ml-0.5" />
+                </button>
+                {isAuthenticated && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-[11px] font-medium bg-emerald-50">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Format Resmi BPJS KC Sidoarjo
                   </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Kredensial & Status Bridging - Hanya tampil jika sudah login */}

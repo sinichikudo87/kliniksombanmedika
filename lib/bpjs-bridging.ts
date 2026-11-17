@@ -174,13 +174,13 @@ export async function verifyBpjsParticipant(query: string, config: BpjsBridgingC
 
     return {
       success: false,
-      message: json.metaData?.message || 'Nomor NIK/BPJS tidak ditemukan di basis data pasien MySQL.',
+      message: json.metaData?.message || 'Nomor NIK/BPJS tidak ditemukan di data pasien terdaftar.',
       bridgingHeaders: json.headers || headers,
     };
   } catch (err: any) {
     return {
       success: false,
-      message: 'Gagal menghubungi server database: ' + (err?.message || 'Koneksi terputus'),
+      message: 'Gagal menghubungi server faskes: ' + (err?.message || 'Koneksi terputus'),
       bridgingHeaders: headers,
     };
   }

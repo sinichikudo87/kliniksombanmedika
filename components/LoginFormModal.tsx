@@ -209,7 +209,7 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span>Sistem Faskes Terhubung</span>
             </span>
-            <span>Autentikasi MySQL</span>
+            <span>Autentikasi Faskes</span>
           </div>
         </div>
       </div>

@@ -77,7 +77,7 @@ let lastConnectionStatus: {
   latencyMs?: number;
 } = {
   connected: false,
-  error: 'Belum diuji koneksi MySQL',
+  error: 'Belum dilakukan uji koneksi server',
 };
 
 function mapPoliRow(r: any): PoliInfo {
@@ -187,7 +187,7 @@ export async function testMySqlConnection(config?: Partial<MySqlConfig>) {
     return {
       success: false,
       connected: false,
-      error: `Koneksi ke ${targetConfig.host}:${targetConfig.port} gagal: ${error.message}. Pastikan MySQL service aktif di VPS Anda.`,
+      error: `Koneksi ke ${targetConfig.host}:${targetConfig.port} gagal: ${error.message}. Pastikan layanan server faskes aktif.`,
       latencyMs: latency,
       host: targetConfig.host,
       port: targetConfig.port,
@@ -610,6 +610,7 @@ export const mySqlDb = {
     if (updates.waktuSelesai) { fields.push('waktu_selesai = ?'); values.push(new Date(updates.waktuSelesai)); }
     if (updates.panggilanKe !== undefined) { fields.push('panggilan_ke = ?'); values.push(updates.panggilanKe); }
     if (updates.bpjsTaskId !== undefined) { fields.push('bpjs_task_id = ?'); values.push(updates.bpjsTaskId); }
+    if (updates.isSyncedBpjs !== undefined) { fields.push('is_synced_bpjs = ?'); values.push(updates.isSyncedBpjs ? 1 : 0); }
 
     if (fields.length > 0) {
       values.push(id);
@@ -739,7 +740,7 @@ export const mySqlDb = {
         if (!user.is_active) {
           return {
             success: false,
-            message: 'Akun petugas berstatus non-aktif di database MySQL',
+            message: 'Akun petugas berstatus non-aktif',
             source: 'MYSQL',
           };
         }
@@ -753,7 +754,7 @@ export const mySqlDb = {
             actor: `${user.nama_lengkap} (${user.role})`,
             action: 'LOGIN',
             status: 'SUCCESS',
-            details: `Otentikasi petugas berhasil diverifikasi langsung di MySQL untuk user: ${username}`,
+            details: `Otentikasi petugas berhasil diverifikasi untuk user: ${username}`,
           });
 
           const safeUser = {
@@ -773,14 +774,14 @@ export const mySqlDb = {
             success: true,
             message: safeUser.mustChangePassword
               ? 'Login berhasil. Password Anda masih default (000000). Harap ganti password demi keamanan.'
-              : 'Otentikasi berhasil via MySQL Server',
+              : 'Otentikasi berhasil',
             user: safeUser,
             source: 'MYSQL',
           };
         } else {
           return {
             success: false,
-            message: 'Password yang dimasukkan tidak sesuai di database MySQL',
+            message: 'Password yang dimasukkan tidak sesuai',
             source: 'MYSQL',
           };
         }
@@ -788,7 +789,7 @@ export const mySqlDb = {
 
       return {
         success: false,
-        message: 'Username petugas tidak ditemukan di tabel users MySQL',
+        message: 'Username petugas tidak ditemukan',
         source: 'MYSQL',
       };
     } catch (err: any) {
@@ -796,7 +797,7 @@ export const mySqlDb = {
       lastConnectionStatus.error = err?.message;
       return {
         success: false,
-        message: `Koneksi MySQL gagal: ${err?.message || 'Database tidak dapat dihubungi'}`,
+        message: `Koneksi server gagal: ${err?.message || 'Server tidak dapat dihubungi'}`,
         source: 'MYSQL',
       };
     }
@@ -821,12 +822,12 @@ export const mySqlDb = {
     );
 
     if (!rows || rows.length === 0) {
-      return { success: false, message: 'Akun user tidak ditemukan di database MySQL' };
+      return { success: false, message: 'Akun user tidak ditemukan' };
     }
 
     const u = rows[0];
     if (u.password_hash !== oldPassword && oldPassword !== '000000') {
-      return { success: false, message: 'Password lama tidak sesuai di database MySQL' };
+      return { success: false, message: 'Password lama tidak sesuai' };
     }
 
     const [res]: [any, any] = await pool.query(
@@ -843,7 +844,7 @@ export const mySqlDb = {
         actor: `${u.nama_lengkap} (${username})`,
         action: 'KEY_ROTATE',
         status: 'SUCCESS',
-        details: `Password akun '${username}' berhasil diperbarui langsung ke database MySQL`,
+        details: `Password akun '${username}' berhasil diperbarui`,
       });
 
       const safeUser = {
@@ -860,12 +861,12 @@ export const mySqlDb = {
 
       return {
         success: true,
-        message: 'Password baru berhasil disimpan ke database MySQL.',
+        message: 'Password baru berhasil disimpan.',
         user: safeUser,
       };
     }
 
-    return { success: false, message: 'Gagal memperbarui password di database MySQL' };
+    return { success: false, message: 'Gagal memperbarui password' };
   },
 
   async resetPassword(username: string, resetBy: string = 'Administrator RME', targetPassword?: string): Promise<{
@@ -889,17 +890,17 @@ export const mySqlDb = {
         actor: resetBy,
         action: 'KEY_ROTATE',
         status: 'SUCCESS',
-        details: `Reset password akun '${username}' ke '${newPassword}' di MySQL`,
+        details: `Reset password akun '${username}' ke '${newPassword}'`,
       });
 
       return {
         success: true,
-        message: `Password akun '${username}' berhasil di-reset langsung di database MySQL`,
+        message: `Password akun '${username}' berhasil di-reset`,
         newPassword,
       };
     }
 
-    return { success: false, message: 'User tidak ditemukan di MySQL' };
+    return { success: false, message: 'User tidak ditemukan' };
   },
 
   async getUsers() {
@@ -947,7 +948,7 @@ export const mySqlDb = {
       lastConnectionStatus.connected = true;
     }
 
-    return { success: true, message: 'Data petugas berhasil diperbarui di database MySQL' };
+    return { success: true, message: 'Data petugas berhasil diperbarui' };
   },
 
   async getPoliList(): Promise<PoliInfo[]> {
@@ -985,7 +986,7 @@ export const mySqlDb = {
       lastConnectionStatus.connected = true;
     }
 
-    return { success: true, message: 'Poliklinik berhasil diupdate di database MySQL' };
+    return { success: true, message: 'Poliklinik berhasil diperbarui' };
   },
 
   async getReferralHospitals(search?: string, province?: string): Promise<{
@@ -1062,7 +1063,7 @@ export const mySqlDb = {
       return {
         source: 'MYSQL',
         hospitals: [],
-        error: err?.message || 'Koneksi MySQL tabel rs_rujukan tidak aktif',
+        error: err?.message || 'Daftar RS Rujukan tidak dapat dimuat saat ini',
       };
     }
   },
@@ -1118,12 +1119,12 @@ export const mySqlDb = {
           telepon: telepon || '',
           isBpjs: isBpjs === 1,
         },
-        message: `RS Rujukan "${nama}" (${kodeFaskes}) berhasil disimpan ke database MySQL.`,
+        message: `RS Rujukan "${nama}" (${kodeFaskes}) berhasil disimpan.`,
       };
     } catch (err: any) {
       return {
         success: false,
-        message: `Gagal menyimpan RS Rujukan ke database MySQL: ${err?.message || 'Koneksi MySQL tidak aktif'}`,
+        message: `Gagal menyimpan RS Rujukan: ${err?.message || 'Server tidak aktif'}`,
       };
     }
   },
@@ -1136,12 +1137,12 @@ export const mySqlDb = {
       return {
         success: true,
         total: cnt[0]?.total || INDONESIA_REFERRAL_HOSPITALS.length,
-        message: 'Master RS Rujukan seluruh Indonesia berhasil disinkronkan ke MySQL.',
+        message: 'Master RS Rujukan seluruh Indonesia berhasil disinkronkan.',
       };
     } catch (err: any) {
       return {
         success: false,
-        message: `Gagal seed RS Rujukan ke MySQL: ${err?.message || 'Koneksi gagal'}`,
+        message: `Gagal sinkronisasi RS Rujukan: ${err?.message || 'Koneksi gagal'}`,
       };
     }
   },
@@ -1246,7 +1247,7 @@ export const mySqlDb = {
         success: false,
         source: 'MYSQL',
         visits: [],
-        error: err?.message || 'Gagal membaca tabel pcare_visits dari MySQL',
+        error: err?.message || 'Gagal membaca data kunjungan PCare',
       };
     }
   },
@@ -1314,8 +1315,152 @@ export const mySqlDb = {
       lastConnectionStatus.error = err?.message;
       return {
         success: false,
-        error: err?.message || 'Gagal menyimpan kunjungan PCare ke MySQL',
+        error: err?.message || 'Gagal menyimpan kunjungan PCare',
       };
+    }
+  },
+
+  async getPendingBpjsSyncData(): Promise<{
+    success: boolean;
+    pendingQueues: Array<QueueItem & { noHp?: string }>;
+    pendingVisits: PcareVisitRecord[];
+    error?: string;
+  }> {
+    try {
+      const pool = getMySqlPool();
+      await this.ensurePcareVisitsTable(pool);
+
+      const [queueRows]: [any, any] = await pool.query(
+        `SELECT q.*, p.no_hp AS patient_no_hp
+         FROM queues q
+         LEFT JOIN patients p ON p.id = q.patient_id
+         WHERE q.is_synced_bpjs = 0 OR q.is_synced_bpjs IS NULL
+         ORDER BY q.waktu_daftar ASC
+         LIMIT 100`
+      );
+
+      const [visitRows]: [any, any] = await pool.query(
+        `SELECT * FROM pcare_visits
+         WHERE is_bridged = 0 OR is_bridged IS NULL
+         ORDER BY created_at ASC
+         LIMIT 100`
+      );
+
+      lastConnectionStatus.connected = true;
+      lastConnectionStatus.error = undefined;
+
+      const pendingQueues: Array<QueueItem & { noHp?: string }> = (queueRows || []).map((q: any) => ({
+        id: q.id,
+        nomorAntrean: q.nomor_antrean,
+        prefix: q.prefix,
+        nomorUrut: q.nomor_urut,
+        tipePasien: q.tipe_pasien,
+        poliKode: q.poli_kode,
+        poliNama: q.poli_nama,
+        dokterNama: q.dokter_nama || '',
+        ruangNama: q.ruang_nama || '',
+        patientId: q.patient_id,
+        nik: q.nik,
+        noBpjs: q.no_bpjs || '',
+        namaPasien: q.nama_pasien,
+        status: q.status,
+        waktuDaftar: q.waktu_daftar ? new Date(q.waktu_daftar).toISOString() : new Date().toISOString(),
+        waktuDipanggil: q.waktu_dipanggil ? new Date(q.waktu_dipanggil).toISOString() : undefined,
+        waktuMulaiLayanan: q.waktu_mulai_layanan ? new Date(q.waktu_mulai_layanan).toISOString() : undefined,
+        waktuSelesai: q.waktu_selesai ? new Date(q.waktu_selesai).toISOString() : undefined,
+        estimasiWaktuTungguMenit: q.estimasi_waktu_tunggu_menit || 10,
+        estimasiJamPanggil: q.estimasi_jam_panggil || '',
+        bpjsTaskId: q.bpjs_task_id || 1,
+        kodeBooking: q.kode_booking || '',
+        keluhan: q.keluhan || '',
+        isSyncedBpjs: q.is_synced_bpjs === 1,
+        panggilanKe: q.panggilan_ke || 0,
+        noHp: q.patient_no_hp || '',
+      }));
+
+      const pendingVisits: PcareVisitRecord[] = (visitRows || []).map((r: any) => ({
+        id: r.id,
+        noKunjungan: r.no_kunjungan || null,
+        noRujukan: r.no_rujukan || null,
+        queueId: r.queue_id || null,
+        noKartu: r.no_kartu || '',
+        nik: r.nik || null,
+        namaPasien: r.nama_pasien || '',
+        poliKode: r.poli_kode || '',
+        poliNama: r.poli_nama || '',
+        sistole: r.sistole ?? undefined,
+        diastole: r.diastole ?? undefined,
+        heartRate: r.heart_rate ?? undefined,
+        respRate: r.resp_rate ?? undefined,
+        suhu: r.suhu || undefined,
+        beratBadan: r.berat_badan !== null && r.berat_badan !== undefined ? Number(r.berat_badan) : null,
+        tinggiBadan: r.tinggi_badan !== null && r.tinggi_badan !== undefined ? Number(r.tinggi_badan) : null,
+        kesadaran: r.kesadaran || '01',
+        anamnesa: r.anamnesa || null,
+        diagnosaKode: r.diagnosa_kode || '',
+        diagnosaNama: r.diagnosa_nama || '',
+        terapiObat: r.terapi_obat || null,
+        statusPulang: r.status_pulang || '',
+        ppkRujuk: r.ppk_rujuk || null,
+        namaPpkRujuk: r.nama_ppk_rujuk || null,
+        poliRujuk: r.poli_rujuk || null,
+        tglRencanaRujuk: r.tgl_rencana_rujuk || null,
+        catatanRujukan: r.catatan_rujukan || null,
+        isBridged: r.is_bridged === 1 || r.is_bridged === true,
+        bridgingStatus: r.bridging_status || 'PENDING_BRIDGING_MYSQL',
+        bpjsResponse: r.bpjs_response ? (typeof r.bpjs_response === 'string' ? JSON.parse(r.bpjs_response) : r.bpjs_response) : null,
+        createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+      }));
+
+      return {
+        success: true,
+        pendingQueues,
+        pendingVisits,
+      };
+    } catch (err: any) {
+      lastConnectionStatus.connected = false;
+      lastConnectionStatus.error = err?.message;
+      return {
+        success: false,
+        pendingQueues: [],
+        pendingVisits: [],
+        error: err?.message || 'Gagal membaca antrean & kunjungan tertunda',
+      };
+    }
+  },
+
+  async markPcareVisitBridged(
+    id: string,
+    updates: {
+      noKunjungan?: string | null;
+      noRujukan?: string | null;
+      bridgingStatus?: string;
+      bpjsResponse?: any;
+    }
+  ): Promise<boolean> {
+    try {
+      const pool = getMySqlPool();
+      await this.ensurePcareVisitsTable(pool);
+      await pool.query(
+        `UPDATE pcare_visits
+         SET no_kunjungan = COALESCE(?, no_kunjungan),
+             no_rujukan = COALESCE(?, no_rujukan),
+             is_bridged = 1,
+             bridging_status = ?,
+             bpjs_response = ?
+         WHERE id = ?`,
+        [
+          updates.noKunjungan || null,
+          updates.noRujukan || null,
+          updates.bridgingStatus || 'BRIDGED_BPJS_OK',
+          updates.bpjsResponse ? JSON.stringify(updates.bpjsResponse) : null,
+          id,
+        ]
+      );
+      lastConnectionStatus.connected = true;
+      return true;
+    } catch {
+      return false;
     }
   },
 

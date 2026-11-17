@@ -8,6 +8,7 @@ import { LoginFormModal } from '@/components/LoginFormModal';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { chimePlayer } from '@/lib/tts-announcer';
 import { showSwalSuccess, showSwalInfo } from '@/lib/swal';
+import { exportOperatingManualPdf } from '@/lib/client-pdf-manual';
 import {
   CreditCard,
   Tv,
@@ -25,6 +26,8 @@ import {
   Menu,
   X,
   BarChart3,
+  UploadCloud,
+  FileText,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -34,7 +37,15 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpenSettings }) => {
-  const { bpjsConfig, switchBpjsEnvironment, audioEnabled, setAudioEnabled } = useQueue();
+  const {
+    bpjsConfig,
+    switchBpjsEnvironment,
+    audioEnabled,
+    setAudioEnabled,
+    pendingSyncSummary,
+    isSyncingPending,
+    syncPendingToBpjs,
+  } = useQueue();
   const {
     user,
     isAuthenticated,
@@ -102,8 +113,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
       const res = await switchBpjsEnvironment(targetEnv);
       const label = targetEnv === 'production' ? 'Production (Live)' : 'Development (Tester)';
       if (res.success) {
+        const uploadedCount = res.syncResult?.uploadedTotal || 0;
+        const syncNote =
+          uploadedCount > 0 ? ` dan ${uploadedCount} data tertunda diunggah ke BPJS.` : '.';
         showSwalSuccess(
-          `Mode ${label} aktif dan terhubung ke BPJS (${res.latencyMs} ms).`,
+          `Mode ${label} aktif dan terhubung ke BPJS (${res.latencyMs} ms)${syncNote}`,
           `BPJS Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'}`
         );
       } else {
@@ -198,7 +212,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                   }`}
                 >
                   <Database className={`w-3.5 h-3.5 ${currentTab === 'SECURITY' ? 'text-emerald-600' : 'text-slate-400'}`} />
-                  <span>RME &amp; DB</span>
+                  <span>RME &amp; Keamanan</span>
                 </button>
               )}
             </nav>
@@ -383,6 +397,30 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                       </button>
                     )}
 
+                    {isAdministrator && pendingSyncSummary.totalPending > 0 && (
+                      <button
+                        onClick={async () => {
+                          setIsMenuOpen(false);
+                          const res = await syncPendingToBpjs(undefined, { silent: false });
+                          if (res.uploadedTotal > 0) {
+                            showSwalSuccess(res.message, 'Upload Data Tertunda Berhasil');
+                          } else {
+                            showSwalInfo(res.message || 'Belum dapat terhubung ke server BPJS.', 'Sinkronisasi Tertunda');
+                          }
+                        }}
+                        disabled={isSyncingPending}
+                        className="w-full px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-left flex items-center justify-between gap-2 text-xs font-bold text-amber-900 border border-amber-200 cursor-pointer disabled:opacity-50"
+                      >
+                        <span className="flex items-center gap-2">
+                          <UploadCloud className={`w-4 h-4 text-amber-600 ${isSyncingPending ? 'animate-bounce' : ''}`} />
+                          <span>{isSyncingPending ? 'Mengunggah ke BPJS...' : 'Upload Data Tertunda'}</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-200 text-amber-950 font-mono">
+                          {pendingSyncSummary.totalPending}
+                        </span>
+                      </button>
+                    )}
+
                     {isRmeAdmin && (
                       <button
                         onClick={() => {
@@ -392,7 +430,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                         className="w-full px-3 py-2 rounded-xl hover:bg-slate-50 text-left flex items-center gap-2 text-xs font-semibold text-slate-800 cursor-pointer"
                       >
                         <Database className="w-4 h-4 text-slate-500" />
-                        <span>Rekam Medis &amp; Database MySQL</span>
+                        <span>Rekam Medis &amp; Keamanan</span>
                       </button>
                     )}
 
@@ -405,6 +443,27 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                         <span>Test Bel Antrean</span>
                       </span>
                       <span className="text-[10px] text-slate-400">Audio</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        const ok = exportOperatingManualPdf({
+                          namaFaskes: bpjsConfig.namaFaskes,
+                          kdFaskes: bpjsConfig.kdFaskes,
+                          environment: bpjsConfig.environment,
+                        });
+                        if (ok) {
+                          showSwalSuccess('File PDF Panduan Pengoperasian berhasil diunduh.', 'Unduh Panduan PDF');
+                        }
+                      }}
+                      className="w-full px-3 py-2 rounded-xl hover:bg-emerald-50/70 text-left flex items-center justify-between text-xs font-semibold text-slate-800 cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-emerald-700" />
+                        <span>Panduan Pengoperasian</span>
+                      </span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">PDF</span>
                     </button>
 
                     {isAuthenticated && user && (

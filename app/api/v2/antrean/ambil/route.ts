@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     if (!poliRows || poliRows.length === 0) {
       return NextResponse.json(
-        { metadata: { code: 404, message: `Poliklinik (${kodepoli}) tidak ditemukan di database MySQL` } },
+        { metadata: { code: 404, message: `Poliklinik (${kodepoli}) tidak ditemukan` } },
         { status: 404 }
       );
     }

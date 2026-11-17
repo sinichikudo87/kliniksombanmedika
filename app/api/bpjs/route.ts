@@ -373,7 +373,7 @@ export async function POST(req: NextRequest) {
         if (rows && rows.length > 0) {
           const p = rows[0];
           return NextResponse.json({
-            metaData: { code: 200, message: 'Peserta Ditemukan di Database MySQL' },
+            metaData: { code: 200, message: 'Peserta Ditemukan di Data Terdaftar Faskes' },
             source: 'MYSQL',
             response: {
               peserta: {
@@ -398,7 +398,7 @@ export async function POST(req: NextRequest) {
           {
             metaData: {
               code: 500,
-              message: `Gagal menanyakan data peserta ke MySQL: ${dbErr?.message || 'Database error'}`,
+              message: `Gagal memeriksa data peserta: ${dbErr?.message || 'Server error'}`,
             },
             response: null,
             headers,
@@ -407,12 +407,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // 3. Jika nomor NIK/BPJS belum terdaftar di BPJS maupun MySQL
+      // 3. Jika nomor NIK/BPJS belum terdaftar
       return NextResponse.json(
         {
           metaData: {
             code: 404,
-            message: `Nomor NIK/BPJS ${cleanQuery} belum terdaftar di database MySQL${isOnline ? ' maupun server PCare BPJS' : ''}.`,
+            message: `Nomor NIK/BPJS ${cleanQuery} belum terdaftar di data faskes${isOnline ? ' maupun server PCare BPJS' : ''}.`,
           },
           response: null,
           headers,
@@ -504,8 +504,8 @@ export async function POST(req: NextRequest) {
           message: isBridged
             ? 'Pendaftaran PCare Terkirim ke BPJS Kesehatan'
             : isOnline
-            ? 'Antrean tersimpan di MySQL, namun server PCare BPJS belum merespon'
-            : 'Antrean tersimpan di database MySQL (Belum terhubung ke API BPJS)',
+            ? 'Antrean tersimpan di sistem faskes, namun server PCare BPJS belum merespon'
+            : 'Antrean tersimpan di sistem faskes (Belum terhubung ke API BPJS)',
         },
         response: {
           isBridged,
@@ -691,7 +691,7 @@ export async function POST(req: NextRequest) {
       if (!saved.success) {
         return NextResponse.json(
           {
-            metaData: { code: 500, message: saved.error || 'Gagal menyimpan kunjungan PCare ke database MySQL' },
+            metaData: { code: 500, message: saved.error || 'Gagal menyimpan kunjungan PCare' },
             response: null,
             headers,
           },
@@ -704,11 +704,11 @@ export async function POST(req: NextRequest) {
           code: isBridged ? 201 : 202,
           message: isBridged
             ? isReferral
-              ? 'Kunjungan & Rujukan PCare terkirim ke BPJS dan tersimpan di MySQL'
-              : 'Kunjungan PCare terkirim ke BPJS dan tersimpan di MySQL'
+              ? 'Kunjungan & Rujukan PCare terkirim ke BPJS dan tersimpan di sistem'
+              : 'Kunjungan PCare terkirim ke BPJS dan tersimpan di sistem'
             : isOnline
-            ? 'Tersimpan di MySQL (Server BPJS PCare tidak merespon)'
-            : 'Tersimpan di MySQL (Bridging API BPJS sedang Nonaktif)',
+            ? 'Tersimpan di sistem (Server BPJS PCare tidak merespon)'
+            : 'Tersimpan di sistem (Bridging API BPJS sedang Nonaktif)',
         },
         response: {
           visit: saved.visit,
@@ -798,7 +798,7 @@ export async function POST(req: NextRequest) {
           {
             metaData: {
               code: 202,
-              message: 'Belum terhubung ke API BPJS — Transaksi tersimpan di MySQL.',
+              message: 'Belum terhubung ke API BPJS — Transaksi tersimpan di sistem.',
             },
             response: { isBridged: false, timestamp },
             headers,
@@ -873,6 +873,519 @@ export async function POST(req: NextRequest) {
         },
         { status: 503 }
       );
+    }
+
+    if (action === 'pending_status') {
+      const pendingData = await mySqlDb.getPendingBpjsSyncData();
+      const pendingQueues = pendingData.pendingQueues || [];
+      const pendingVisits = pendingData.pendingVisits || [];
+
+      return NextResponse.json({
+        metaData: {
+          code: 200,
+          message: pendingData.success
+            ? 'Status data tertunda berhasil dimuat'
+            : 'Penyimpanan server belum tersedia pada pratinjau ini',
+        },
+        response: {
+          dbConnected: pendingData.success,
+          pendingQueuesCount: pendingQueues.length,
+          pendingVisitsCount: pendingVisits.length,
+          totalPending: pendingQueues.length + pendingVisits.length,
+          pendingQueues: pendingQueues.slice(0, 20).map((q) => ({
+            id: q.id,
+            nomorAntrean: q.nomorAntrean,
+            namaPasien: q.namaPasien,
+            poliNama: q.poliNama,
+            status: q.status,
+            waktuDaftar: q.waktuDaftar,
+          })),
+          pendingVisits: pendingVisits.slice(0, 20).map((v) => ({
+            id: v.id,
+            namaPasien: v.namaPasien,
+            noKartu: v.noKartu,
+            poliNama: v.poliNama,
+            diagnosaKode: v.diagnosaKode,
+            statusPulang: v.statusPulang,
+            createdAt: v.createdAt,
+          })),
+        },
+        headers,
+      });
+    }
+
+    if (action === 'sync_pending_bpjs') {
+      const pendingData = await mySqlDb.getPendingBpjsSyncData();
+      if (!pendingData.success) {
+        return NextResponse.json({
+          metaData: {
+            code: 200,
+            message: 'Penyimpanan server pusat belum aktif di pratinjau cloud ini.',
+          },
+          response: {
+            dbConnected: false,
+            totalPendingBefore: 0,
+            queuesUploaded: 0,
+            queuesFailed: 0,
+            visitsUploaded: 0,
+            visitsFailed: 0,
+            uploadedTotal: 0,
+            failedTotal: 0,
+            remainingPending: 0,
+            results: [],
+          },
+          headers,
+        });
+      }
+
+      const pendingQueues = pendingData.pendingQueues || [];
+      const pendingVisits = pendingData.pendingVisits || [];
+      const totalPendingBefore = pendingQueues.length + pendingVisits.length;
+
+      if (totalPendingBefore === 0) {
+        return NextResponse.json({
+          metaData: {
+            code: 200,
+            message: 'Semua data antrean dan kunjungan sudah tersinkron dengan BPJS Bridging.',
+          },
+          response: {
+            dbConnected: true,
+            totalPendingBefore: 0,
+            queuesUploaded: 0,
+            queuesFailed: 0,
+            visitsUploaded: 0,
+            visitsFailed: 0,
+            uploadedTotal: 0,
+            failedTotal: 0,
+            remainingPending: 0,
+            results: [],
+          },
+          headers,
+        });
+      }
+
+      const envIsProd =
+        body.environment === 'production' ||
+        (body.baseUrl && !String(body.baseUrl).includes('dev') && !String(body.baseUrl).includes('tester')) ||
+        (dbCfg?.environment === 'production');
+
+      const antreanBase =
+        body.baseUrl && String(body.baseUrl).includes('antrean')
+          ? String(body.baseUrl).replace(/\/+$/, '')
+          : envIsProd
+          ? 'https://apijkn.bpjs-kesehatan.go.id/antreanfktp'
+          : 'https://apijkn-dev.bpjs-kesehatan.go.id/antreanfktp_dev';
+
+      const pcareBase =
+        body.baseUrl && String(body.baseUrl).includes('pcare')
+          ? String(body.baseUrl).replace(/\/+$/, '')
+          : envIsProd
+          ? 'https://apijkn.bpjs-kesehatan.go.id/pcare-rest'
+          : 'https://apijkn-dev.bpjs-kesehatan.go.id/pcare-rest-dev';
+
+      const isAntreanFktp = antreanBase.includes('antreanfktp');
+      const antreanHeaders = getHeadersForUrl(antreanBase);
+      const pcareHeaders = getHeadersForUrl(pcareBase);
+
+      const results: Array<{
+        type: 'ANTREAN' | 'PCARE';
+        id: string;
+        label: string;
+        status: 'UPLOADED' | 'FAILED';
+        httpStatus?: number;
+        noKunjungan?: string | null;
+        noRujukan?: string | null;
+        message: string;
+      }> = [];
+
+      let queuesUploaded = 0;
+      let queuesFailed = 0;
+      let visitsUploaded = 0;
+      let visitsFailed = 0;
+      let antreanUnreachable = false;
+      let pcareUnreachable = false;
+
+      // 1. Upload pending Antrean items
+      for (const q of pendingQueues) {
+        const label = `${q.nomorAntrean} · ${q.namaPasien}`;
+        if (antreanUnreachable) {
+          queuesFailed += 1;
+          results.push({
+            type: 'ANTREAN',
+            id: q.id,
+            label,
+            status: 'FAILED',
+            httpStatus: 503,
+            message: 'Dilewati: Server Antrean BPJS tidak dapat dijangkau (Timeout).',
+          });
+          continue;
+        }
+
+        const tglPeriksa = q.waktuDaftar
+          ? new Date(q.waktuDaftar).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' })
+          : getTodayWibYYYYMMDD();
+
+        const isCancelled = q.status === 'BATAL';
+        const endpointPath = isCancelled ? '/antrean/batal' : '/antrean/add';
+        const reqBody = isCancelled
+          ? {
+              tanggalperiksa: tglPeriksa,
+              kodepoli: mapPoliToBpjsCode(q.poliKode),
+              nomorkartu: q.noBpjs || '',
+              kodebooking: q.kodeBooking,
+              nomorantrean: q.nomorAntrean,
+              keterangan: 'Dibatalkan oleh petugas faskes/pasien',
+            }
+          : isAntreanFktp
+          ? {
+              nomorkartu: q.noBpjs || '',
+              nik: q.nik || '',
+              nohp: q.noHp || '080000000000',
+              kodepoli: mapPoliToBpjsCode(q.poliKode),
+              namapoli: q.poliNama || 'Poli Umum',
+              norm: q.patientId || '-',
+              tanggalperiksa: tglPeriksa,
+              kodedokter: 1,
+              namadokter: q.dokterNama || 'Dokter Umum',
+              jampraktek: '08:00-16:00',
+              nomorantrean: q.nomorAntrean,
+              angkaantrean: q.nomorUrut || 1,
+              keterangan: 'Sinkronisasi otomatis antrean tersimpan sistem',
+            }
+          : {
+              kodebooking: q.kodeBooking,
+              jenispasien: q.tipePasien,
+              nomorkartu: q.noBpjs || '',
+              nik: q.nik || '',
+              nohp: q.noHp || '080000000000',
+              kodepoli: mapPoliToBpjsCode(q.poliKode),
+              namapoli: q.poliNama || 'Poli Umum',
+              norm: q.patientId || '-',
+              tanggalperiksa: tglPeriksa,
+              nomorantrean: q.nomorAntrean,
+              angkaantrean: q.nomorUrut || 1,
+              estimasidilayani: Date.now(),
+              namadokter: q.dokterNama || 'Dokter Umum',
+            };
+
+        const startTime = Date.now();
+        try {
+          const bpjsRes = await fetch(`${antreanBase}${endpointPath}`, {
+            method: 'POST',
+            headers: antreanHeaders,
+            body: JSON.stringify(reqBody),
+            signal: AbortSignal.timeout(8000),
+          });
+          const rawJson = await bpjsRes.json().catch(() => null);
+          const parsedData = rawJson?.response
+            ? { ...rawJson, response: decryptBpjsResponse(rawJson.response, actualConsId, actualSecret, timestamp) }
+            : rawJson;
+
+          const metaObj = parsedData?.metaData || parsedData?.metadata || {};
+          const metaCodeNum = metaObj?.code !== undefined ? Number(metaObj.code) : NaN;
+          const isSuccess =
+            (bpjsRes.ok && (Number.isNaN(metaCodeNum) || metaCodeNum < 400)) ||
+            metaCodeNum === 200 ||
+            metaCodeNum === 201;
+
+          await mySqlDb.addBridgingLog({
+            id: `br-sync-q-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+            timestamp: new Date().toISOString(),
+            endpoint: `${endpointPath} (Auto-Sync)`,
+            method: 'POST',
+            requestHeader: antreanHeaders,
+            requestPayload: reqBody,
+            responseStatus: Number.isNaN(metaCodeNum) ? bpjsRes.status : metaCodeNum,
+            responsePayload: parsedData || {},
+            durationMs: Date.now() - startTime,
+          });
+
+          if (isSuccess) {
+            // If queue already advanced beyond MENUNGGU while offline, notify call status too
+            if (!isCancelled && q.status !== 'MENUNGGU') {
+              const statusPath = isAntreanFktp ? '/antrean/panggil' : '/antrean/updatewaktu';
+              const statusBody = isAntreanFktp
+                ? {
+                    tanggalperiksa: tglPeriksa,
+                    kodepoli: mapPoliToBpjsCode(q.poliKode),
+                    nomorkartu: q.noBpjs || '',
+                    nomorantrean: q.nomorAntrean,
+                    status: q.status === 'SELESAI' ? 2 : 1,
+                    waktu: Date.now(),
+                  }
+                : {
+                    kodebooking: q.kodeBooking,
+                    taskid: q.bpjsTaskId || (q.status === 'SELESAI' ? 6 : 4),
+                    waktu: Date.now(),
+                  };
+              fetch(`${antreanBase}${statusPath}`, {
+                method: 'POST',
+                headers: antreanHeaders,
+                body: JSON.stringify(statusBody),
+                signal: AbortSignal.timeout(5000),
+              }).catch(() => {});
+            }
+
+            await mySqlDb.updateQueue(q.id, { isSyncedBpjs: true });
+            queuesUploaded += 1;
+            results.push({
+              type: 'ANTREAN',
+              id: q.id,
+              label,
+              status: 'UPLOADED',
+              httpStatus: bpjsRes.status,
+              message: metaObj?.message || 'Antrean berhasil diunggah ke BPJS Bridging',
+            });
+          } else {
+            queuesFailed += 1;
+            results.push({
+              type: 'ANTREAN',
+              id: q.id,
+              label,
+              status: 'FAILED',
+              httpStatus: bpjsRes.status,
+              message: metaObj?.message || `Ditolak server BPJS (HTTP ${bpjsRes.status})`,
+            });
+          }
+        } catch (err: any) {
+          queuesFailed += 1;
+          const isTimeoutOrConn =
+            err?.name === 'TimeoutError' ||
+            err?.name === 'AbortError' ||
+            err?.cause?.code === 'ECONNREFUSED' ||
+            err?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT';
+          if (isTimeoutOrConn) {
+            antreanUnreachable = true;
+          }
+          await mySqlDb.addBridgingLog({
+            id: `br-sync-q-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+            timestamp: new Date().toISOString(),
+            endpoint: `${endpointPath} (Auto-Sync)`,
+            method: 'POST',
+            requestHeader: antreanHeaders,
+            requestPayload: reqBody,
+            responseStatus: 503,
+            responsePayload: { error: err?.message || 'Timeout menghubungi Web Service Antrean BPJS' },
+            durationMs: Date.now() - startTime,
+          });
+          results.push({
+            type: 'ANTREAN',
+            id: q.id,
+            label,
+            status: 'FAILED',
+            httpStatus: 503,
+            message: err?.message || 'Server Antrean BPJS tidak dapat dijangkau',
+          });
+        }
+      }
+
+      // 2. Upload pending PCare Visits / Referrals
+      for (const v of pendingVisits) {
+        const label = `${v.namaPasien} [${v.diagnosaKode || '-'}]`;
+        if (pcareUnreachable) {
+          visitsFailed += 1;
+          results.push({
+            type: 'PCARE',
+            id: v.id,
+            label,
+            status: 'FAILED',
+            httpStatus: 503,
+            message: 'Dilewati: Server PCare BPJS tidak dapat dijangkau (Timeout).',
+          });
+          continue;
+        }
+
+        const tglDaftarDate = v.createdAt
+          ? new Date(v.createdAt).toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' })
+          : getTodayWibYYYYMMDD();
+        const isReferral = v.statusPulang.toLowerCase().includes('rujuk') && Boolean(v.ppkRujuk);
+        const kdStatusPulangBpjs =
+          v.statusPulang.toLowerCase().includes('horizontal')
+            ? '6'
+            : isReferral
+            ? '4'
+            : '3';
+
+        const bpjsKunjunganPayload = {
+          noKunjungan: null,
+          noKartu: v.noKartu && v.noKartu !== '-' ? v.noKartu : '',
+          tglDaftar: toDDMMYYYY(tglDaftarDate),
+          kdPoli: mapPoliToBpjsCode(v.poliKode),
+          keluhan: v.anamnesa || '-',
+          kdSadar: v.kesadaran || '01',
+          sistole: Number(v.sistole) || 120,
+          diastole: Number(v.diastole) || 80,
+          beratBadan: Number(v.beratBadan) || 60,
+          tinggiBadan: Number(v.tinggiBadan) || 165,
+          respRate: Number(v.respRate) || 18,
+          heartRate: Number(v.heartRate) || 78,
+          lingkarPerut: 0,
+          kdStatusPulang: kdStatusPulangBpjs,
+          tglPulang: toDDMMYYYY(tglDaftarDate),
+          kdDokter: actualUserPcare || '001',
+          kdDiag1: v.diagnosaKode || 'R51',
+          kdDiag2: null,
+          kdDiag3: null,
+          kdPoliRujukInternal: null,
+          rujukLanjut:
+            kdStatusPulangBpjs === '4' && v.ppkRujuk
+              ? {
+                  tglEstRujuk: toDDMMYYYY(v.tglRencanaRujuk || tglDaftarDate),
+                  kdppk: v.ppkRujuk,
+                  subSpesialis: {
+                    kdSubSpesialis1: v.poliRujuk || 'INT',
+                    kdSarana: '1',
+                  },
+                  khusus: null,
+                }
+              : null,
+          kdTkp: '10',
+          terapi: v.terapiObat || '-',
+        };
+
+        const startTime = Date.now();
+        try {
+          const bpjsRes = await fetch(`${pcareBase}/kunjungan`, {
+            method: 'POST',
+            headers: pcareHeaders,
+            body: JSON.stringify(bpjsKunjunganPayload),
+            signal: AbortSignal.timeout(8000),
+          });
+          const rawJson = await bpjsRes.json().catch(() => null);
+          const decryptedResp = rawJson?.response
+            ? decryptBpjsResponse(rawJson.response, actualConsId, actualSecret, timestamp)
+            : null;
+          const bpjsResponse = decryptedResp ? { ...rawJson, response: decryptedResp } : rawJson;
+
+          const metaObj = bpjsResponse?.metaData || bpjsResponse?.metadata || {};
+          const metaCodeNum = metaObj?.code !== undefined ? Number(metaObj.code) : NaN;
+          const isSuccess =
+            (bpjsRes.ok && (Number.isNaN(metaCodeNum) || metaCodeNum < 400)) ||
+            metaCodeNum === 200 ||
+            metaCodeNum === 201;
+
+          await mySqlDb.addBridgingLog({
+            id: `br-sync-v-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+            timestamp: new Date().toISOString(),
+            endpoint: '/kunjungan (Auto-Sync)',
+            method: 'POST',
+            requestHeader: pcareHeaders,
+            requestPayload: bpjsKunjunganPayload,
+            responseStatus: Number.isNaN(metaCodeNum) ? bpjsRes.status : metaCodeNum,
+            responsePayload: bpjsResponse || {},
+            durationMs: Date.now() - startTime,
+          });
+
+          if (isSuccess) {
+            const respData = decryptedResp || bpjsResponse?.response;
+            const respMessage = respData?.message || respData?.noKunjungan || null;
+            const noKunjungan = typeof respMessage === 'string' && respMessage.trim() ? respMessage.trim() : null;
+            const noRujukan =
+              isReferral && typeof respData?.noRujukan === 'string'
+                ? respData.noRujukan
+                : isReferral
+                ? noKunjungan
+                : null;
+
+            await mySqlDb.markPcareVisitBridged(v.id, {
+              noKunjungan,
+              noRujukan,
+              bridgingStatus: 'BRIDGED_BPJS_OK',
+              bpjsResponse,
+            });
+            visitsUploaded += 1;
+            results.push({
+              type: 'PCARE',
+              id: v.id,
+              label,
+              status: 'UPLOADED',
+              httpStatus: bpjsRes.status,
+              noKunjungan,
+              noRujukan,
+              message: metaObj?.message || 'Kunjungan PCare berhasil diunggah ke BPJS',
+            });
+          } else {
+            visitsFailed += 1;
+            results.push({
+              type: 'PCARE',
+              id: v.id,
+              label,
+              status: 'FAILED',
+              httpStatus: bpjsRes.status,
+              message: metaObj?.message || `Ditolak server PCare BPJS (HTTP ${bpjsRes.status})`,
+            });
+          }
+        } catch (err: any) {
+          visitsFailed += 1;
+          const isTimeoutOrConn =
+            err?.name === 'TimeoutError' ||
+            err?.name === 'AbortError' ||
+            err?.cause?.code === 'ECONNREFUSED' ||
+            err?.cause?.code === 'UND_ERR_CONNECT_TIMEOUT';
+          if (isTimeoutOrConn) {
+            pcareUnreachable = true;
+          }
+          await mySqlDb.addBridgingLog({
+            id: `br-sync-v-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+            timestamp: new Date().toISOString(),
+            endpoint: '/kunjungan (Auto-Sync)',
+            method: 'POST',
+            requestHeader: pcareHeaders,
+            requestPayload: bpjsKunjunganPayload,
+            responseStatus: 503,
+            responsePayload: { error: err?.message || 'Timeout menghubungi Web Service PCare BPJS' },
+            durationMs: Date.now() - startTime,
+          });
+          results.push({
+            type: 'PCARE',
+            id: v.id,
+            label,
+            status: 'FAILED',
+            httpStatus: 503,
+            message: err?.message || 'Server PCare BPJS tidak dapat dijangkau',
+          });
+        }
+      }
+
+      const uploadedTotal = queuesUploaded + visitsUploaded;
+      const failedTotal = queuesFailed + visitsFailed;
+      const remainingPending = Math.max(0, totalPendingBefore - uploadedTotal);
+
+      if (uploadedTotal > 0) {
+        await persistBpjsOnlineStatus(true);
+        await mySqlDb.addSecurityLog({
+          id: `sec-sync-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          actor: actualUserPcare || 'Bridging Auto-Sync',
+          action: 'EXPORT',
+          status: 'SUCCESS',
+          details: `Sinkronisasi BPJS berhasil mengunggah ${uploadedTotal} data tertunda (${queuesUploaded} antrean, ${visitsUploaded} kunjungan PCare).`,
+        });
+      }
+
+      return NextResponse.json({
+        metaData: {
+          code: uploadedTotal > 0 ? 200 : 207,
+          message:
+            uploadedTotal > 0
+              ? `${uploadedTotal} data tertunda berhasil diunggah ke API BPJS Bridging${failedTotal > 0 ? ` (${failedTotal} gagal/tertunda ulang)` : ''}.`
+              : `Belum ada data yang berhasil diunggah ke BPJS (${failedTotal} tertunda gagal menghubungi server BPJS).`,
+        },
+        response: {
+          dbConnected: true,
+          totalPendingBefore,
+          queuesUploaded,
+          queuesFailed,
+          visitsUploaded,
+          visitsFailed,
+          uploadedTotal,
+          failedTotal,
+          remainingPending,
+          results,
+          syncedAt: new Date().toISOString(),
+        },
+        headers,
+      });
     }
 
     return NextResponse.json(

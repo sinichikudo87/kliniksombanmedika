@@ -30,6 +30,7 @@ import {
   Info,
   Building2,
   BedDouble,
+  UploadCloud,
 } from 'lucide-react';
 import { WS_FKTP_ENDPOINTS } from '@/types/queue';
 import { exportWsFktpExcel } from '@/lib/client-excel-export';
@@ -181,7 +182,19 @@ const BridgingSettingsModalInner: React.FC<{
   onClose: () => void;
   onOpenPcare?: () => void;
 }> = ({ onClose, onOpenPcare }) => {
-  const { bpjsConfig, updateBpjsConfig, testBridgingPing, bridgingLogs } = useQueue();
+  const {
+    bpjsConfig,
+    updateBpjsConfig,
+    testBridgingPing,
+    bridgingLogs,
+    autoUploadOnConnect,
+    setAutoUploadOnConnect,
+    isSyncingPending,
+    pendingSyncSummary,
+    lastBpjsSyncResult,
+    syncPendingToBpjs,
+    refreshPendingSyncStatus,
+  } = useQueue();
 
   const [consId, setConsId] = useState(bpjsConfig.consId);
   const [secretKey, setSecretKey] = useState(bpjsConfig.secretKey);
@@ -228,9 +241,17 @@ const BridgingSettingsModalInner: React.FC<{
       const res = await testBridgingPing(nextCfg);
       setPingResult(res);
       if (res?.success) {
-        showSwalSuccess(`Konfigurasi tersimpan & koneksi BPJS aktif terhubung (${res.latencyMs} ms).`, 'Konfigurasi & Koneksi Aktif');
+        const uploadedCount = res.syncResult?.uploadedTotal || 0;
+        const syncNote =
+          uploadedCount > 0
+            ? ` serta ${uploadedCount} data tertunda otomatis diunggah ke BPJS.`
+            : '.';
+        showSwalSuccess(
+          `Konfigurasi tersimpan & koneksi BPJS aktif terhubung (${res.latencyMs} ms)${syncNote}`,
+          'Konfigurasi & Koneksi Aktif'
+        );
       } else {
-        showSwalSuccess('Konfigurasi tersimpan ke MySQL. Status koneksi BPJS: belum terhubung (cek detail Test Ping).', 'Konfigurasi Tersimpan');
+        showSwalSuccess('Konfigurasi berhasil disimpan. Status koneksi BPJS: belum terhubung (cek detail Test Ping).', 'Konfigurasi Tersimpan');
       }
     } finally {
       setIsTestingPing(false);
@@ -279,7 +300,15 @@ const BridgingSettingsModalInner: React.FC<{
       if (res && res.success) {
         const matched = BPJS_BRIDGING_ENDPOINT_OPTIONS.find((o) => o.value === baseUrl);
         const modTitle = matched?.moduleName || 'Web Service BPJS';
-        showSwalSuccess(`Koneksi ${modTitle} mode ${environment === 'tester' ? 'Development / Tester' : 'Production'} terhubung normal (${res.latencyMs} ms)!`, 'Ping Berhasil');
+        const uploadedCount = res.syncResult?.uploadedTotal || 0;
+        const syncNote =
+          uploadedCount > 0
+            ? ` dan ${uploadedCount} data tertunda berhasil otomatis diunggah ke BPJS!`
+            : '!';
+        showSwalSuccess(
+          `Koneksi ${modTitle} mode ${environment === 'tester' ? 'Development / Tester' : 'Production'} terhubung normal (${res.latencyMs} ms)${syncNote}`,
+          'Ping Berhasil'
+        );
       } else {
         showSwalError(res?.message || 'Gagal terhubung ke Web Service BPJS Kesehatan.', 'Ping BPJS Gagal');
       }
@@ -288,6 +317,33 @@ const BridgingSettingsModalInner: React.FC<{
       showSwalError('Error: ' + e.message, 'Koneksi BPJS Gagal');
     } finally {
       setIsTestingPing(false);
+    }
+  };
+
+  const handleManualSyncPending = async () => {
+    const res = await syncPendingToBpjs(
+      {
+        consId,
+        secretKey,
+        userKey,
+        kdFaskes,
+        namaFaskes,
+        userPcareDev,
+        passPcareDev,
+        emailFaskes,
+        baseUrl,
+        environment,
+      },
+      { silent: false }
+    );
+    if (!res.dbConnected) {
+      showSwalError('Penyimpanan server belum aktif di pratinjau cloud ini. Uji pada server VPS faskes.', 'Penyimpanan Belum Siap');
+    } else if (res.totalPendingBefore === 0) {
+      showSwalSuccess('Semua antrean dan kunjungan pasien sudah tersinkron dengan server BPJS.', 'Tidak Ada Data Tertunda');
+    } else if (res.uploadedTotal > 0) {
+      showSwalSuccess(res.message, 'Upload Data Tertunda Berhasil');
+    } else {
+      showSwalError(res.message || 'Server BPJS belum dapat dijangkau untuk upload data tertunda.', 'Upload Tertunda');
     }
   };
 
@@ -900,6 +956,136 @@ const BridgingSettingsModalInner: React.FC<{
                       )}
                     </pre>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Auto-Upload & Sinkronisasi Data Tertunda ke BPJS */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                    <UploadCloud className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-slate-900 text-xs">
+                      Auto-Upload &amp; Sinkronisasi Data Tertunda ke BPJS
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                      Antrean pasien dan kunjungan/rujukan PCare yang tercatat saat API BPJS sedang terputus akan diunggah otomatis begitu koneksi bridging BPJS terhubung kembali.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer select-none shrink-0">
+                  <span className="text-[11px] font-semibold text-slate-700">Auto-Upload Saat Terkoneksi</span>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label="Aktifkan Auto-Upload Data Tertunda Saat API BPJS Terkoneksi"
+                    checked={autoUploadOnConnect}
+                    onChange={(e) => setAutoUploadOnConnect(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-slate-300 transition-colors peer-checked:bg-emerald-600">
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
+                        autoUploadOnConnect ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                      }`}
+                    />
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Antrean Belum Terkirim</span>
+                  <span className={`font-mono font-bold px-2 py-0.5 rounded-md ${
+                    pendingSyncSummary.pendingQueuesCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {pendingSyncSummary.pendingQueuesCount}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Kunjungan/Rujukan PCare</span>
+                  <span className={`font-mono font-bold px-2 py-0.5 rounded-md ${
+                    pendingSyncSummary.pendingVisitsCount > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {pendingSyncSummary.pendingVisitsCount}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                  <span className="text-slate-600 font-medium">Total Data Tertunda</span>
+                  <span className={`font-mono font-bold px-2 py-0.5 rounded-md ${
+                    pendingSyncSummary.totalPending > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {pendingSyncSummary.totalPending}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => refreshPendingSyncStatus()}
+                  disabled={isSyncingPending}
+                  className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Cek Antrean Tertunda</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleManualSyncPending}
+                  disabled={isSyncingPending}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <UploadCloud className={`w-3.5 h-3.5 ${isSyncingPending ? 'animate-bounce' : ''}`} />
+                  <span>
+                    {isSyncingPending
+                      ? 'Mengunggah ke BPJS...'
+                      : pendingSyncSummary.totalPending > 0
+                      ? `Upload ${pendingSyncSummary.totalPending} Data Tertunda Sekarang`
+                      : 'Upload / Sinkronkan Sekarang'}
+                  </span>
+                </button>
+              </div>
+
+              {lastBpjsSyncResult && (
+                <div className={`p-3 rounded-xl border text-[11px] space-y-2 ${
+                  lastBpjsSyncResult.uploadedTotal > 0
+                    ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                    : lastBpjsSyncResult.failedTotal > 0
+                    ? 'bg-amber-50/80 border-amber-200 text-amber-900'
+                    : 'bg-slate-50 border-slate-200 text-slate-700'
+                }`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2 font-bold">
+                    <span>{lastBpjsSyncResult.message}</span>
+                    {lastBpjsSyncResult.syncedAt && (
+                      <span className="font-mono text-[10px] opacity-75">
+                        {new Date(lastBpjsSyncResult.syncedAt).toLocaleTimeString('id-ID')}
+                      </span>
+                    )}
+                  </div>
+                  {lastBpjsSyncResult.results.length > 0 && (
+                    <div className="max-h-36 overflow-y-auto divide-y divide-black/5 bg-white/80 rounded-lg border border-black/10">
+                      {lastBpjsSyncResult.results.map((item, idx) => (
+                        <div key={`${item.type}-${item.id}-${idx}`} className="px-2.5 py-1.5 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="font-mono text-[10px] font-bold mr-1.5 text-slate-500">[{item.type}]</span>
+                            <span className="font-semibold text-slate-800 truncate">{item.label}</span>
+                            <span className="block text-[10px] text-slate-500 truncate">{item.message}</span>
+                          </div>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0 ${
+                            item.status === 'UPLOADED' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {item.status === 'UPLOADED' ? 'TERKIRIM' : 'TERTUNDA'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

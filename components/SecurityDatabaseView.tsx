@@ -23,9 +23,7 @@ import {
   Server,
   HardDrive,
   RefreshCw,
-  Play,
   Table,
-  Code2,
   Check,
   RotateCcw,
   KeyRound,
@@ -122,7 +120,7 @@ export const SecurityDatabaseView: React.FC = () => {
       });
       const data = await res.json();
       if (data.success) {
-        const msg = `Data akun '${editingUser.username}' (${editNamaLengkap}) berhasil diperbarui di database!`;
+        const msg = `Data akun '${editingUser.username}' (${editNamaLengkap}) berhasil diperbarui!`;
         setResetSuccessMsg(msg);
         showSwalSuccess(msg, 'Data Petugas Diperbarui');
         addSecurityLog(
@@ -137,7 +135,7 @@ export const SecurityDatabaseView: React.FC = () => {
         showSwalError(errMsg, 'Gagal Menyimpan');
       }
     } catch (err: any) {
-      const errMsg = err.message || 'Gagal terhubung ke database';
+      const errMsg = err.message || 'Gagal terhubung ke server faskes';
       setResetErrorMsg(errMsg);
       showSwalError(errMsg, 'Koneksi Gagal');
     } finally {
@@ -184,7 +182,7 @@ export const SecurityDatabaseView: React.FC = () => {
         showSwalError(errMsg, 'Gagal Memperbarui Poli');
       }
     } catch (err: any) {
-      const errMsg = err.message || 'Gagal terhubung ke database';
+      const errMsg = err.message || 'Gagal terhubung ke server faskes';
       setResetErrorMsg(errMsg);
       showSwalError(errMsg, 'Koneksi Gagal');
     } finally {
@@ -227,7 +225,7 @@ export const SecurityDatabaseView: React.FC = () => {
         showSwalError(errMsg, 'Gagal Reset');
       }
     } catch (err: any) {
-      const errMsg = err.message || 'Gagal terhubung ke database';
+      const errMsg = err.message || 'Gagal terhubung ke server faskes';
       setResetErrorMsg(errMsg);
       showSwalError(errMsg, 'Koneksi Gagal');
     } finally {
@@ -235,65 +233,43 @@ export const SecurityDatabaseView: React.FC = () => {
     }
   };
 
-  // MySQL Connection & Query State
-  const [mysqlHost, setMysqlHost] = useState<string>('localhost');
-  const [mysqlPort, setMysqlPort] = useState<number>(3306);
-  const [mysqlUser, setMysqlUser] = useState<string>('jimbrink');
-  const [mysqlPass, setMysqlPass] = useState<string>('Sh1nratensey86');
-  const [mysqlDbName, setMysqlDbName] = useState<string>('klinik_somban_medika_xx26');
-  const [testingMysql, setTestingMysql] = useState<boolean>(false);
-  const [mysqlTestResult, setMysqlTestResult] = useState<{
+  // Server Connection State
+  const [testingServer, setTestingServer] = useState<boolean>(false);
+  const [serverTestResult, setServerTestResult] = useState<{
     success?: boolean;
     error?: string;
-    version?: string;
     latencyMs?: number;
     testedAt?: string;
   } | null>(null);
 
-  const [sqlQuery, setSqlQuery] = useState<string>(
-    'SELECT nomor_antrean, tipe_pasien, poli_nama, nama_pasien, status, estimasi_jam_panggil FROM queues ORDER BY nomor_urut ASC LIMIT 10;'
-  );
-  const [runningQuery, setRunningQuery] = useState<boolean>(false);
-  const [queryResult, setQueryResult] = useState<any[] | null>(null);
-  const [queryError, setQueryError] = useState<string | null>(null);
-  const [schemaInitLoading, setSchemaInitLoading] = useState<boolean>(false);
-  const [schemaInitMsg, setSchemaInitMsg] = useState<string | null>(null);
-  const [sqlCopied, setSqlCopied] = useState<boolean>(false);
-
-  const handleTestMysql = async () => {
-    setTestingMysql(true);
+  const handleTestServerConnection = async () => {
+    setTestingServer(true);
     try {
       const res = await fetch('/api/db', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'test_mysql',
-          payload: {
-            host: mysqlHost,
-            port: mysqlPort,
-            user: mysqlUser,
-            password: mysqlPass,
-            database: mysqlDbName,
-          },
         }),
       });
       const data = await res.json();
       if (data.success && data.result) {
-        setMysqlTestResult({
+        const latencyMs = data.result.latencyMs ?? data.result.status?.latencyMs;
+        const errText = data.result.error || data.result.status?.error;
+        setServerTestResult({
           success: data.result.success,
-          version: data.result.status?.version,
-          latencyMs: data.result.status?.latencyMs,
-          error: data.result.error || data.result.status?.error,
+          latencyMs,
+          error: errText,
           testedAt: new Date().toLocaleTimeString('id-ID'),
         });
         if (data.result.success) {
-          showSwalSuccess(`Koneksi ke server faskes '${mysqlHost}' berhasil!`, 'Koneksi Server Berhasil');
+          showSwalSuccess('Koneksi ke server data faskes berhasil terhubung!', 'Koneksi Server Berhasil');
         } else {
-          showSwalError(`Gagal koneksi ke server: ${data.result.error || data.result.status?.error}`, 'Koneksi Server Gagal');
+          showSwalError(`Gagal koneksi ke server: ${errText || 'Server belum merespons'}`, 'Koneksi Server Gagal');
         }
       } else {
         const errMsg = data.error || 'Koneksi gagal';
-        setMysqlTestResult({
+        setServerTestResult({
           success: false,
           error: errMsg,
           testedAt: new Date().toLocaleTimeString('id-ID'),
@@ -301,60 +277,14 @@ export const SecurityDatabaseView: React.FC = () => {
         showSwalError(errMsg, 'Koneksi Server Gagal');
       }
     } catch (err: any) {
-      setMysqlTestResult({
+      setServerTestResult({
         success: false,
         error: err.message,
         testedAt: new Date().toLocaleTimeString('id-ID'),
       });
       showSwalError(err.message || 'Gagal menghubungi server', 'Koneksi Error');
     } finally {
-      setTestingMysql(false);
-    }
-  };
-
-  const handleRunQuery = async () => {
-    if (!sqlQuery.trim()) return;
-    setRunningQuery(true);
-    setQueryError(null);
-    try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'query_mysql',
-          payload: { sql: sqlQuery },
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setQueryResult(Array.isArray(data.results) ? data.results : [data.results]);
-      } else {
-        setQueryError(data.error || 'Perintah gagal diproses');
-        setQueryResult(null);
-      }
-    } catch (err: any) {
-      setQueryError(err.message);
-      setQueryResult(null);
-    } finally {
-      setRunningQuery(false);
-    }
-  };
-
-  const handleInitSchema = async () => {
-    setSchemaInitLoading(true);
-    setSchemaInitMsg(null);
-    try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'init_schema' }),
-      });
-      const data = await res.json();
-      setSchemaInitMsg(data.message || (data.success ? 'Struktur data faskes berhasil diperbarui!' : 'Gagal memperbarui data'));
-    } catch (err: any) {
-      setSchemaInitMsg('Error: ' + err.message);
-    } finally {
-      setSchemaInitLoading(false);
+      setTestingServer(false);
     }
   };
 
@@ -371,42 +301,25 @@ export const SecurityDatabaseView: React.FC = () => {
     }
   };
 
-  const [downloadingTable, setDownloadingTable] = useState<string | null>(null);
-
-  const handleDownloadTableSql = async (tableName: string) => {
-    setDownloadingTable(tableName);
-    try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'export_table', payload: { table: tableName } }),
-      });
-      const data = await res.json();
-      if (data.success && data.sql) {
-        const blob = new Blob([data.sql], { type: 'text/sql' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `data_${tableName}_${bpjsConfig.kdFaskes}_${Date.now()}.sql`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (err: any) {
-      showSwalError('Gagal ekspor data: ' + err.message);
-    } finally {
-      setDownloadingTable(null);
-    }
-  };
-
-  const handleDownloadTableCsv = (tableName: string) => {
+  const handleDownloadCsv = (category: 'antrean' | 'pasien' | 'audit' | 'bridging') => {
     let rows: any[] = [];
-    if (tableName === 'queues') rows = queues;
-    else if (tableName === 'patients') rows = patients;
-    else if (tableName === 'security_logs') rows = securityLogs;
-    else if (tableName === 'bridging_logs') rows = bridgingLogs;
+    let label = '';
+    if (category === 'antrean') {
+      rows = queues;
+      label = 'Antrean';
+    } else if (category === 'pasien') {
+      rows = patients;
+      label = 'Pasien';
+    } else if (category === 'audit') {
+      rows = securityLogs;
+      label = 'Audit Keamanan';
+    } else if (category === 'bridging') {
+      rows = bridgingLogs;
+      label = 'Log Bridging BPJS';
+    }
 
     if (rows.length === 0) {
-      showSwalAlert(`Data ${tableName} belum memiliki rekaman untuk diekspor ke CSV`, { title: 'Data Kosong', icon: 'info' });
+      showSwalAlert(`Data ${label} belum memiliki rekaman untuk diekspor ke CSV`, { title: 'Data Kosong', icon: 'info' });
       return;
     }
 
@@ -427,75 +340,9 @@ export const SecurityDatabaseView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `data_${tableName}_${bpjsConfig.kdFaskes}.csv`;
+    a.download = `data_${category}_${bpjsConfig.kdFaskes}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadSchema = async () => {
-    try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_schema' }),
-      });
-      const data = await res.json();
-      if (data.success && data.sql) {
-        const blob = new Blob([data.sql], { type: 'text/sql' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `schema_antrean_${bpjsConfig.kdFaskes}.sql`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (err: any) {
-      showSwalError('Gagal download skema: ' + err.message);
-    }
-  };
-
-  const handleDownloadProcedures = async () => {
-    try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_procedures' }),
-      });
-      const data = await res.json();
-      if (data.success && data.sql) {
-        const blob = new Blob([data.sql], { type: 'text/sql' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `procedures_antrean_${bpjsConfig.kdFaskes}.sql`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (err: any) {
-      showSwalError('Gagal download procedures: ' + err.message);
-    }
-  };
-
-  const handleDownloadFullDump = async () => {
-    try {
-      const res = await fetch('/api/db', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'export_full_dump' }),
-      });
-      const data = await res.json();
-      if (data.success && data.sql) {
-        const blob = new Blob([data.sql], { type: 'text/sql' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `full_dump_antrean_bpjs_${bpjsConfig.kdFaskes}_${Date.now()}.sql`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (err: any) {
-      showSwalError('Gagal download full dump: ' + err.message);
-    }
   };
 
   // Encryption Playground
@@ -739,16 +586,8 @@ export const SecurityDatabaseView: React.FC = () => {
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleDownloadSchema}
-              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-xs"
-            >
-              <Download className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-              <span>Arsip Data (.sql)</span>
-            </button>
-
-            <button
               onClick={handleExportEncryptedJson}
-              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-xs"
+              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-xs cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Backup JSON</span>
@@ -1006,7 +845,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   ) : (
                     <tr>
                       <td colSpan={6} className="text-center py-6 text-slate-400">
-                        Belum ada data poliklinik di database MySQL (atau koneksi MySQL belum aktif).
+                        Belum ada data poliklinik yang tersedia saat ini.
                       </td>
                     </tr>
                   )}
@@ -1294,7 +1133,7 @@ export const SecurityDatabaseView: React.FC = () => {
         </div>
       )}
 
-      {/* TAB: MYSQL DATABASE ENGINE & CONSOLE */}
+      {/* TAB: PUSAT DATA SERVER & EKSPOR OPERASIONAL */}
       {activeTab === 'MYSQL' && (
         <div className="space-y-6">
           {/* Koneksi Server & Overview */}
@@ -1306,13 +1145,13 @@ export const SecurityDatabaseView: React.FC = () => {
                 </div>
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-base">Konfigurasi Server Terpusat</h3>
+                    <h3 className="font-bold text-slate-900 text-base">Pusat Data &amp; Sinkronisasi Server</h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                      Aktif & Terhubung
+                      Aktif &amp; Terhubung
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-1">
-                    Pusat penyimpanan data untuk operasional antrean, bridging BPJS, dan rekam medis faskes.
+                    Pusat penyimpanan data terpusat untuk operasional antrean, bridging BPJS, dan rekam medis faskes.
                   </p>
                 </div>
               </div>
@@ -1331,235 +1170,54 @@ export const SecurityDatabaseView: React.FC = () => {
               </div>
             </div>
 
-            {/* Connection Form & Diagnostics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Host Server</label>
-                <input
-                  type="text"
-                  value={mysqlHost}
-                  onChange={(e) => setMysqlHost(e.target.value)}
-                  placeholder="localhost"
-                  className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Port</label>
-                <input
-                  type="number"
-                  value={mysqlPort}
-                  onChange={(e) => setMysqlPort(parseInt(e.target.value, 10) || 3306)}
-                  placeholder="3306"
-                  className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">User Akun</label>
-                <input
-                  type="text"
-                  value={mysqlUser}
-                  onChange={(e) => setMysqlUser(e.target.value)}
-                  placeholder="Username"
-                  className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Kata Sandi</label>
-                <input
-                  type="password"
-                  value={mysqlPass}
-                  onChange={(e) => setMysqlPass(e.target.value)}
-                  placeholder="Kata Sandi"
-                  className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Katalog Data</label>
-                <input
-                  type="text"
-                  value={mysqlDbName}
-                  onChange={(e) => setMysqlDbName(e.target.value)}
-                  placeholder="Nama Katalog"
-                  className="w-full text-xs py-2 px-3 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons for Connection & Migration */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            {/* Action Buttons for Server Health Check */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleTestMysql}
-                  disabled={testingMysql}
+                  onClick={handleTestServerConnection}
+                  disabled={testingServer}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${testingMysql ? 'animate-spin' : ''}`} />
-                  <span>{testingMysql ? 'Menguji Koneksi...' : 'Uji Koneksi Server'}</span>
+                  <RefreshCw className={`w-3.5 h-3.5 ${testingServer ? 'animate-spin' : ''}`} />
+                  <span>{testingServer ? 'Menguji Koneksi...' : 'Uji Koneksi Server'}</span>
                 </button>
               </div>
 
-              <div className="text-[11px] text-slate-500 font-mono">
+              <div className="text-[11px] text-slate-500 font-medium">
                 Koneksi Server Terpusat Faskes
               </div>
             </div>
 
             {/* Test Connection Result Alert */}
-            {mysqlTestResult && (
+            {serverTestResult && (
               <div
                 className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 ${
-                  mysqlTestResult.success
+                  serverTestResult.success
                     ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
                     : 'bg-amber-50 border-amber-200 text-amber-900'
                 }`}
               >
-                {mysqlTestResult.success ? (
+                {serverTestResult.success ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 ) : (
                   <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 )}
                 <div className="space-y-1">
                   <div className="font-bold">
-                    {mysqlTestResult.success
-                      ? `Koneksi Server Berhasil Terhubung (${mysqlTestResult.latencyMs} ms)`
+                    {serverTestResult.success
+                      ? `Koneksi Server Berhasil Terhubung (${serverTestResult.latencyMs ?? 0} ms)`
                       : 'Koneksi Server Belum Terjangkau'}
                   </div>
                   <div className="text-[11px]">
-                    {mysqlTestResult.success ? (
-                      <span>Server utama faskes terverifikasi online dan siap melayani seluruh transaksi antrean & rekam medis.</span>
+                    {serverTestResult.success ? (
+                      <span>Server utama faskes terverifikasi online dan siap melayani seluruh transaksi antrean &amp; rekam medis.</span>
                     ) : (
                       <span>
-                        Keterangan: {mysqlTestResult.error}. Pastikan konfigurasi alamat server dan kredensial akses telah sesuai.
+                        Keterangan: {serverTestResult.error || 'Layanan server sedang tidak merespons.'}
                       </span>
                     )}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {schemaInitMsg && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 font-medium">
-                {schemaInitMsg}
-              </div>
-            )}
-          </div>
-
-          {/* Interactive Query Console */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-              <div>
-                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-blue-600" />
-                  <span>Konsol Pencarian Data Faskes</span>
-                </h4>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Lakukan penelusuran data antrean, pasien, dan log sistem secara langsung.
-                </p>
-              </div>
-
-              {/* Quick Query Shortcuts */}
-              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                <button
-                  onClick={() =>
-                    setSqlQuery('SELECT nomor_antrean, tipe_pasien, poli_nama, nama_pasien, status, estimasi_jam_panggil FROM queues ORDER BY nomor_urut ASC LIMIT 10;')
-                  }
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono cursor-pointer"
-                >
-                  Antrean Hari Ini
-                </button>
-                <button
-                  onClick={() =>
-                    setSqlQuery('SELECT id, nik, no_bpjs, nama, status_bpjs, jenis_peserta, faskes_tingkat_1 FROM patients LIMIT 10;')
-                  }
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono cursor-pointer"
-                >
-                  Data Pasien
-                </button>
-                <button
-                  onClick={() =>
-                    setSqlQuery('SELECT id, timestamp, actor, action, status, details FROM security_logs ORDER BY timestamp DESC LIMIT 10;')
-                  }
-                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-mono cursor-pointer"
-                >
-                  Log Keamanan
-                </button>
-              </div>
-            </div>
-
-            {/* SQL Editor */}
-            <div className="space-y-2">
-              <div className="relative">
-                <textarea
-                  value={sqlQuery}
-                  onChange={(e) => setSqlQuery(e.target.value)}
-                  rows={3}
-                  placeholder="Ketik kriteria pencarian data faskes..."
-                  className="w-full p-3.5 bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl font-mono text-xs focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <button
-                  onClick={handleRunQuery}
-                  disabled={runningQuery}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Play className={`w-3.5 h-3.5 ${runningQuery ? 'animate-spin' : ''}`} />
-                  <span>{runningQuery ? 'Mengeksekusi...' : 'Jalankan Perintah'}</span>
-                </button>
-
-                <span className="text-[11px] text-slate-500">
-                  Operasi: SELECT, INSERT, UPDATE
-                </span>
-              </div>
-            </div>
-
-            {/* Query Error */}
-            {queryError && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 font-mono">
-                Error: {queryError}
-              </div>
-            )}
-
-            {/* Query Results Table */}
-            {queryResult && queryResult.length > 0 && (
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
-                  <span>Hasil ({queryResult.length} baris):</span>
-                </div>
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
-                  <table className="w-full text-left text-xs font-mono">
-                    <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
-                      <tr>
-                        {Object.keys(queryResult[0]).map((col) => (
-                          <th key={col} className="py-2.5 px-3 whitespace-nowrap font-bold">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-slate-800 bg-white">
-                      {queryResult.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50">
-                          {Object.values(row).map((val: any, colIdx) => (
-                            <td key={colIdx} className="py-2 px-3 whitespace-nowrap">
-                              {typeof val === 'object' ? JSON.stringify(val) : String(val ?? 'NULL')}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {queryResult && queryResult.length === 0 && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 text-center font-mono">
-                Perintah berhasil dijalankan. Tidak ada data yang ditemukan (0 rows).
               </div>
             )}
           </div>
@@ -1573,24 +1231,24 @@ export const SecurityDatabaseView: React.FC = () => {
                   <span>Ekspor Data Operasional Faskes</span>
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Unduh data antrean, rekam medis pasien, dan riwayat audit untuk arsip faskes.
+                  Unduh data antrean, rekam medis pasien, dan riwayat audit dalam format CSV atau cadangan terenkripsi JSON.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handleDownloadFullDump}
+                  onClick={handleExportEncryptedJson}
                   className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Cadangkan Seluruh Data (.sql)</span>
+                  <span>Cadangkan RME (.json)</span>
                 </button>
               </div>
             </div>
 
             {/* Grid Download */}
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                 {/* Antrean */}
                 <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
                   <div>
@@ -1606,19 +1264,11 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
-                      onClick={() => handleDownloadTableSql('queues')}
-                      disabled={downloadingTable === 'queues'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                      onClick={() => handleDownloadCsv('antrean')}
+                      className="w-full py-1.5 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
-                      <span>{downloadingTable === 'queues' ? '...' : '.SQL'}</span>
-                    </button>
-                    <button
-                      onClick={() => handleDownloadTableCsv('queues')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>.CSV</span>
+                      <span>Unduh .CSV</span>
                     </button>
                   </div>
                 </div>
@@ -1638,44 +1288,11 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
-                      onClick={() => handleDownloadTableSql('patients')}
-                      disabled={downloadingTable === 'patients'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                      onClick={() => handleDownloadCsv('pasien')}
+                      className="w-full py-1.5 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
-                      <span>{downloadingTable === 'patients' ? '...' : '.SQL'}</span>
-                    </button>
-                    <button
-                      onClick={() => handleDownloadTableCsv('patients')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>.CSV</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Petugas */}
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 flex flex-col justify-between gap-3">
-                  <div>
-                    <div className="font-bold text-slate-900 flex items-center justify-between">
-                      <span>Akun Petugas</span>
-                      <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">
-                        {usersList.length} akun
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Daftar akun dokter, petugas loket, apotek, dan admin.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
-                    <button
-                      onClick={() => handleDownloadTableSql('users')}
-                      disabled={downloadingTable === 'users'}
-                      className="w-full py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>{downloadingTable === 'users' ? '...' : 'Unduh .SQL'}</span>
+                      <span>Unduh .CSV</span>
                     </button>
                   </div>
                 </div>
@@ -1695,19 +1312,11 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
-                      onClick={() => handleDownloadTableSql('security_logs')}
-                      disabled={downloadingTable === 'security_logs'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                      onClick={() => handleDownloadCsv('audit')}
+                      className="w-full py-1.5 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
-                      <span>{downloadingTable === 'security_logs' ? '...' : '.SQL'}</span>
-                    </button>
-                    <button
-                      onClick={() => handleDownloadTableCsv('security_logs')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>.CSV</span>
+                      <span>Unduh .CSV</span>
                     </button>
                   </div>
                 </div>
@@ -1727,19 +1336,11 @@ export const SecurityDatabaseView: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60">
                     <button
-                      onClick={() => handleDownloadTableSql('bridging_logs')}
-                      disabled={downloadingTable === 'bridging_logs'}
-                      className="flex-1 py-1 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                      onClick={() => handleDownloadCsv('bridging')}
+                      className="w-full py-1.5 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
                     >
                       <Download className="w-3 h-3" />
-                      <span>{downloadingTable === 'bridging_logs' ? '...' : '.SQL'}</span>
-                    </button>
-                    <button
-                      onClick={() => handleDownloadTableCsv('bridging_logs')}
-                      className="flex-1 py-1 px-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1 cursor-pointer"
-                    >
-                      <Download className="w-3 h-3" />
-                      <span>.CSV</span>
+                      <span>Unduh .CSV</span>
                     </button>
                   </div>
                 </div>
@@ -1861,7 +1462,7 @@ export const SecurityDatabaseView: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-slate-600 text-[11px] leading-relaxed">
-                  Menyimpan konfigurasi bridging BPJS ({bpjsConfig.consId ? `ConsID ${bpjsConfig.consId}` : 'ConsID MySQL'}, SecretKey, UserKey, Environment Tester/Production).
+                  Menyimpan konfigurasi bridging BPJS ({bpjsConfig.consId ? `ConsID ${bpjsConfig.consId}` : 'ConsID'}, SecretKey, UserKey, Environment Tester/Production).
                 </p>
               </div>
 
@@ -1933,7 +1534,7 @@ export const SecurityDatabaseView: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
           <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="font-bold text-slate-900 text-sm">Rekam Data Pasien Faskes ({bpjsConfig.namaFaskes || 'MySQL'})</h3>
+              <h3 className="font-bold text-slate-900 text-sm">Rekam Data Pasien Faskes ({bpjsConfig.namaFaskes || 'Klinik'})</h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Mode saat ini:{' '}
                 <strong className={isUnlocked ? 'text-emerald-700' : 'text-slate-700'}>

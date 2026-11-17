@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 
       case 'update_config': {
         await mySqlDb.updateConfig(payload);
-        return NextResponse.json({ success: true, message: 'Konfigurasi faskes berhasil diperbarui di MySQL' });
+        return NextResponse.json({ success: true, message: 'Konfigurasi faskes berhasil diperbarui' });
       }
 
       case 'add_security_log': {

@@ -661,7 +661,7 @@ export const KioskMode: React.FC = () => {
             </h3>
             {poliList.filter((p) => p.kode !== 'FAR').length === 0 ? (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center text-xs text-amber-900">
-                Data poliklinik belum tersedia dari database MySQL. Pastikan koneksi server MySQL aktif.
+                Data layanan poliklinik belum tersedia. Silakan hubungi petugas faskes.
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

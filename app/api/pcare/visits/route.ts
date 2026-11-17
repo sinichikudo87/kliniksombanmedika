@@ -11,7 +11,7 @@ export async function GET() {
         success: false,
         source: result.source,
         visits: [],
-        message: result.error || 'Gagal memuat riwayat kunjungan PCare dari database MySQL',
+        message: result.error || 'Gagal memuat riwayat kunjungan PCare',
       },
       { status: 500 }
     );

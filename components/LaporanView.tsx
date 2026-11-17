@@ -78,15 +78,15 @@ export const LaporanView: React.FC = () => {
       if (res.ok && json?.success && Array.isArray(json.visits)) {
         setVisits(json.visits);
         if (showFeedback) {
-          showSwalSuccess(`Berhasil memuat ${json.visits.length} data laporan kunjungan dari MySQL.`, 'Data Diperbarui');
+          showSwalSuccess(`Berhasil memuat ${json.visits.length} data laporan kunjungan.`, 'Data Diperbarui');
         }
       } else {
-        const msg = json?.message || 'Gagal memuat data laporan kunjungan PCare dari database MySQL.';
+        const msg = json?.message || 'Gagal memuat data laporan kunjungan PCare.';
         setVisitsError(msg);
         if (showFeedback) showSwalError(msg, 'Gagal Memuat');
       }
     } catch (err: any) {
-      const msg = err?.message || 'Koneksi ke server database terputus.';
+      const msg = err?.message || 'Koneksi ke server faskes terputus.';
       setVisitsError(msg);
       if (showFeedback) showSwalError(msg, 'Error Koneksi');
     } finally {
@@ -108,7 +108,7 @@ export const LaporanView: React.FC = () => {
       })
       .catch((err: any) => {
         if (active) {
-          setVisitsError(err?.message || 'Koneksi ke server database terputus.');
+          setVisitsError(err?.message || 'Koneksi ke server faskes terputus.');
         }
       });
     return () => {
@@ -531,8 +531,8 @@ export const LaporanView: React.FC = () => {
             <Database className="w-4 h-4 text-emerald-600 shrink-0" />
             <h3 className="font-bold text-sm text-slate-900">
               {reportType === 'KUNJUNGAN'
-                ? 'Tabel Laporan Kunjungan & Rujukan Pasien'
-                : 'Tabel Laporan Antrean Pendaftaran Pasien'}
+                ? 'Laporan Kunjungan & Rujukan Pasien'
+                : 'Laporan Antrean Pendaftaran Pasien'}
             </h3>
           </div>
           <span className="text-xs font-mono text-slate-500">
@@ -563,10 +563,10 @@ export const LaporanView: React.FC = () => {
                         <ClipboardList className="w-8 h-8 text-slate-300" />
                         <p className="font-semibold text-slate-700">
                           {isLoadingVisits
-                            ? 'Memuat data laporan dari MySQL...'
+                            ? 'Memuat data laporan...'
                             : hasActiveFilter
                             ? 'Tidak ada data kunjungan yang sesuai filter bulan, tahun, atau pencarian.'
-                            : 'Belum ada data kunjungan PCare di database MySQL.'}
+                            : 'Belum ada data kunjungan PCare.'}
                         </p>
                       </div>
                     </td>
@@ -621,7 +621,7 @@ export const LaporanView: React.FC = () => {
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 font-semibold">
-                            <span>Lokal MySQL</span>
+                            <span>Tersimpan Sistem</span>
                           </span>
                         )}
                       </td>
