@@ -33,7 +33,7 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative bg-white text-slate-800 rounded-2xl max-w-[340px] w-full p-5 sm:p-6 shadow-2xl border border-slate-200/90">
+      <div className="relative bg-white text-slate-800 rounded-2xl max-w-[340px] w-full my-auto max-h-[92vh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-slate-200/90">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-xl hover:bg-slate-100 print:hidden"
@@ -42,7 +42,7 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
         </button>
 
         {/* Action Header */}
-        <div className="flex items-center gap-2 mb-3.5 print:hidden">
+        <div className="flex items-center gap-2 mb-3.5 pr-8 print:hidden">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <h3 className="font-bold text-slate-900 text-sm">Pendaftaran Berhasil</h3>
         </div>
@@ -136,17 +136,17 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
         </div>
 
         {/* Buttons */}
-        <div className="mt-4 flex gap-2 print:hidden">
+        <div className="mt-4 flex flex-wrap sm:flex-nowrap gap-2 print:hidden">
           <button
             onClick={handlePrint}
-            className="flex-1 h-10 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] text-xs"
+            className="flex-1 min-w-[140px] h-10 flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] text-xs cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <Printer className="w-3.5 h-3.5 shrink-0" />
             <span>Cetak Tiket (POS)</span>
           </button>
           <button
             onClick={onClose}
-            className="h-10 px-4 border border-slate-300/90 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-2xs"
+            className="h-10 px-4 border border-slate-300/90 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-xs transition-colors shadow-2xs cursor-pointer"
           >
             Tutup
           </button>

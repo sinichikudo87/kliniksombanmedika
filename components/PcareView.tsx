@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useQueue } from '@/lib/queue-context';
 import { showSwalSuccess, showSwalInfo, showSwalError } from '@/lib/swal';
 import { INDONESIA_PROVINCES, ReferralHospital } from '@/lib/indonesia-hospitals';
@@ -26,6 +26,7 @@ import {
   Users,
   Database,
   AlertCircle,
+  X,
 } from 'lucide-react';
 
 // Referensi Kode Diagnosa ICD-10 Standar FKTP (PCare BPJS)
@@ -150,6 +151,52 @@ export const PcareView: React.FC<PcareViewProps> = ({
   const [pcareVisitLogs, setPcareVisitLogs] = useState<PcareVisitItem[]>([]);
   const [isLoadingVisits, setIsLoadingVisits] = useState<boolean>(false);
   const [visitsLoadError, setVisitsLoadError] = useState<string | null>(null);
+  const [visitSearch, setVisitSearch] = useState<string>('');
+  const [visitMonth, setVisitMonth] = useState<string>('ALL');
+  const [visitYear, setVisitYear] = useState<string>('ALL');
+
+  const visitYearOptions = useMemo(() => {
+    const years = new Set<string>([String(new Date().getFullYear())]);
+    for (const log of pcareVisitLogs) {
+      if (log.createdAt) {
+        const d = new Date(log.createdAt);
+        if (!Number.isNaN(d.getTime())) years.add(String(d.getFullYear()));
+      }
+    }
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [pcareVisitLogs]);
+
+  const filteredVisitLogs = useMemo(() => {
+    const q = visitSearch.trim().toLowerCase();
+    return pcareVisitLogs.filter((log) => {
+      if (visitMonth !== 'ALL' || visitYear !== 'ALL') {
+        if (!log.createdAt) return false;
+        const d = new Date(log.createdAt);
+        if (Number.isNaN(d.getTime())) return false;
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const y = String(d.getFullYear());
+        if (visitMonth !== 'ALL' && m !== visitMonth) return false;
+        if (visitYear !== 'ALL' && y !== visitYear) return false;
+      }
+      if (!q) return true;
+      const target = [
+        log.id,
+        log.noKunjungan || '',
+        log.noRujukan || '',
+        log.noKartu || '',
+        log.nik || '',
+        log.namaPasien || '',
+        log.poliNama || '',
+        log.diagnosaKode || '',
+        log.diagnosaNama || '',
+        log.statusPulang || '',
+        log.namaPpkRujuk || '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return target.includes(q);
+    });
+  }, [pcareVisitLogs, visitSearch, visitMonth, visitYear]);
 
   const fetchPcareVisits = useCallback(async (showFeedback = false) => {
     setIsLoadingVisits(true);
@@ -677,11 +724,11 @@ export const PcareView: React.FC<PcareViewProps> = ({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap lg:flex-col gap-2 shrink-0">
+          <div className="flex flex-wrap lg:flex-col gap-2 w-full lg:w-auto shrink-0">
             <button
               onClick={handleTestPing}
               disabled={isTestingPing}
-              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all whitespace-nowrap cursor-pointer"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isTestingPing ? 'animate-spin' : ''}`} />
               <span>{isTestingPing ? 'Menguji Ping...' : 'Uji Koneksi PCare'}</span>
@@ -690,7 +737,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
             {onOpenSettings && (
               <button
                 onClick={onOpenSettings}
-                className="px-4 py-2.5 rounded-xl bg-emerald-600/40 hover:bg-emerald-600/60 text-white font-semibold text-xs border border-emerald-400/30 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-emerald-600/40 hover:bg-emerald-600/60 text-white font-semibold text-xs border border-emerald-400/30 flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
               >
                 <Settings className="w-3.5 h-3.5 text-emerald-200" />
                 <span>Pengaturan Kredensial</span>
@@ -700,7 +747,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
             {onNavigateToOperator && (
               <button
                 onClick={onNavigateToOperator}
-                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-medium text-xs border border-white/10 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-200 font-medium text-xs border border-white/10 flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer"
               >
                 <span>Buka Loket Antrean</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -858,30 +905,30 @@ export const PcareView: React.FC<PcareViewProps> = ({
           </div>
 
           {/* Right Two Columns: Clinical Examination & RME Form */}
-          <div className="lg:col-span-2 space-y-5">
+          <div className="lg:col-span-2 space-y-5 min-w-0">
             {selectedPatient ? (
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-6">
+              <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-6">
                 {/* Active Patient Identity Card */}
-                <div className="bg-slate-50/90 rounded-xl p-4 border border-slate-200 flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-black px-2 py-0.5 rounded bg-emerald-700 text-white">
+                <div className="bg-slate-50/90 rounded-xl p-4 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-black px-2 py-0.5 rounded bg-emerald-700 text-white shrink-0">
                         {selectedPatient.nomorAntrean}
                       </span>
-                      <h2 className="text-base font-extrabold text-slate-900">
+                      <h2 className="text-base font-extrabold text-slate-900 break-words">
                         {selectedPatient.namaPasien}
                       </h2>
-                      <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full shrink-0">
                         {selectedPatient.tipePasien}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 break-all">
                       NIK: <strong className="font-mono text-slate-800">{selectedPatient.nik || '-'}</strong> · No. Kartu BPJS:{' '}
                       <strong className="font-mono text-slate-800">{selectedPatient.noBpjs || '-'}</strong>
                     </p>
                   </div>
 
-                  <div className="text-right text-xs text-slate-600">
+                  <div className="text-left sm:text-right text-xs text-slate-600 shrink-0">
                     <div>Poli: <strong className="text-slate-900">{selectedPatient.poliNama}</strong></div>
                     <div className="text-slate-400 text-[11px]">{selectedPatient.ruangNama}</div>
                   </div>
@@ -1071,7 +1118,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
                 {/* Section 5: Status Pulang */}
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <label className="text-xs font-bold text-slate-900 uppercase tracking-wider">
                       5. Status Pulang Pasien
                     </label>
@@ -1200,10 +1247,10 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
       {/* TAB 2: PENDAFTARAN & CEK KEPESERTAAN BPJS */}
       {activeTab === 'PENDAFTARAN' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs max-w-4xl mx-auto space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-xs max-w-4xl mx-auto space-y-6">
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <UserCheck className="w-5 h-5 text-emerald-700" />
+              <UserCheck className="w-5 h-5 text-emerald-700 shrink-0" />
               <span>Pendaftaran Kunjungan PCare &amp; Validasi Kepesertaan BPJS</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -1216,8 +1263,8 @@ export const PcareView: React.FC<PcareViewProps> = ({
             <label className="block text-xs font-bold text-slate-700">
               Cek Kepesertaan (Nomor Kartu BPJS 13 Digit / NIK e-KTP 16 Digit):
             </label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1 min-w-0">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
                   type="text"
@@ -1231,7 +1278,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
               <button
                 onClick={handleSearchPeserta}
                 disabled={isSearchingPeserta}
-                className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
               >
                 <Search className={`w-3.5 h-3.5 ${isSearchingPeserta ? 'animate-spin' : ''}`} />
                 <span>{isSearchingPeserta ? 'Memeriksa...' : 'Cek BPJS / MySQL'}</span>
@@ -1242,9 +1289,9 @@ export const PcareView: React.FC<PcareViewProps> = ({
           {/* Search Result Card */}
           {searchPesertaResult && (
             <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-4 text-xs space-y-3 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-emerald-200">
                 <div className="font-bold text-emerald-950 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span>Data Peserta Terverifikasi (BPJS API / MySQL)</span>
                 </div>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold text-[10px]">
@@ -1386,18 +1433,18 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
       {/* TAB 3: RUJUKAN VERTIKAL (KE RS / FKRTL) */}
       {activeTab === 'RUJUKAN' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs max-w-4xl mx-auto space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 shadow-xs max-w-4xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div>
+            <div className="min-w-0">
               <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-amber-600" />
+                <Building2 className="w-5 h-5 text-amber-600 shrink-0" />
                 <span>Penerbitan Surat Rujukan Vertikal BPJS (FKTP ke RS / FKRTL)</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Rujukan berjenjang online berbasis kompetensi rumah sakit di MySQL dan Bridging PCare BPJS.
               </p>
             </div>
-            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs border border-amber-200 shrink-0">
+            <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs border border-amber-200 shrink-0 max-w-full truncate">
               {referralPatientName ? `Pasien: ${referralPatientName}` : 'Belum ada pasien terpilih'}
             </span>
           </div>
@@ -1474,13 +1521,13 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
           {/* Preview Surat Rujukan */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-2">
-            <div className="flex items-center justify-between font-bold text-slate-800 pb-1 border-b border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-2 font-bold text-slate-800 pb-1 border-b border-slate-200">
               <span>Ringkasan Surat Rujukan PCare</span>
               <span className="font-mono text-emerald-700">
                 {lastIssuedRujukanNo ? `No. ${lastIssuedRujukanNo}` : 'Menunggu penerbitan BPJS / MySQL'}
               </span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px] text-slate-600">
               <div>
                 Pasien: <strong className="text-slate-900">{referralPatientName || '-'}</strong>
                 {referralPatientCard && <span className="block font-mono text-[10px]">{referralPatientCard}</span>}
@@ -1498,7 +1545,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
             <button
               onClick={() => window.print()}
               className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-2 border border-slate-200 cursor-pointer"
@@ -1521,7 +1568,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
 
       {/* TAB 4: RIWAYAT KUNJUNGAN PCARE (LIVE DARI MYSQL) */}
       {activeTab === 'RIWAYAT' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs space-y-4">
+        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
@@ -1534,7 +1581,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => fetchPcareVisits(true)}
                 disabled={isLoadingVisits}
@@ -1544,6 +1591,84 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 <span>{isLoadingVisits ? 'Memuat...' : 'Refresh MySQL'}</span>
               </button>
             </div>
+          </div>
+
+          {/* Filter Per Bulan, Tahun & Pencarian Data */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={visitSearch}
+                onChange={(e) => setVisitSearch(e.target.value)}
+                placeholder="Cari pasien, No. BPJS, diagnosa, RS..."
+                className="w-full h-9 pl-9 pr-8 text-xs rounded-xl border border-slate-300 bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none font-medium"
+              />
+              {visitSearch && (
+                <button
+                  type="button"
+                  onClick={() => setVisitSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Hapus pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <select
+              aria-label="Filter Bulan Kunjungan"
+              value={visitMonth}
+              onChange={(e) => setVisitMonth(e.target.value)}
+              className="h-9 px-3 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 focus:border-emerald-600 focus:outline-none cursor-pointer flex-1 sm:flex-none"
+            >
+              <option value="ALL">Semua Bulan</option>
+              <option value="01">Januari</option>
+              <option value="02">Februari</option>
+              <option value="03">Maret</option>
+              <option value="04">April</option>
+              <option value="05">Mei</option>
+              <option value="06">Juni</option>
+              <option value="07">Juli</option>
+              <option value="08">Agustus</option>
+              <option value="09">September</option>
+              <option value="10">Oktober</option>
+              <option value="11">November</option>
+              <option value="12">Desember</option>
+            </select>
+
+            <select
+              aria-label="Filter Tahun Kunjungan"
+              value={visitYear}
+              onChange={(e) => setVisitYear(e.target.value)}
+              className="h-9 px-3 text-xs font-semibold rounded-xl border border-slate-300 bg-white text-slate-800 focus:border-emerald-600 focus:outline-none cursor-pointer flex-1 sm:flex-none"
+            >
+              <option value="ALL">Semua Tahun</option>
+              {visitYearOptions.map((y) => (
+                <option key={y} value={y}>
+                  Tahun {y}
+                </option>
+              ))}
+            </select>
+
+            {(visitSearch.trim() !== '' || visitMonth !== 'ALL' || visitYear !== 'ALL') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setVisitSearch('');
+                  setVisitMonth('ALL');
+                  setVisitYear('ALL');
+                }}
+                className="h-9 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-600 flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+
+            <span className="text-[11px] font-mono text-slate-500 sm:ml-auto">
+              {filteredVisitLogs.length} / {pcareVisitLogs.length} kunjungan
+            </span>
           </div>
 
           {visitsLoadError && (
@@ -1568,13 +1693,17 @@ export const PcareView: React.FC<PcareViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {pcareVisitLogs.length === 0 ? (
+                {filteredVisitLogs.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-10 text-center text-slate-500">
                       <div className="flex flex-col items-center gap-1.5">
                         <Database className="w-8 h-8 text-slate-300" />
                         <p className="font-semibold text-slate-700">
-                          {isLoadingVisits ? 'Memuat data dari MySQL...' : 'Belum ada riwayat kunjungan PCare di database MySQL.'}
+                          {isLoadingVisits
+                            ? 'Memuat data dari MySQL...'
+                            : pcareVisitLogs.length > 0
+                            ? 'Tidak ada kunjungan yang sesuai filter bulan, tahun, atau pencarian.'
+                            : 'Belum ada riwayat kunjungan PCare di database MySQL.'}
                         </p>
                         <p className="text-[11px] text-slate-400">
                           Lakukan pemeriksaan pasien pada tab Pelayanan &amp; Diagnosa atau terbitkan rujukan untuk mencatat data ke MySQL.
@@ -1583,7 +1712,7 @@ export const PcareView: React.FC<PcareViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  pcareVisitLogs.map((log) => (
+                  filteredVisitLogs.map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50/80">
                       <td className="p-3 font-mono font-bold text-emerald-800">
                         {log.noKunjungan ? (

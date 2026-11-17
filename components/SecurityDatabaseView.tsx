@@ -615,7 +615,7 @@ export const SecurityDatabaseView: React.FC = () => {
           </div>
 
           {/* Master Key Security Lock */}
-          <div className="bg-slate-950/80 border border-slate-700/80 rounded-xl p-4 sm:p-4.5 flex flex-col gap-3 min-w-[280px] shadow-xs">
+          <div className="bg-slate-950/80 border border-slate-700/80 rounded-xl p-4 sm:p-4.5 flex flex-col gap-3 w-full lg:w-auto lg:min-w-[280px] shadow-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
                 <Key className="w-3.5 h-3.5 text-emerald-400" />
@@ -737,20 +737,20 @@ export const SecurityDatabaseView: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleDownloadSchema}
-              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-xs"
             >
-              <Download className="w-3.5 h-3.5 text-blue-400" />
+              <Download className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <span>Arsip Data (.sql)</span>
             </button>
 
             <button
               onClick={handleExportEncryptedJson}
-              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
+              className="h-9 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-colors shadow-xs"
             >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <Download className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Backup JSON</span>
             </button>
           </div>
@@ -763,12 +763,12 @@ export const SecurityDatabaseView: React.FC = () => {
           {/* Header Banner */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div className="flex items-start gap-3.5">
+              <div className="flex items-start gap-3.5 min-w-0">
                 <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-200 shadow-2xs">
                   <KeyRound className="w-6 h-6" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-bold text-slate-900 text-base">Kelola Akun & Reset Password Petugas</h3>
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
                       Khusus Administrator RME
@@ -1017,8 +1017,8 @@ export const SecurityDatabaseView: React.FC = () => {
 
           {/* Edit User Modal */}
           {editingUser && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
-              <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+              <div className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                   <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
                     <Edit3 className="w-5 h-5" />
@@ -1113,8 +1113,8 @@ export const SecurityDatabaseView: React.FC = () => {
 
           {/* Edit Poli & Dokter Modal */}
           {editingPoli && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
-              <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+              <div className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                   <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
                     <Stethoscope className="w-5 h-5" />
@@ -1215,8 +1215,8 @@ export const SecurityDatabaseView: React.FC = () => {
 
           {/* Reset Confirmation Modal */}
           {selectedUserToReset && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-150">
-              <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 space-y-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
+              <div className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                   <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
                     <RotateCcw className="w-5 h-5" />
@@ -1300,12 +1300,12 @@ export const SecurityDatabaseView: React.FC = () => {
           {/* Koneksi Server & Overview */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div className="flex items-start gap-3.5">
+              <div className="flex items-start gap-3.5 min-w-0">
                 <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
                   <Database className="w-6 h-6" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
                     <h3 className="font-bold text-slate-900 text-base">Konfigurasi Server Terpusat</h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
                       Aktif & Terhubung
@@ -1318,7 +1318,7 @@ export const SecurityDatabaseView: React.FC = () => {
               </div>
 
               {/* Status Badge */}
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
+              <div className="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl">
                 <span className="text-[11px] font-semibold text-slate-600">Status:</span>
                 <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-emerald-100 text-emerald-800">
                   Terintegrasi
@@ -1332,7 +1332,7 @@ export const SecurityDatabaseView: React.FC = () => {
             </div>
 
             {/* Connection Form & Diagnostics */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-1">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Host Server</label>
                 <input
@@ -1501,7 +1501,7 @@ export const SecurityDatabaseView: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <button
                   onClick={handleRunQuery}
                   disabled={runningQuery}
@@ -1931,7 +1931,7 @@ export const SecurityDatabaseView: React.FC = () => {
       {/* TAB 1: PATIENTS DATABASE TABLE */}
       {activeTab === 'RECORDS' && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
+          <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-slate-900 text-sm">Rekam Data Pasien Faskes ({bpjsConfig.namaFaskes || 'MySQL'})</h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -1993,7 +1993,7 @@ export const SecurityDatabaseView: React.FC = () => {
 
       {/* TAB 2: CRYPTOGRAPHY PLAYGROUND */}
       {activeTab === 'PLAYGROUND' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm space-y-6">
           <div>
             <h3 className="font-bold text-slate-900 text-base">Lab Kriptografi Interaktif AES-256-GCM</h3>
             <p className="text-xs text-slate-500 mt-1">
@@ -2034,7 +2034,7 @@ export const SecurityDatabaseView: React.FC = () => {
                 rows={4}
                 className="w-full p-3 text-xs bg-slate-900 text-emerald-400 border border-slate-800 rounded-xl font-mono"
               />
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={handleTestDecrypt}
                   disabled={!encryptedOutput}
@@ -2066,7 +2066,7 @@ export const SecurityDatabaseView: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 Hasil Dekripsi Sukses (Integritas Data Terverifikasi 100%):
               </p>
-              <p className="text-xs text-slate-800 font-mono bg-white p-2.5 rounded-lg border border-emerald-200">
+              <p className="text-xs text-slate-800 font-mono bg-white p-2.5 rounded-lg border border-emerald-200 break-all">
                 {decryptedOutput}
               </p>
             </div>
@@ -2077,7 +2077,7 @@ export const SecurityDatabaseView: React.FC = () => {
       {/* TAB 3: AUDIT TRAIL LOGS */}
       {activeTab === 'AUDIT' && (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-          <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between">
+          <div className="p-4 sm:p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-bold text-slate-900 text-sm">Audit Log Akses & Kriptografi Keamanan</h3>
             <span className="text-xs text-slate-500">Mencatat seluruh transaksi data sensitif</span>
           </div>

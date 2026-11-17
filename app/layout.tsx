@@ -1,7 +1,13 @@
 import type {Metadata} from 'next';
 import './globals.css'; // Global styles
 
+const rawEnvUrl = process.env.APP_URL || 'https://kliniksombanmedika.id/';
+const safeMetadataBaseUrl = /^https?:\/\//i.test(rawEnvUrl)
+  ? rawEnvUrl.replace(/\/?$/, '/')
+  : 'https://kliniksombanmedika.id/';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(safeMetadataBaseUrl),
   title: 'Antrean Online Bridging BPJS - TPMD Dr. Machmujur',
   description: 'Sistem antrean online bridging BPJS Kesehatan (Mobile JKN & PCare) terintegrasi dengan estimasi waktu tunggu otomatis, TV display ruang tunggu, TTS Indonesia, dan kios cetak mandiri.',
   icons: {

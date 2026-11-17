@@ -70,7 +70,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
     const openUpward = spaceBelow < 360 && spaceAbove > spaceBelow;
-    const width = Math.max(rect.width, 320);
+    const width = Math.min(Math.max(rect.width, 280), window.innerWidth - 16);
     const maxLeft = Math.max(8, window.innerWidth - width - 8);
     const left = Math.min(Math.max(8, rect.left), maxLeft);
 
@@ -103,7 +103,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
         return false;
       }
       if (!q) return true;
-      const target = `${rs.kodeFaskes} ${rs.nama} ${rs.kota} ${rs.provinsi} ${rs.jenis} kelas ${rs.kelas}`.toLowerCase();
+      const target = `${rs.kodeFaskes} ${rs.nama} ${rs.kota} ${rs.provinsi} ${rs.jenis} ${rs.alamat || ''} kelas ${rs.kelas}`.toLowerCase();
       return target.includes(q);
     });
   }, [hospitals, searchTerm, selectedProvince]);
@@ -272,11 +272,11 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <select
                 value={selectedProvince}
                 onChange={(e) => setSelectedProvince(e.target.value)}
-                className="flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-[11px] font-medium text-slate-700 focus:outline-none focus:border-emerald-600 cursor-pointer"
+                className="min-w-0 flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-[11px] font-medium text-slate-700 focus:outline-none focus:border-emerald-600 cursor-pointer"
               >
                 <option value="ALL">Semua Provinsi ({provinces.length} Provinsi di Indonesia)</option>
                 {provinces.map((prov) => (
@@ -371,14 +371,14 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
 
       {/* Modal Tambah RS Rujukan ke MySQL */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full my-auto max-h-[92vh] overflow-y-auto p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h3 className="text-sm font-bold text-slate-900">Tambah RS Rujukan ke Database MySQL</h3>
                   <p className="text-[11px] text-slate-500">Data akan tersimpan ke tabel master rs_rujukan BPJS</p>
                 </div>
@@ -386,7 +386,7 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 shrink-0 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -499,18 +499,18 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-semibold hover:bg-slate-50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold flex items-center gap-1.5 cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   <span>{isSaving ? 'Menyimpan...' : 'Simpan ke Database'}</span>

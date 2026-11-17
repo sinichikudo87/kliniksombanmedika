@@ -78,7 +78,7 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
       }}
     >
       <div
-        className="relative w-full max-w-md my-auto bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col transform transition-all animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col transform transition-all animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Background Large Transparent Watermark Icon */}
@@ -204,9 +204,9 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
           </form>
 
           {/* Footer Diagnostic Note */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-medium">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span>Sistem Faskes Terhubung</span>
             </span>
             <span>Autentikasi MySQL</span>

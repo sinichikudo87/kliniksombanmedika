@@ -97,7 +97,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
   const modalContent = (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex min-h-screen items-center justify-center p-3 sm:p-4 md:p-6">
-      <div className="relative w-full max-w-lg my-auto bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 transform transition-all animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 sm:p-6 relative">
           {!mustChange && (
@@ -109,7 +109,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </button>
           )}
 
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3.5 pr-8">
             <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-white/10 border border-white/20 p-1 flex items-center justify-center shrink-0">
               <Image
                 src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
@@ -120,8 +120,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
                   {mustChange ? 'Wajib Ganti Password Awal' : 'Ubah Password Akun Petugas'}
                 </h3>
@@ -131,7 +131,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-300">
+              <p className="text-xs text-slate-300 break-words">
                 Akun: <strong className="text-white font-mono">{user?.username}</strong> ({user?.namaLengkap || (user as any)?.nama_lengkap || user?.username})
               </p>
             </div>
@@ -236,7 +236,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             </div>
 
             {/* Buttons */}
-            <div className="pt-2 flex items-center gap-3">
+            <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
               <button
                 type="submit"
                 disabled={isLoading}
@@ -259,7 +259,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 <button
                   type="button"
                   onClick={logout}
-                  className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                  className="py-3 px-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                   title="Batalkan & Logout"
                 >
                   <LogOut className="w-4 h-4 text-slate-500" />
@@ -270,7 +270,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </form>
 
           {/* Footer Security Note */}
-          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-400 flex items-center justify-between font-mono">
+          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2 font-mono">
             <span>Standar Keamanan Akun Faskes</span>
             <span>{user?.kdFaskes ? `Kode Faskes: ${user.kdFaskes}` : 'MySQL Auth System'}</span>
           </div>

@@ -150,9 +150,9 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
       </div>
 
       {/* TV Header Bar */}
-      <header className="relative z-10 bg-white border-b border-slate-200/90 px-6 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-4">
-          <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
+      <header className="relative z-10 bg-white border-b border-slate-200/90 px-4 sm:px-6 py-3.5 flex flex-col lg:flex-row lg:items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-2xl overflow-hidden bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
             <Image
               src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
               alt="Logo Somban Medika"
@@ -163,12 +163,12 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
               priority
             />
           </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 uppercase">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-slate-900 uppercase truncate">
                 {bpjsConfig.namaFaskes}
               </h1>
-              <span className="bg-emerald-50 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold flex items-center gap-1">
+              <span className="bg-emerald-50 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full border border-emerald-200 font-bold flex items-center gap-1 shrink-0">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Bridging BPJS ({bpjsConfig.kdFaskes})
               </span>
             </div>
@@ -179,15 +179,15 @@ export const TvDisplayMode: React.FC<{ onExitFullscreen?: () => void }> = ({ onE
         </div>
 
         {/* Live Clock & Controls */}
-        <div className="flex items-center gap-4 sm:gap-5">
-          <div className="text-right">
-            <div className="text-2xl md:text-3xl font-mono font-black text-emerald-700 tracking-wider">
+        <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3 sm:gap-5">
+          <div className="text-left sm:text-right">
+            <div className="text-xl sm:text-2xl md:text-3xl font-mono font-black text-emerald-700 tracking-wider">
               {formattedTime || '--:--:--'} <span className="text-xs text-emerald-800 font-sans font-bold">WIB</span>
             </div>
             <p className="text-xs text-slate-500 font-semibold">{formattedDate || 'Waktu Faskes'}</p>
           </div>
 
-          <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+          <div className="flex flex-wrap items-center gap-2 sm:border-l sm:border-slate-200 sm:pl-4">
             {onExitFullscreen && (
               <button
                 onClick={onExitFullscreen}

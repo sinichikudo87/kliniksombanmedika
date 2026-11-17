@@ -17,7 +17,7 @@ export function exportWsFktpExcel(options?: ExportExcelOptions): boolean {
     const defaultOrigin = typeof window !== 'undefined' && window.location.origin
       ? window.location.origin
       : 'https://kliniksombanmedika.id';
-    const customBaseUrl = options?.customBaseUrl || defaultOrigin;
+    const customBaseUrl = (options?.customBaseUrl || defaultOrigin).replace(/\/+$/, '');
     const namaFaskes = options?.namaFaskes || '-';
     const kdFaskes = options?.kdFaskes || '-';
     const picName = options?.picName || '-';

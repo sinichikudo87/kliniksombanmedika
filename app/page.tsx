@@ -12,6 +12,7 @@ import { BridgingSettingsModal } from '@/components/BridgingSettingsModal';
 import { InitialLoginView } from '@/components/InitialLoginView';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { PcareView } from '@/components/PcareView';
+import { LaporanView } from '@/components/LaporanView';
 import Image from 'next/image';
 import {
   ShieldCheck,
@@ -35,7 +36,7 @@ import { exportWsFktpExcel } from '@/lib/client-excel-export';
 
 function MainApp() {
   const { user, isAuthenticated, isAuthLoaded } = useAuth();
-  const [currentTab, setCurrentTab] = useState<'KIOSK' | 'OPERATOR' | 'PCARE' | 'SECURITY' | 'TV'>('KIOSK');
+  const [currentTab, setCurrentTab] = useState<'KIOSK' | 'OPERATOR' | 'PCARE' | 'LAPORAN' | 'SECURITY' | 'TV'>('KIOSK');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPatientBypass, setIsPatientBypass] = useState(false);
   const { bpjsConfig, updateBpjsConfig, testBridgingPing } = useQueue();
@@ -206,6 +207,7 @@ function MainApp() {
               onNavigateToOperator={() => setCurrentTab('OPERATOR')}
             />
           )}
+          {currentTab === 'LAPORAN' && <LaporanView />}
           {currentTab === 'SECURITY' && (
             isRmeAdmin ? (
               <SecurityDatabaseView />

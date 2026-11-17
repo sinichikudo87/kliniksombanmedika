@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQueue } from '@/lib/queue-context';
 import { maskSensitive } from '@/lib/encrypted-db';
 import { BPJS_TASK_NAMES } from '@/lib/bpjs-bridging';
@@ -48,6 +48,8 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
 
   const [selectedPoliKode, setSelectedPoliKode] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [filterMonth, setFilterMonth] = useState<string>('ALL');
+  const [filterYear, setFilterYear] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showUnmasked, setShowUnmasked] = useState<boolean>(false);
   const [showManualModal, setShowManualModal] = useState<boolean>(false);
@@ -83,15 +85,40 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
   const servingCount = poliQueues.filter((q) => q.status === 'DIPANGGIL' || q.status === 'DILAYANI').length;
   const finishedCount = poliQueues.filter((q) => q.status === 'SELESAI').length;
 
+  const queueYearOptions = useMemo(() => {
+    const years = new Set<string>([String(new Date().getFullYear())]);
+    for (const q of queues) {
+      if (q.waktuDaftar) {
+        const d = new Date(q.waktuDaftar);
+        if (!Number.isNaN(d.getTime())) years.add(String(d.getFullYear()));
+      }
+    }
+    return Array.from(years).sort((a, b) => Number(b) - Number(a));
+  }, [queues]);
+
   // Filtered Queues for Table
   const filteredTableQueues = poliQueues.filter((q) => {
     const matchesStatus = filterStatus === 'ALL' || q.status === filterStatus;
+    if (!matchesStatus) return false;
+
+    if (filterMonth !== 'ALL' || filterYear !== 'ALL') {
+      if (!q.waktuDaftar) return false;
+      const d = new Date(q.waktuDaftar);
+      if (Number.isNaN(d.getTime())) return false;
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const y = String(d.getFullYear());
+      if (filterMonth !== 'ALL' && m !== filterMonth) return false;
+      if (filterYear !== 'ALL' && y !== filterYear) return false;
+    }
+
+    const term = searchQuery.trim().toLowerCase();
+    if (!term) return true;
     const matchesSearch =
-      q.nomorAntrean.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.namaPasien.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.nik.includes(searchQuery) ||
-      q.noBpjs.includes(searchQuery);
-    return matchesStatus && matchesSearch;
+      q.nomorAntrean.toLowerCase().includes(term) ||
+      q.namaPasien.toLowerCase().includes(term) ||
+      q.nik.toLowerCase().includes(term) ||
+      q.noBpjs.toLowerCase().includes(term);
+    return matchesSearch;
   });
 
   const handleCallNext = async () => {
@@ -131,15 +158,15 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
   return (
     <div className="space-y-6">
       {/* Top Banner: Station Selector & Bridging Status */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
           <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">
             Loket / Poli:
           </span>
-          <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/70">
+          <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 max-w-full">
             <button
               onClick={() => setSelectedPoliKode('ALL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
                 selectedPoliKode === 'ALL'
                   ? 'bg-white text-slate-900 shadow-xs ring-1 ring-slate-900/5'
                   : 'text-slate-600 hover:text-slate-900'
@@ -154,7 +181,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                 <button
                   key={p.kode}
                   onClick={() => setSelectedPoliKode(p.kode)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-emerald-700 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -176,23 +203,23 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {onNavigateToPcare && (
             <button
               onClick={onNavigateToPcare}
-              className="h-9 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="h-9 px-3.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
               title="Buka Modul Pemeriksaan Dokter PCare FKTP"
             >
-              <Stethoscope className="w-4 h-4 text-emerald-200" />
+              <Stethoscope className="w-4 h-4 text-emerald-200 shrink-0" />
               <span>PCare FKTP</span>
             </button>
           )}
 
           <button
             onClick={() => setShowManualModal(true)}
-            className="h-9 px-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="h-9 px-3.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" />
+            <UserPlus className="w-4 h-4 shrink-0" />
             <span>Pendaftaran Loket</span>
           </button>
         </div>
@@ -248,32 +275,32 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
       </div>
 
       {/* QUICK CALL CONTROL CONSOLE FOR CURRENT POLI */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-slate-800/90">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white rounded-2xl p-4 sm:p-6 shadow-md border border-slate-800/90 overflow-hidden">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 xl:gap-5">
           {/* Active Calling Box */}
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-2 text-xs">
+          <div className="w-full min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mb-2 text-xs">
               <span className="font-bold uppercase tracking-wider text-emerald-400">
                 Konsol Panggilan · {selectedPoliKode === 'ALL' ? 'Semua Poli' : (currentPoli?.nama || 'Poli Belum Dipilih')}
               </span>
               {currentPoli?.dokter && (
                 <>
                   <span className="text-slate-600">·</span>
-                  <span className="text-slate-300 font-medium">{currentPoli.dokter}</span>
+                  <span className="text-slate-300 font-medium break-words">{currentPoli.dokter}</span>
                 </>
               )}
             </div>
 
             {activeServing ? (
-              <div className="flex items-center gap-4 bg-slate-800/70 border border-slate-700/70 rounded-xl p-3.5 sm:p-4">
+              <div className="flex items-center gap-3 sm:gap-4 bg-slate-800/70 border border-slate-700/70 rounded-xl p-3.5 sm:p-4">
                 <div className="w-14 h-14 rounded-xl bg-emerald-500 text-slate-950 font-black font-mono text-2xl flex items-center justify-center shrink-0 shadow-md">
                   {activeServing.nomorAntrean}
                 </div>
-                <div className="overflow-hidden min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base sm:text-lg text-white truncate">{activeServing.namaPasien}</h3>
+                <div className="overflow-hidden min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-base sm:text-lg text-white truncate max-w-full">{activeServing.namaPasien}</h3>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
                         activeServing.status === 'DIPANGGIL'
                           ? 'bg-amber-400 text-slate-950 animate-pulse'
                           : 'bg-emerald-400 text-slate-950'
@@ -298,13 +325,13 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="w-full xl:w-auto xl:max-w-[56%] min-w-0 flex flex-wrap items-center xl:justify-end gap-2">
             <button
               onClick={handleCallNext}
               disabled={!nextWaiting}
-              className="h-10 flex items-center gap-2 px-4 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] text-xs sm:text-sm"
+              className="h-10 flex items-center justify-center gap-2 px-4 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-slate-950 font-bold rounded-xl shadow-xs transition-all active:scale-[0.98] text-xs sm:text-sm whitespace-nowrap cursor-pointer"
             >
-              <PhoneCall className="w-4 h-4" />
+              <PhoneCall className="w-4 h-4 shrink-0" />
               <span>
                 Panggil Berikutnya {nextWaiting ? `(${nextWaiting.nomorAntrean})` : ''}
               </span>
@@ -317,10 +344,10 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                     await callQueue(activeServing.id);
                     showSwalSuccess(`Memanggil ulang nomor ${activeServing.nomorAntrean} (${activeServing.namaPasien})`, 'Panggil Ulang');
                   }}
-                  className="h-10 flex items-center gap-1.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition-colors cursor-pointer"
+                  className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition-colors whitespace-nowrap cursor-pointer"
                   title="Panggil Ulang Pasien dengan TTS"
                 >
-                  <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span>Panggil Ulang</span>
                 </button>
 
@@ -330,9 +357,9 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                       await startService(activeServing.id);
                       showSwalSuccess(`Pelayanan periksa dimulai untuk ${activeServing.nomorAntrean}`, 'Pelayanan Dimulai');
                     }}
-                    className="h-10 flex items-center gap-1.5 px-3.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                    className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
                   >
-                    <Play className="w-3.5 h-3.5" />
+                    <Play className="w-3.5 h-3.5 shrink-0" />
                     <span>Mulai</span>
                   </button>
                 )}
@@ -342,19 +369,19 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                     await finishQueue(activeServing.id);
                     showSwalSuccess(`Pelayanan antrean ${activeServing.nomorAntrean} selesai. Data tersinkron ke BPJS!`, 'Pelayanan Selesai');
                   }}
-                  className="h-10 flex items-center gap-1.5 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                  className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                   <span>Selesai</span>
                 </button>
 
                 {onNavigateToPcare && (
                   <button
                     onClick={onNavigateToPcare}
-                    className="h-10 flex items-center gap-1.5 px-3.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                    className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold transition-colors whitespace-nowrap cursor-pointer shadow-xs"
                     title="Buka form pemeriksaan dokter PCare (Anamnesa, Vital Signs, Diagnosa ICD-10, Rujukan)"
                   >
-                    <Stethoscope className="w-3.5 h-3.5 text-emerald-200" />
+                    <Stethoscope className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
                     <span>Pemeriksaan PCare</span>
                   </button>
                 )}
@@ -365,10 +392,10 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                       await transferToPharmacy(activeServing.id);
                       showSwalSuccess(`Resep obat untuk ${activeServing.namaPasien} berhasil diteruskan ke Loket Farmasi!`, 'Resep Obat Terkirim');
                     }}
-                    className="h-10 flex items-center gap-1.5 px-3.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+                    className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
                     title="Buat tiket resep obat ke Farmasi"
                   >
-                    <Pill className="w-3.5 h-3.5" />
+                    <Pill className="w-3.5 h-3.5 shrink-0" />
                     <span>Resep Obat</span>
                   </button>
                 )}
@@ -378,10 +405,10 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                     await skipQueue(activeServing.id);
                     showSwalAlert(`Pasien antrean ${activeServing.nomorAntrean} dilewati.`, { title: 'Antrean Dilewati', icon: 'info', timer: 2000 });
                   }}
-                  className="h-10 flex items-center gap-1.5 px-3 bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 rounded-xl text-xs font-semibold border border-slate-700 hover:border-rose-800/40 transition-colors cursor-pointer"
+                  className="h-10 flex items-center justify-center gap-1.5 px-3 bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 rounded-xl text-xs font-semibold border border-slate-700 hover:border-rose-800/40 transition-colors whitespace-nowrap cursor-pointer"
                   title="Lewati Pasien"
                 >
-                  <SkipForward className="w-3.5 h-3.5" />
+                  <SkipForward className="w-3.5 h-3.5 shrink-0" />
                   <span>Lewati</span>
                 </button>
               </>
@@ -393,32 +420,68 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
       {/* QUEUE TABLE & SEARCH */}
       <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
         {/* Table Toolbar */}
-        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-          <div className="flex items-center gap-2">
+        <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-bold text-slate-900 text-sm">Daftar Antrean Pasien</h3>
             <span className="text-xs font-mono text-slate-400">({filteredTableQueues.length} data)</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
             {/* Search Input */}
-            <div className="relative">
+            <div className="relative w-full sm:w-56">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Cari nama, antrean, NIK..."
-                className="pl-9 pr-3 h-9 text-xs rounded-xl border border-slate-300/90 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none w-48 sm:w-60 shadow-2xs font-medium"
+                className="pl-9 pr-3 h-9 text-xs rounded-xl border border-slate-300/90 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:outline-none w-full shadow-2xs font-medium"
               />
             </div>
 
+            {/* Filter Per Bulan & Tahun */}
+            <select
+              aria-label="Filter Bulan Antrean"
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="h-9 px-2.5 text-xs font-semibold rounded-xl border border-slate-300/90 bg-white text-slate-700 focus:border-emerald-600 focus:outline-none shadow-2xs cursor-pointer"
+            >
+              <option value="ALL">Semua Bulan</option>
+              <option value="01">Januari</option>
+              <option value="02">Februari</option>
+              <option value="03">Maret</option>
+              <option value="04">April</option>
+              <option value="05">Mei</option>
+              <option value="06">Juni</option>
+              <option value="07">Juli</option>
+              <option value="08">Agustus</option>
+              <option value="09">September</option>
+              <option value="10">Oktober</option>
+              <option value="11">November</option>
+              <option value="12">Desember</option>
+            </select>
+
+            <select
+              aria-label="Filter Tahun Antrean"
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="h-9 px-2.5 text-xs font-semibold rounded-xl border border-slate-300/90 bg-white text-slate-700 focus:border-emerald-600 focus:outline-none shadow-2xs cursor-pointer"
+            >
+              <option value="ALL">Semua Tahun</option>
+              {queueYearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+
             {/* Filter Status */}
-            <div className="flex items-center gap-0.5 bg-slate-100/90 p-1 rounded-xl text-xs border border-slate-200/60 shadow-2xs">
+            <div className="flex flex-wrap items-center gap-0.5 bg-slate-100/90 p-1 rounded-xl text-xs border border-slate-200/60 shadow-2xs">
               {['ALL', 'MENUNGGU', 'DILAYANI', 'SELESAI'].map((st) => (
                 <button
                   key={st}
                   onClick={() => setFilterStatus(st)}
-                  className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
+                  className={`px-2.5 py-1 rounded-lg font-semibold whitespace-nowrap transition-all ${
                     filterStatus === st
                       ? 'bg-white text-slate-900 shadow-2xs ring-1 ring-slate-900/5'
                       : 'text-slate-600 hover:text-slate-900'
@@ -432,7 +495,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
             {/* Privacy Mask Toggle */}
             <button
               onClick={() => setShowUnmasked(!showUnmasked)}
-              className="h-9 flex items-center gap-1.5 px-3 rounded-xl border border-slate-300/90 text-slate-700 hover:bg-slate-50 text-xs font-medium transition-colors shadow-2xs"
+              className="h-9 flex items-center gap-1.5 px-3 rounded-xl border border-slate-300/90 text-slate-700 hover:bg-slate-50 text-xs font-medium whitespace-nowrap transition-colors shadow-2xs"
               title="Buka / Tutup Sensor NIK Pasien (UU PDP)"
             >
               {showUnmasked ? <EyeOff className="w-3.5 h-3.5 text-slate-500" /> : <Eye className="w-3.5 h-3.5 text-slate-500" />}
@@ -602,8 +665,8 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
 
       {/* MODAL: DAFTARKAN PASIEN MANUAL / WALK-IN OLEH PETUGAS */}
       {showManualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-md w-full my-auto max-h-[92vh] overflow-y-auto p-5 sm:p-6 shadow-xl border border-slate-200">
             <h3 className="font-bold text-slate-900 text-base mb-1">
               Pendaftaran Pasien Loket Admisi
             </h3>
@@ -618,7 +681,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   <button
                     type="button"
                     onClick={() => setManualTipe('BPJS')}
-                    className={`py-2 rounded-xl font-semibold border ${
+                    className={`py-2 px-2 rounded-xl font-semibold border cursor-pointer ${
                       manualTipe === 'BPJS'
                         ? 'bg-emerald-50 border-emerald-500 text-emerald-800'
                         : 'border-slate-200 text-slate-600'
@@ -629,7 +692,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   <button
                     type="button"
                     onClick={() => setManualTipe('UMUM')}
-                    className={`py-2 rounded-xl font-semibold border ${
+                    className={`py-2 px-2 rounded-xl font-semibold border cursor-pointer ${
                       manualTipe === 'UMUM'
                         ? 'bg-teal-50 border-teal-500 text-teal-800'
                         : 'border-slate-200 text-slate-600'
@@ -648,7 +711,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   value={manualNama}
                   onChange={(e) => setManualNama(e.target.value)}
                   placeholder="Nama Lengkap"
-                  className="w-full py-2 px-3 border border-slate-300 rounded-xl focus:border-emerald-600"
+                  className="w-full py-2 px-3 border border-slate-300 rounded-xl focus:border-emerald-600 focus:outline-none"
                 />
               </div>
 
@@ -660,7 +723,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   value={manualNik}
                   onChange={(e) => setManualNik(e.target.value.replace(/\D/g, ''))}
                   placeholder="Masukkan 16 digit NIK"
-                  className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono"
+                  className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono focus:border-emerald-600 focus:outline-none"
                 />
               </div>
 
@@ -673,7 +736,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                     value={manualNoBpjs}
                     onChange={(e) => setManualNoBpjs(e.target.value.replace(/\D/g, ''))}
                     placeholder="Masukkan 13 digit No. Kartu BPJS"
-                    className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono"
+                    className="w-full py-2 px-3 border border-slate-300 rounded-xl font-mono focus:border-emerald-600 focus:outline-none"
                   />
                 </div>
               )}
@@ -683,7 +746,7 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                 <select
                   value={effectiveManualPoli}
                   onChange={(e) => setManualPoli(e.target.value)}
-                  className="w-full py-2 px-3 border border-slate-300 rounded-xl"
+                  className="w-full py-2 px-3 border border-slate-300 rounded-xl bg-white focus:border-emerald-600 focus:outline-none"
                 >
                   {poliList.length > 0 ? (
                     poliList.map((p) => (
@@ -704,21 +767,21 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   onChange={(e) => setManualKeluhan(e.target.value)}
                   placeholder="Keluhan singkat..."
                   rows={2}
-                  className="w-full py-2 px-3 border border-slate-300 rounded-xl"
+                  className="w-full py-2 px-3 border border-slate-300 rounded-xl focus:border-emerald-600 focus:outline-none"
                 />
               </div>
 
-              <div className="flex gap-2 pt-3">
+              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowManualModal(false)}
-                  className="flex-1 py-2.5 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
+                  className="w-full sm:flex-1 py-2.5 border border-slate-300 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-sm"
+                  className="w-full sm:flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-sm cursor-pointer"
                 >
                   Daftarkan Antrean
                 </button>

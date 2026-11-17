@@ -6,8 +6,10 @@ import { getMySqlPool } from '@/lib/mysql-db';
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
-    const defaultAppUrl = req.nextUrl.origin || 'https://kliniksombanmedika.id';
-    const customBaseUrl = searchParams.get('baseUrl') || defaultAppUrl;
+    const rawEnvUrl = (process.env.APP_URL || '').trim();
+    const envAppUrl = /^https?:\/\//i.test(rawEnvUrl) ? rawEnvUrl.replace(/\/+$/, '') : '';
+    const defaultAppUrl = envAppUrl || req.nextUrl.origin || 'https://kliniksombanmedika.id';
+    const customBaseUrl = (searchParams.get('baseUrl') || defaultAppUrl).replace(/\/+$/, '');
 
     let kdFaskes = '';
     let namaFaskes = '';

@@ -73,8 +73,8 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
 
       {/* Top Bar Branding */}
       <div className="relative z-10 max-w-6xl mx-auto w-full">
-        <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-xs px-4 sm:px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
+        <div className="bg-white/95 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-xs px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3.5 min-w-0">
             <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
               <Image
                 src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
@@ -86,10 +86,10 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
                 priority
               />
             </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
-                <span>{bpjsConfig.namaFaskes}</span>
-                <span className="text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200 font-mono font-bold">
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-extrabold tracking-tight text-slate-900 flex flex-wrap items-center gap-2">
+                <span className="truncate">{bpjsConfig.namaFaskes}</span>
+                <span className="text-[11px] bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200 font-mono font-bold shrink-0">
                   KD: {bpjsConfig.kdFaskes}
                 </span>
               </h1>
@@ -179,12 +179,12 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
               <ShieldCheck className="w-64 h-64 sm:w-72 sm:h-72 transform -rotate-12" strokeWidth={1.2} />
             </div>
 
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6 relative z-10">
-              <div>
+            <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100 mb-6 relative z-10">
+              <div className="min-w-0">
                 <h3 className="text-xl font-extrabold text-slate-900 tracking-tight">Formulir Login Petugas</h3>
                 <p className="text-xs text-slate-500 mt-0.5">Masukkan identitas akun petugas faskes terdaftar</p>
               </div>
-              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-200 shrink-0">
                 <Lock className="w-5 h-5" />
               </div>
             </div>
@@ -234,7 +234,7 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
 
               {/* Password Input */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
                     Password Akun
                   </label>
@@ -310,9 +310,9 @@ export const InitialLoginView: React.FC<InitialLoginViewProps> = ({ onBypassToKi
             )}
 
             {/* Faskes System Footnote */}
-            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-medium">
+            <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 font-medium">
               <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 <span>Terverifikasi Antrean Online &amp; PCare BPJS</span>
               </span>
               <span className="font-mono text-slate-500">KD: {bpjsConfig.kdFaskes}</span>

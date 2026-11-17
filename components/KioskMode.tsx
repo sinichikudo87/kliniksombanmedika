@@ -269,7 +269,7 @@ export const KioskMode: React.FC = () => {
               setPatientType('BPJS');
               setStep('INPUT_BPJS');
             }}
-            className="group bg-white border border-slate-200/90 hover:border-emerald-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between h-[270px]"
+            className="group bg-white border border-slate-200/90 hover:border-emerald-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between min-h-[240px] h-full gap-4"
           >
             <div>
               <div className="w-12 h-12 bg-emerald-50 text-emerald-700 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-2xs">
@@ -297,7 +297,7 @@ export const KioskMode: React.FC = () => {
               setPatientType('UMUM');
               setStep('INPUT_UMUM');
             }}
-            className="group bg-white border border-slate-200/90 hover:border-teal-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between h-[270px]"
+            className="group bg-white border border-slate-200/90 hover:border-teal-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between min-h-[240px] h-full gap-4"
           >
             <div>
               <div className="w-12 h-12 bg-teal-50 text-teal-700 rounded-xl flex items-center justify-center mb-4 group-hover:bg-teal-600 group-hover:text-white transition-colors shadow-2xs">
@@ -327,7 +327,7 @@ export const KioskMode: React.FC = () => {
               setIdInput('');
               setVerifyError(null);
             }}
-            className="group bg-white border border-slate-200/90 hover:border-indigo-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between h-[270px] cursor-pointer"
+            className="group bg-white border border-slate-200/90 hover:border-indigo-500 rounded-2xl p-5 sm:p-6 text-left transition-all hover:shadow-md active:scale-[0.99] flex flex-col justify-between min-h-[240px] h-full gap-4 cursor-pointer"
           >
             <div>
               <div className="w-12 h-12 bg-indigo-50 text-indigo-700 rounded-xl flex items-center justify-center mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-colors shadow-2xs">
@@ -392,7 +392,7 @@ export const KioskMode: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('CLR')}
-                className="h-14 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+                className="h-14 px-1.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 text-[11px] sm:text-sm font-semibold rounded-xl leading-tight transition-colors cursor-pointer"
               >
                 HAPUS SEMUA
               </button>
@@ -406,7 +406,7 @@ export const KioskMode: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('DEL')}
-                className="h-14 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+                className="h-14 px-1.5 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 text-[11px] sm:text-sm font-semibold rounded-xl leading-tight transition-colors cursor-pointer"
               >
                 ← BACKSPACE
               </button>
@@ -481,7 +481,7 @@ export const KioskMode: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('CLR')}
-                className="h-14 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+                className="h-14 px-1.5 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 text-rose-700 text-[11px] sm:text-sm font-semibold rounded-xl leading-tight transition-colors cursor-pointer"
               >
                 HAPUS SEMUA
               </button>
@@ -495,7 +495,7 @@ export const KioskMode: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleKeypadPress('DEL')}
-                className="h-14 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 text-sm font-semibold rounded-xl transition-colors cursor-pointer"
+                className="h-14 px-1.5 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 text-amber-800 text-[11px] sm:text-sm font-semibold rounded-xl leading-tight transition-colors cursor-pointer"
               >
                 ← BACKSPACE
               </button>
@@ -607,18 +607,18 @@ export const KioskMode: React.FC = () => {
           {/* BPJS Participant Badge Verified */}
           {patientType === 'BPJS' && verifiedPatient && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 min-w-0">
                 <div className="w-12 h-12 bg-emerald-600 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-sm">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-base">{verifiedPatient.nama}</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-base break-words">{verifiedPatient.nama}</h3>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white shrink-0">
                       {verifiedPatient.statusBpjs}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-600 mt-0.5">
+                  <p className="text-xs text-slate-600 mt-0.5 break-all">
                     No. BPJS: <span className="font-mono font-medium">{verifiedPatient.noBpjs}</span> · NIK:{' '}
                     <span className="font-mono">{verifiedPatient.nik}</span>
                   </p>
@@ -632,9 +632,9 @@ export const KioskMode: React.FC = () => {
 
           {/* Patient Umum Badge */}
           {patientType === 'UMUM' && (
-            <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">{generalName}</h3>
+            <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="font-bold text-slate-900 text-base break-words">{generalName}</h3>
                 <p className="text-xs text-teal-700">Pasien Umum · Mandiri</p>
               </div>
             </div>
@@ -677,7 +677,7 @@ export const KioskMode: React.FC = () => {
                       <button
                         key={poli.kode}
                         onClick={() => handleSelectPoliAndSubmit(poli)}
-                        className="group bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-emerald-500 rounded-3xl p-5 text-left transition-all hover:shadow-xl active:scale-[0.98] flex flex-col justify-between h-56"
+                        className="group bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-emerald-500 rounded-3xl p-5 text-left transition-all hover:shadow-xl active:scale-[0.98] flex flex-col justify-between min-h-[13rem] h-full gap-4"
                       >
                         <div>
                           <div className="flex items-center justify-between mb-3">

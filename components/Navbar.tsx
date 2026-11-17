@@ -24,11 +24,12 @@ import {
   Database,
   Menu,
   X,
+  BarChart3,
 } from 'lucide-react';
 
 interface NavbarProps {
-  currentTab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'SECURITY' | 'TV';
-  setCurrentTab: (tab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'SECURITY' | 'TV') => void;
+  currentTab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'LAPORAN' | 'SECURITY' | 'TV';
+  setCurrentTab: (tab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'LAPORAN' | 'SECURITY' | 'TV') => void;
   onOpenSettings: () => void;
 }
 
@@ -120,7 +121,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
   const userInitials = userDisplayName.slice(0, 2).toUpperCase();
 
   const navItems: Array<{
-    id: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'TV';
+    id: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'LAPORAN' | 'TV';
     label: string;
     mobileLabel: string;
     icon: React.ComponentType<{ className?: string }>;
@@ -128,6 +129,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
     { id: 'KIOSK', label: 'Kios Mandiri', mobileLabel: 'Kios', icon: CreditCard },
     { id: 'OPERATOR', label: 'Loket Antrean', mobileLabel: 'Loket', icon: LayoutDashboard },
     { id: 'PCARE', label: 'PCare BPJS', mobileLabel: 'PCare', icon: Stethoscope },
+    { id: 'LAPORAN', label: 'Laporan', mobileLabel: 'Laporan', icon: BarChart3 },
     { id: 'TV', label: 'TV Display', mobileLabel: 'TV', icon: Tv },
   ];
 

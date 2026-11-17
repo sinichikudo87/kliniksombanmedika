@@ -67,6 +67,7 @@ export const getDefaultMySqlConfig = (): MySqlConfig => {
 };
 
 let activePool: mysql.Pool | null = null;
+let masterHospitalsSyncedInProcess = false;
 let currentConfig: MySqlConfig = getDefaultMySqlConfig();
 let lastConnectionStatus: {
   connected: boolean;
@@ -123,6 +124,7 @@ export function getMySqlPool(customConfig?: Partial<MySqlConfig>): mysql.Pool {
       activePool.end().catch(() => {});
       activePool = null;
     }
+    masterHospitalsSyncedInProcess = false;
   }
 
   if (!activePool) {
@@ -418,9 +420,9 @@ export async function initMySqlSchema() {
       await pool.query('ALTER TABLE faskes_config ADD COLUMN is_online TINYINT(1) NOT NULL DEFAULT 0 AFTER base_url');
     }
 
-    // Seed rs_rujukan across all 38 provinces if empty
+    // Sync rs_rujukan master list across all 38 provinces (including newly added Sidoarjo & sekitarnya hospitals)
     const [rsCount]: [any, any] = await pool.query('SELECT COUNT(*) AS cnt FROM rs_rujukan');
-    if ((rsCount[0]?.cnt || 0) === 0) {
+    if (!masterHospitalsSyncedInProcess || (rsCount[0]?.cnt || 0) < INDONESIA_REFERRAL_HOSPITALS.length) {
       await seedReferralHospitalsToPool(pool);
     }
 
@@ -432,8 +434,8 @@ export async function initMySqlSchema() {
 
 async function seedReferralHospitalsToPool(pool: mysql.Pool) {
   if (INDONESIA_REFERRAL_HOSPITALS.length === 0) return;
-  const values = INDONESIA_REFERRAL_HOSPITALS.map((rs, idx) => [
-    `rs-${String(idx + 1).padStart(4, '0')}`,
+  const values = INDONESIA_REFERRAL_HOSPITALS.map((rs) => [
+    `rs-${rs.kodeFaskes.toLowerCase()}`,
     rs.kodeFaskes,
     rs.nama,
     rs.kelas,
@@ -451,6 +453,7 @@ async function seedReferralHospitalsToPool(pool: mysql.Pool) {
      VALUES ?`,
     [values]
   );
+  masterHospitalsSyncedInProcess = true;
 }
 
 /**
@@ -1015,7 +1018,7 @@ export const mySqlDb = {
       `);
 
       const [countRows]: [any, any] = await pool.query('SELECT COUNT(*) AS cnt FROM rs_rujukan');
-      if ((countRows[0]?.cnt || 0) === 0) {
+      if (!masterHospitalsSyncedInProcess || (countRows[0]?.cnt || 0) < INDONESIA_REFERRAL_HOSPITALS.length) {
         await seedReferralHospitalsToPool(pool);
       }
 
@@ -1026,14 +1029,14 @@ export const mySqlDb = {
         params.push(cleanProv);
       }
       if (cleanSearch) {
-        whereClauses.push('(LOWER(nama) LIKE ? OR LOWER(kode_faskes) LIKE ? OR LOWER(kota) LIKE ? OR LOWER(provinsi) LIKE ?)');
+        whereClauses.push('(LOWER(nama) LIKE ? OR LOWER(kode_faskes) LIKE ? OR LOWER(kota) LIKE ? OR LOWER(provinsi) LIKE ? OR LOWER(COALESCE(alamat, \'\')) LIKE ?)');
         const likeTerm = `%${cleanSearch}%`;
-        params.push(likeTerm, likeTerm, likeTerm, likeTerm);
+        params.push(likeTerm, likeTerm, likeTerm, likeTerm, likeTerm);
       }
 
       const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
       const [rows]: [any, any] = await pool.query(
-        `SELECT * FROM rs_rujukan ${whereSql} ORDER BY provinsi = 'Jawa Timur' DESC, kota LIKE '%Sidoarjo%' DESC, provinsi ASC, nama ASC`,
+        `SELECT * FROM rs_rujukan ${whereSql} ORDER BY provinsi = 'Jawa Timur' DESC, kota LIKE '%Sidoarjo%' DESC, (kota LIKE '%Surabaya%' OR kota LIKE '%Mojokerto%' OR kota LIKE '%Pasuruan%' OR kota LIKE '%Gresik%') DESC, provinsi ASC, nama ASC`,
         params
       );
 
