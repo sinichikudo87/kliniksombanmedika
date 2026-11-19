@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueue } from '@/lib/queue-context';
 import { useAuth } from '@/lib/auth-context';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { encryptData, decryptData, maskSensitive } from '@/lib/encrypted-db';
 import { showSwalAlert, showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
@@ -68,6 +70,13 @@ export const SecurityDatabaseView: React.FC = () => {
   const [editPoliRuang, setEditPoliRuang] = useState<string>('');
   const [editPoliSip, setEditPoliSip] = useState<string>('');
   const [savingPoli, setSavingPoli] = useState<boolean>(false);
+
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  useLockBodyScroll(Boolean(editingUser || editingPoli || selectedUserToReset));
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -855,9 +864,18 @@ export const SecurityDatabaseView: React.FC = () => {
           </div>
 
           {/* Edit User Modal */}
-          {editingUser && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-              <div className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
+          {mounted && editingUser && typeof document !== 'undefined' && createPortal(
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-hidden animate-in fade-in duration-150"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !savingUser) setEditingUser(null);
+              }}
+            >
+              <div
+                className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto overflow-x-hidden modal-scroll">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                   <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
                     <Edit3 className="w-5 h-5" />
@@ -946,14 +964,25 @@ export const SecurityDatabaseView: React.FC = () => {
                     )}
                   </button>
                 </div>
+                </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {/* Edit Poli & Dokter Modal */}
-          {editingPoli && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-              <div className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
+          {mounted && editingPoli && typeof document !== 'undefined' && createPortal(
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-hidden animate-in fade-in duration-150"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !savingPoli) setEditingPoli(null);
+              }}
+            >
+              <div
+                className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto overflow-x-hidden modal-scroll">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                   <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
                     <Stethoscope className="w-5 h-5" />
@@ -1048,14 +1077,25 @@ export const SecurityDatabaseView: React.FC = () => {
                     )}
                   </button>
                 </div>
+                </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
 
           {/* Reset Confirmation Modal */}
-          {selectedUserToReset && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150">
-              <div className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 p-5 sm:p-6 space-y-4">
+          {mounted && selectedUserToReset && typeof document !== 'undefined' && createPortal(
+            <div
+              className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-hidden animate-in fade-in duration-150"
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !resettingUser) setSelectedUserToReset(null);
+              }}
+            >
+              <div
+                className="relative w-full max-w-md max-h-[90vh] bg-white rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-5 sm:p-6 space-y-4 overflow-y-auto overflow-x-hidden modal-scroll">
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
                   <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
                     <RotateCcw className="w-5 h-5" />
@@ -1127,8 +1167,10 @@ export const SecurityDatabaseView: React.FC = () => {
                     )}
                   </button>
                 </div>
+                </div>
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       )}
@@ -1512,9 +1554,8 @@ export const SecurityDatabaseView: React.FC = () => {
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(rawServerDb);
-                      showSwalSuccess('Data sistem berhasil disalin ke clipboard!');
                     }}
-                    className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1 font-semibold"
+                    className="text-xs text-slate-600 hover:text-slate-900 flex items-center gap-1 font-semibold cursor-pointer"
                   >
                     <Copy className="w-3.5 h-3.5" />
                     <span>Salin JSON</span>

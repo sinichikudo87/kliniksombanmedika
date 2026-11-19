@@ -30,11 +30,9 @@ import {
   WifiOff,
   CheckCircle2,
   AlertTriangle,
-  FileText,
 } from 'lucide-react';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import { exportWsFktpExcel } from '@/lib/client-excel-export';
-import { exportOperatingManualPdf } from '@/lib/client-pdf-manual';
 
 function MainApp() {
   const { user, isAuthenticated, isAuthLoaded } = useAuth();
@@ -106,9 +104,14 @@ function MainApp() {
     // If user was logged in and now logged out, return to Login Form screen
     if (prevAuthRef.current && !isAuthenticated) {
       setIsPatientBypass(false);
+      setCurrentTab('KIOSK');
+    } else if (!prevAuthRef.current && isAuthenticated && isPatientBypass) {
+      // Staff logged in from Patient Kiosk Mode -> transition smoothly to Operator Dashboard
+      setIsPatientBypass(false);
+      setCurrentTab('OPERATOR');
     }
     prevAuthRef.current = isAuthenticated;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isPatientBypass]);
 
   // Loading state during initial client hydration to ensure SSR and Client match
   if (!isAuthLoaded) {
@@ -171,8 +174,10 @@ function MainApp() {
     );
   }
 
-  // If in TV Mode, render fullscreen waiting room display
-  if (currentTab === 'TV') {
+  const effectiveTab = isAuthenticated ? currentTab : 'KIOSK';
+
+  // If in TV Mode, render fullscreen waiting room display (only when authenticated)
+  if (effectiveTab === 'TV') {
     return <TvDisplayMode onExitFullscreen={() => setCurrentTab('OPERATOR')} />;
   }
 
@@ -193,24 +198,25 @@ function MainApp() {
 
       <div className="relative z-20">
         <Navbar
-          currentTab={currentTab}
+          currentTab={effectiveTab}
           setCurrentTab={setCurrentTab}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          onExitPatientMode={!isAuthenticated ? () => setIsPatientBypass(false) : undefined}
         />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {currentTab === 'KIOSK' && <KioskMode />}
-          {currentTab === 'OPERATOR' && (
+        <main className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 ${isAuthenticated ? 'pt-[118px] lg:pt-24' : 'pt-22 lg:pt-24'}`}>
+          {effectiveTab === 'KIOSK' && <KioskMode />}
+          {effectiveTab === 'OPERATOR' && (
             <OperatorDashboard onNavigateToPcare={() => setCurrentTab('PCARE')} />
           )}
-          {currentTab === 'PCARE' && (
+          {effectiveTab === 'PCARE' && (
             <PcareView
               onOpenSettings={() => setIsSettingsOpen(true)}
               onNavigateToOperator={() => setCurrentTab('OPERATOR')}
             />
           )}
-          {currentTab === 'LAPORAN' && <LaporanView />}
-          {currentTab === 'SECURITY' && (
+          {effectiveTab === 'LAPORAN' && <LaporanView />}
+          {effectiveTab === 'SECURITY' && (
             isRmeAdmin ? (
               <SecurityDatabaseView />
             ) : (
@@ -247,9 +253,9 @@ function MainApp() {
                 display TV ruang tunggu, dan penyimpanan rekam medis terenkripsi AES-256-GCM.
               </p>
 
-              {/* Direct Excel & PDF Manual Download Actions in Footer */}
-              <div className="pt-2 flex flex-wrap items-center gap-2">
-                {isAuthenticated && (
+              {/* Direct Excel Download Action in Footer - Hanya tampil jika sudah login */}
+              {isAuthenticated && (
+                <div className="pt-2 flex flex-wrap items-center gap-2">
                   <button
                     onClick={handleDownloadExcel}
                     disabled={isDownloadingExcel}
@@ -260,33 +266,12 @@ function MainApp() {
                     <span>{isDownloadingExcel ? 'Menyiapkan File...' : 'Download Excel WS FKTP (.xlsx)'}</span>
                     <Download className="w-3.5 h-3.5 ml-0.5" />
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const ok = exportOperatingManualPdf({
-                      namaFaskes: bpjsConfig.namaFaskes,
-                      kdFaskes: bpjsConfig.kdFaskes,
-                      environment: bpjsConfig.environment,
-                    });
-                    if (ok) {
-                      showSwalSuccess('File PDF Panduan Pengoperasian berhasil diunduh.', 'Unduh Berhasil');
-                    }
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold rounded-xl text-xs shadow-2xs transition-all cursor-pointer"
-                  title="Unduh Panduan Pengoperasian Aplikasi (PDF)"
-                >
-                  <FileText className="w-4 h-4 text-emerald-600" />
-                  <span>Panduan Pengoperasian (.pdf)</span>
-                  <Download className="w-3.5 h-3.5 ml-0.5" />
-                </button>
-                {isAuthenticated && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-emerald-200 text-emerald-700 text-[11px] font-medium bg-emerald-50">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Format Resmi BPJS KC Sidoarjo
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Kredensial & Status Bridging - Hanya tampil jika sudah login */}
@@ -367,7 +352,7 @@ function MainApp() {
 
           <div className="mt-8 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
             <p suppressHydrationWarning>© {new Date().getFullYear()} {bpjsConfig.namaFaskes}. Seluruh hak cipta dilindungi.</p>
-            <p>Bridging Trustmark API v2.0 · Next.js 15 App Router · WebCrypto AES-GCM</p>
+            <p>{isAuthenticated ? 'Layanan Antrean Online & Rekam Medis Terintegrasi' : 'Anjungan Pendaftaran Mandiri Pasien'}</p>
           </div>
         </div>
       </footer>

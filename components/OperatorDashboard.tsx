@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueue } from '@/lib/queue-context';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { maskSensitive } from '@/lib/encrypted-db';
 import { BPJS_TASK_NAMES } from '@/lib/bpjs-bridging';
 import { QueueItem } from '@/types/queue';
@@ -56,6 +58,13 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showUnmasked, setShowUnmasked] = useState<boolean>(false);
   const [showManualModal, setShowManualModal] = useState<boolean>(false);
+
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  useLockBodyScroll(showManualModal);
 
   // Manual Add Form State
   const [manualNama, setManualNama] = useState('');
@@ -127,7 +136,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
   const handleCallNext = async () => {
     if (nextWaiting) {
       await callQueue(nextWaiting.id);
-      showSwalSuccess(`Memanggil pasien antrean ${nextWaiting.nomorAntrean} (${nextWaiting.namaPasien})`, 'Panggilan Antrean');
     }
   };
 
@@ -371,7 +379,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                 <button
                   onClick={async () => {
                     await callQueue(activeServing.id);
-                    showSwalSuccess(`Memanggil ulang nomor ${activeServing.nomorAntrean} (${activeServing.namaPasien})`, 'Panggil Ulang');
                   }}
                   className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold border border-slate-700 transition-colors whitespace-nowrap cursor-pointer"
                   title="Panggil Ulang Pasien dengan TTS"
@@ -384,7 +391,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   <button
                     onClick={async () => {
                       await startService(activeServing.id);
-                      showSwalSuccess(`Pelayanan periksa dimulai untuk ${activeServing.nomorAntrean}`, 'Pelayanan Dimulai');
                     }}
                     className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-teal-600 hover:bg-teal-500 text-white rounded-xl text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
                   >
@@ -396,7 +402,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                 <button
                   onClick={async () => {
                     await finishQueue(activeServing.id);
-                    showSwalSuccess(`Pelayanan antrean ${activeServing.nomorAntrean} selesai. Data tersinkron ke BPJS!`, 'Pelayanan Selesai');
                   }}
                   className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
                 >
@@ -419,7 +424,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                   <button
                     onClick={async () => {
                       await transferToPharmacy(activeServing.id);
-                      showSwalSuccess(`Resep obat untuk ${activeServing.namaPasien} berhasil diteruskan ke Loket Farmasi!`, 'Resep Obat Terkirim');
                     }}
                     className="h-10 flex items-center justify-center gap-1.5 px-3.5 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
                     title="Buat tiket resep obat ke Farmasi"
@@ -432,7 +436,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                 <button
                   onClick={async () => {
                     await skipQueue(activeServing.id);
-                    showSwalAlert(`Pasien antrean ${activeServing.nomorAntrean} dilewati.`, { title: 'Antrean Dilewati', icon: 'info', timer: 2000 });
                   }}
                   className="h-10 flex items-center justify-center gap-1.5 px-3 bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 rounded-xl text-xs font-semibold border border-slate-700 hover:border-rose-800/40 transition-colors whitespace-nowrap cursor-pointer"
                   title="Lewati Pasien"
@@ -642,7 +645,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                             <button
                               onClick={async () => {
                                 await callQueue(item.id);
-                                showSwalSuccess(`Memanggil antrean ${item.nomorAntrean} (${item.namaPasien})`, 'Panggilan Antrean');
                               }}
                               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
                             >
@@ -653,7 +655,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                             <button
                               onClick={async () => {
                                 await startService(item.id);
-                                showSwalSuccess(`Pelayanan periksa dimulai untuk ${item.nomorAntrean}`, 'Pelayanan Dimulai');
                               }}
                               className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
                             >
@@ -664,7 +665,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                             <button
                               onClick={async () => {
                                 await finishQueue(item.id);
-                                showSwalSuccess(`Pelayanan ${item.nomorAntrean} (${item.namaPasien}) selesai!`, 'Pelayanan Selesai');
                               }}
                               className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-semibold transition-colors cursor-pointer"
                             >
@@ -674,7 +674,6 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                           <button
                             onClick={async () => {
                               await cancelQueue(item.id);
-                              showSwalAlert(`Antrean ${item.nomorAntrean} dibatalkan.`, { title: 'Antrean Dibatalkan', icon: 'info', timer: 2000 });
                             }}
                             className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                             title="Batalkan Antrean"
@@ -693,9 +692,18 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
       </div>
 
       {/* MODAL: DAFTARKAN PASIEN MANUAL / WALK-IN OLEH PETUGAS */}
-      {showManualModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-md w-full my-auto max-h-[92vh] overflow-y-auto p-5 sm:p-6 shadow-xl border border-slate-200">
+      {mounted && showManualModal && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-4 overflow-hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowManualModal(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 sm:p-6 overflow-y-auto overflow-x-hidden modal-scroll">
             <h3 className="font-bold text-slate-900 text-base mb-1">
               Pendaftaran Pasien Loket Admisi
             </h3>
@@ -816,8 +824,10 @@ export const OperatorDashboard: React.FC<OperatorDashboardProps> = ({ onNavigate
                 </button>
               </div>
             </form>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

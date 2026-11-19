@@ -17,9 +17,10 @@ export const showSwalAlert = (
     title: options?.title || 'Informasi Sistem',
     html: `<div style="font-size: 0.95rem; line-height: 1.5; font-weight: 500; color: #ffffff;">${message}</div>`,
     icon: options?.icon || 'success',
-    timer: options?.timer ?? 2500,
+    timer: options?.timer ?? 4500,
     timerProgressBar: true,
     showConfirmButton: false,
+    showCloseButton: true,
     color: '#ffffff',
     // Background hijau gradient sesuai permintaan user
     background: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
@@ -33,15 +34,15 @@ export const showSwalAlert = (
 };
 
 export const showSwalSuccess = (message: string, title: string = 'Berhasil') => {
-  return showSwalAlert(message, { title, icon: 'success', timer: 2500 });
+  return showSwalAlert(message, { title, icon: 'success', timer: 4500 });
 };
 
 export const showSwalError = (message: string, title: string = 'Perhatian') => {
-  return showSwalAlert(message, { title, icon: 'error', timer: 3000 });
+  return showSwalAlert(message, { title, icon: 'error', timer: 6000 });
 };
 
 export const showSwalInfo = (message: string, title: string = 'Informasi') => {
-  return showSwalAlert(message, { title, icon: 'info', timer: 2500 });
+  return showSwalAlert(message, { title, icon: 'info', timer: 4500 });
 };
 
 export default Swal;

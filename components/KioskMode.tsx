@@ -70,7 +70,6 @@ export const KioskMode: React.FC = () => {
       if (res.success && res.data) {
         setVerifiedPatient(res.data);
         setStep('SELECT_POLI');
-        showSwalSuccess(`Peserta BPJS ${res.data.nama} terverifikasi aktif!`, 'Bridging Terhubung');
       } else {
         setVerifyError(res.message || 'Data peserta BPJS tidak ditemukan');
         showSwalError(res.message || 'Data peserta BPJS tidak ditemukan pada server bridging.', 'Peserta Tidak Ditemukan');

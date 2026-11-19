@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           success: true,
           message: mustChange
             ? 'Login berhasil. Terdeteksi password awal default (000000). Silakan ubah password baru Anda.'
-            : (data.message || `Login sukses via ${data.source === 'MYSQL' ? 'MySQL Database' : 'Server Faskes'}`),
+            : (data.message || 'Login sukses via Server Faskes'),
           mustChangePassword: mustChange,
         };
       } else {
@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         return {
           success: true,
-          message: data.message || 'Password baru berhasil disimpan di MySQL database.',
+          message: data.message || 'Password baru berhasil disimpan di server faskes.',
         };
       } else {
         return {

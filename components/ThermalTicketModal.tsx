@@ -1,10 +1,12 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useQueue } from '@/lib/queue-context';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { QueueItem } from '@/types/queue';
-import { Printer, X, QrCode, CheckCircle2 } from 'lucide-react';
+import { Printer, X, CheckCircle2 } from 'lucide-react';
 
 interface ThermalTicketModalProps {
   queueItem: QueueItem | null;
@@ -13,6 +15,13 @@ interface ThermalTicketModalProps {
 
 export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueItem, onClose }) => {
   const { bpjsConfig } = useQueue();
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  useLockBodyScroll(Boolean(queueItem));
+
   if (!queueItem) return null;
 
   const handlePrint = () => {
@@ -31,12 +40,21 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
     minute: '2-digit',
   });
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative bg-white text-slate-800 rounded-2xl max-w-[340px] w-full my-auto max-h-[92vh] overflow-y-auto p-5 sm:p-6 shadow-2xl border border-slate-200/90">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-4 overflow-hidden"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="relative bg-white text-slate-800 rounded-2xl max-w-[360px] w-full max-h-[90vh] shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 sm:p-6 overflow-y-auto overflow-x-hidden modal-scroll">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-xl hover:bg-slate-100 print:hidden"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors p-1.5 rounded-xl hover:bg-slate-100 print:hidden cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -151,7 +169,11 @@ export const ThermalTicketModal: React.FC<ThermalTicketModalProps> = ({ queueIte
             Tutup
           </button>
         </div>
+        </div>
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 };

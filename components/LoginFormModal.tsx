@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
   User,
@@ -15,7 +16,6 @@ import {
   ArrowRight,
   X,
   RefreshCw,
-  ShieldCheck,
 } from 'lucide-react';
 
 interface LoginFormModalProps {
@@ -37,6 +37,8 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
     () => true,
     () => false
   );
+
+  useLockBodyScroll(isOpen);
 
   const handleClose = () => {
     setErrorMessage(null);
@@ -72,48 +74,42 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex min-h-screen items-center justify-center p-3 sm:p-4 md:p-6"
+      className="fixed inset-0 z-[100] overflow-hidden bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
     >
       <div
-        className="relative w-full max-w-md my-auto max-h-[92vh] overflow-y-auto bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col transform transition-all animate-in fade-in zoom-in-95 duration-200"
+        className="relative w-full max-w-[420px] max-h-[90vh] bg-white rounded-2xl shadow-2xl shadow-slate-950/35 border border-slate-200/90 flex flex-col overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Background Large Transparent Watermark Icon */}
-        <div
-          className="absolute -right-8 -bottom-10 pointer-events-none select-none text-emerald-600/[0.07] z-0"
-          aria-hidden="true"
-        >
-          <ShieldCheck className="w-56 h-56 transform -rotate-12" strokeWidth={1.2} />
-        </div>
-
         {/* Header Banner */}
-        <div className="bg-slate-50 border-b border-slate-200 p-4 sm:p-5 relative z-10">
+        <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 px-6 py-5 text-white shrink-0 relative border-b border-emerald-400/20">
           <button
             type="button"
             onClick={handleClose}
-            className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-700 p-1.5 rounded-xl hover:bg-slate-200/70 transition-colors cursor-pointer"
+            className="absolute top-4 right-4 text-emerald-200/80 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
             title="Tutup Modal"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-3 pr-8">
-            <div className="relative w-10 h-10 rounded-xl overflow-hidden bg-white border border-slate-200 shadow-2xs flex items-center justify-center shrink-0">
+          <div className="flex items-center gap-3.5 pr-9">
+            <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-white border border-white/20 shadow-xs flex items-center justify-center shrink-0">
               <Image
                 src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
                 alt="Logo Somban Medika"
-                width={40}
-                height={40}
+                width={44}
+                height={44}
                 className="w-full h-full object-contain p-0.5"
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div>
-              <h3 className="text-base font-bold tracking-tight text-slate-900">Login Petugas Faskes</h3>
-              <p className="text-xs text-slate-500">
+            <div className="min-w-0">
+              <h3 className="text-base font-bold tracking-tight text-white">
+                Login Petugas Faskes
+              </h3>
+              <p className="text-xs text-emerald-100/80 mt-0.5">
                 Masukkan kredensial akun klinik Anda
               </p>
             </div>
@@ -121,10 +117,10 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Form Body */}
-        <div className="p-4 sm:p-5 space-y-3.5 relative z-10">
-          <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+        <div className="p-6 space-y-5 overflow-y-auto overflow-x-hidden modal-scroll">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Username / ID Petugas
               </label>
               <div className="relative">
@@ -134,32 +130,30 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Masukkan username akun petugas"
-                  className="w-full text-xs py-2.5 pl-9 pr-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono focus:border-emerald-600 focus:bg-white focus:outline-none transition-colors"
+                  className="w-full h-11 text-sm pl-10 pr-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:bg-white focus:outline-none transition-all"
                 />
-                <User className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-700 uppercase">
-                  Password Akun
-                </label>
-              </div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Password Akun
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Masukkan password..."
-                  className="w-full text-xs py-2.5 pl-9 pr-10 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 font-mono focus:border-emerald-600 focus:bg-white focus:outline-none transition-colors"
+                  placeholder="Masukkan password akun"
+                  className="w-full h-11 text-sm pl-10 pr-10 bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/15 focus:bg-white focus:outline-none transition-all"
                 />
-                <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 cursor-pointer transition-colors"
                   title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -169,7 +163,7 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
 
             {/* Error Message */}
             {errorMessage && (
-              <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-start gap-2">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-900 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <span>{errorMessage}</span>
               </div>
@@ -177,7 +171,7 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
 
             {/* Success Message */}
             {successMessage && (
-              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2 font-medium">
+              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2 font-medium">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <span>{successMessage}</span>
               </div>
@@ -187,7 +181,7 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 px-4 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center justify-center gap-2 mt-2 cursor-pointer"
+              className="w-full h-11 px-4 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold rounded-xl text-sm shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -203,13 +197,11 @@ export const LoginFormModal: React.FC<LoginFormModalProps> = ({ isOpen, onClose 
             </button>
           </form>
 
-          {/* Footer Diagnostic Note */}
-          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 font-medium">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span>Sistem Faskes Terhubung</span>
-            </span>
-            <span>Autentikasi Faskes</span>
+          {/* Footer Note */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs text-slate-500">
+            <span>Autentikasi Petugas Klinik</span>
+            <span className="text-slate-400">·</span>
+            <span>Akses Terenkripsi</span>
           </div>
         </div>
       </div>

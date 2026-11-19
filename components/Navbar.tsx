@@ -8,7 +8,6 @@ import { LoginFormModal } from '@/components/LoginFormModal';
 import { ChangePasswordModal } from '@/components/ChangePasswordModal';
 import { chimePlayer } from '@/lib/tts-announcer';
 import { showSwalSuccess, showSwalInfo } from '@/lib/swal';
-import { exportOperatingManualPdf } from '@/lib/client-pdf-manual';
 import {
   CreditCard,
   Tv,
@@ -27,16 +26,21 @@ import {
   X,
   BarChart3,
   UploadCloud,
-  FileText,
 } from 'lucide-react';
 
 interface NavbarProps {
   currentTab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'LAPORAN' | 'SECURITY' | 'TV';
   setCurrentTab: (tab: 'KIOSK' | 'OPERATOR' | 'PCARE' | 'LAPORAN' | 'SECURITY' | 'TV') => void;
   onOpenSettings: () => void;
+  onExitPatientMode?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpenSettings }) => {
+export const Navbar: React.FC<NavbarProps> = ({
+  currentTab,
+  setCurrentTab,
+  onOpenSettings,
+  onExitPatientMode,
+}) => {
   const {
     bpjsConfig,
     switchBpjsEnvironment,
@@ -91,16 +95,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
 
   const handleTestChime = async () => {
     await chimePlayer.playChime();
-    showSwalSuccess('Bunyi bel antrean berhasil dimainkan!', 'Test Bel Notifikasi');
   };
 
   const handleToggleAudio = () => {
-    const nextVal = !audioEnabled;
-    setAudioEnabled(nextVal);
-    showSwalSuccess(
-      nextVal ? 'Audio bel & suara panggil TTS diaktifkan.' : 'Audio dinonaktifkan (hening).',
-      nextVal ? 'Audio Aktif' : 'Audio Nonaktif'
-    );
+    setAudioEnabled(!audioEnabled);
   };
 
   const isProdMode = bpjsConfig.environment === 'production';
@@ -112,17 +110,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
     try {
       const res = await switchBpjsEnvironment(targetEnv);
       const label = targetEnv === 'production' ? 'Production (Live)' : 'Development (Tester)';
-      if (res.success) {
-        const uploadedCount = res.syncResult?.uploadedTotal || 0;
-        const syncNote =
-          uploadedCount > 0 ? ` dan ${uploadedCount} data tertunda diunggah ke BPJS.` : '.';
+      const uploadedCount = res.syncResult?.uploadedTotal || 0;
+      if (res.success && uploadedCount > 0) {
         showSwalSuccess(
-          `Mode ${label} aktif dan terhubung ke BPJS (${res.latencyMs} ms)${syncNote}`,
+          `Mode ${label} aktif terhubung (${res.latencyMs} ms) & ${uploadedCount} data tertunda berhasil diunggah ke BPJS.`,
           `BPJS Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'}`
         );
-      } else {
+      } else if (!res.success && res.message) {
         showSwalInfo(
-          `Mode dialihkan ke ${label} & tersimpan (${res.baseUrl}). Ping status: ${res.message || 'server cloud preview tidak masuk whitelist IP BPJS'}.`,
+          `Mode ${label} disimpan (${res.baseUrl}). Status: ${res.message}`,
           `Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'} Disimpan`
         );
       }
@@ -149,12 +145,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs">
+      <header className="fixed top-0 inset-x-0 z-40 bg-gradient-to-r from-emerald-950/95 via-teal-900/95 to-slate-900/95 backdrop-blur-md border-b border-emerald-400/25 shadow-lg shadow-emerald-950/20">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 gap-3">
             {/* Left: Brand Identity */}
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="relative w-9 h-9 rounded-xl overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
+              <div className="relative w-9 h-9 rounded-xl overflow-hidden bg-white border border-emerald-200/40 shadow-xs flex items-center justify-center shrink-0">
                 <Image
                   src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
                   alt="Logo Somban Medika"
@@ -166,156 +162,162 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                 />
               </div>
               <div className="min-w-0">
-                <div className="font-bold text-sm text-slate-900 tracking-tight truncate max-w-[170px] sm:max-w-[240px]">
+                <div className="font-bold text-sm text-white tracking-tight truncate max-w-[170px] sm:max-w-[240px]">
                   {bpjsConfig.namaFaskes}
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
-                  <span
-                    className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${
-                      isBridgingOnline ? 'bg-emerald-500' : 'bg-amber-500'
-                    }`}
-                  />
-                  <span className={`truncate ${isBridgingOnline ? 'text-emerald-700' : 'text-amber-700'}`}>
-                    {isBridgingOnline ? 'Bridging BPJS Aktif' : 'Bridging BPJS Off'}
-                  </span>
-                </div>
+                {isAuthenticated ? (
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium">
+                    <span
+                      className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${
+                        isBridgingOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                      }`}
+                    />
+                    <span className={`truncate ${isBridgingOnline ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      {isBridgingOnline ? 'Bridging BPJS Aktif' : 'Bridging BPJS Off'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] font-medium text-emerald-200/85 truncate">
+                    Kios Layanan Pasien
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Center: Clean Uniform Navigation Tabs (Desktop) */}
-            <nav className="hidden lg:flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200/70">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentTab === item.id;
-                return (
+            {/* Center: Navigation Tabs (Desktop) */}
+            {isAuthenticated ? (
+              <nav className="hidden lg:flex items-center gap-1 bg-white/10 backdrop-blur-xs p-1 rounded-xl border border-white/15">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setCurrentTab(item.id)}
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-white text-emerald-900 shadow-sm'
+                          : 'text-emerald-100/90 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-700' : 'text-emerald-300/80'}`} />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+                {isRmeAdmin && (
                   <button
-                    key={item.id}
-                    onClick={() => setCurrentTab(item.id)}
+                    onClick={() => setCurrentTab('SECURITY')}
                     className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-slate-900/5'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      currentTab === 'SECURITY'
+                        ? 'bg-white text-emerald-900 shadow-sm'
+                        : 'text-emerald-100/90 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-emerald-600' : 'text-slate-400'}`} />
-                    <span>{item.label}</span>
+                    <Database className={`w-3.5 h-3.5 ${currentTab === 'SECURITY' ? 'text-emerald-700' : 'text-emerald-300/80'}`} />
+                    <span>RME &amp; Keamanan</span>
                   </button>
-                );
-              })}
-              {isRmeAdmin && (
+                )}
+              </nav>
+            ) : (
+              <nav className="hidden lg:flex items-center gap-1 bg-white/10 backdrop-blur-xs p-1 rounded-xl border border-white/15">
                 <button
-                  onClick={() => setCurrentTab('SECURITY')}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                    currentTab === 'SECURITY'
-                      ? 'bg-white text-emerald-800 shadow-xs ring-1 ring-slate-900/5'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                  }`}
+                  type="button"
+                  onClick={() => setCurrentTab('KIOSK')}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-white text-emerald-900 shadow-sm cursor-default"
                 >
-                  <Database className={`w-3.5 h-3.5 ${currentTab === 'SECURITY' ? 'text-emerald-600' : 'text-slate-400'}`} />
-                  <span>RME &amp; Keamanan</span>
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Kios Mandiri Pasien</span>
                 </button>
-              )}
-            </nav>
+              </nav>
+            )}
 
-            {/* Right: Mode Slide Switch, Audio Toggle & Unified Account/Menu Dropdown */}
-            <div className="flex items-center gap-2 shrink-0" ref={menuRef}>
-              <label
-                title={
-                  isProdMode
-                    ? 'Mode Koneksi BPJS: Production (Live) — geser untuk kembali ke Dev/Tester'
-                    : 'Mode Koneksi BPJS: Development (Tester) — geser untuk beralih ke Production'
-                }
-                className={`hidden sm:inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl border transition-colors select-none ${
-                  isSwitchingEnv ? 'opacity-60 cursor-wait' : 'cursor-pointer'
-                } ${
-                  isProdMode
-                    ? 'bg-emerald-50/90 border-emerald-200'
-                    : 'bg-amber-50/90 border-amber-200'
-                }`}
-              >
-                <span
-                  className={`text-[10px] font-extrabold tracking-wide ${
-                    !isProdMode ? 'text-amber-800' : 'text-slate-400'
-                  }`}
+            {/* Right Controls */}
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2 shrink-0" ref={menuRef}>
+                <label
+                  title={
+                    isProdMode
+                      ? 'Mode Koneksi BPJS: Production (Live) — geser untuk kembali ke Dev/Tester'
+                      : 'Mode Koneksi BPJS: Development (Tester) — geser untuk beralih ke Production'
+                  }
+                  className={`hidden sm:inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl border transition-colors select-none ${
+                    isSwitchingEnv ? 'opacity-60 cursor-wait' : 'cursor-pointer'
+                  } bg-white/10 border-white/20 hover:bg-white/15`}
                 >
-                  DEV
-                </span>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  aria-label="Pilih Mode Koneksi BPJS Dev atau Production"
-                  checked={isProdMode}
-                  disabled={isSwitchingEnv}
-                  onChange={(e) => handleToggleBpjsMode(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-amber-500 transition-colors peer-checked:bg-emerald-600">
                   <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
-                      isProdMode ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                    className={`text-[10px] font-extrabold tracking-wide ${
+                      !isProdMode ? 'text-amber-300' : 'text-slate-300/60'
                     }`}
+                  >
+                    DEV
+                  </span>
+                  <input
+                    type="checkbox"
+                    role="switch"
+                    aria-label="Pilih Mode Koneksi BPJS Dev atau Production"
+                    checked={isProdMode}
+                    disabled={isSwitchingEnv}
+                    onChange={(e) => handleToggleBpjsMode(e.target.checked)}
+                    className="sr-only peer"
                   />
-                </span>
-                <span
-                  className={`text-[10px] font-extrabold tracking-wide ${
-                    isProdMode ? 'text-emerald-800' : 'text-slate-400'
+                  <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full bg-amber-500 transition-colors peer-checked:bg-emerald-500">
+                    <span
+                      className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
+                        isProdMode ? 'translate-x-[18px]' : 'translate-x-[3px]'
+                      }`}
+                    />
+                  </span>
+                  <span
+                    className={`text-[10px] font-extrabold tracking-wide ${
+                      isProdMode ? 'text-emerald-300' : 'text-slate-300/60'
+                    }`}
+                  >
+                    PROD
+                  </span>
+                </label>
+
+                <button
+                  onClick={handleToggleAudio}
+                  title={audioEnabled ? 'Audio Notifikasi Aktif' : 'Audio Dinonaktifkan'}
+                  className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
+                    audioEnabled
+                      ? 'bg-emerald-500/20 border-emerald-400/35 text-emerald-200 hover:bg-emerald-500/30'
+                      : 'bg-white/10 border-white/15 text-slate-300 hover:text-white hover:bg-white/15'
                   }`}
                 >
-                  PROD
-                </span>
-              </label>
-
-              <button
-                onClick={handleToggleAudio}
-                title={audioEnabled ? 'Audio Notifikasi Aktif' : 'Audio Dinonaktifkan'}
-                className={`h-9 w-9 rounded-xl border flex items-center justify-center transition-colors cursor-pointer ${
-                  audioEnabled
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                    : 'bg-slate-100 border-slate-200 text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-              </button>
-
-              {!isAuthenticated && (
-                <button
-                  onClick={() => setIsLoginModalOpen(true)}
-                  className="hidden sm:flex h-9 px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>Login</span>
+                  {audioEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </button>
-              )}
 
-              <div className="relative">
-                <button
-                  onClick={() => setIsMenuOpen((prev) => !prev)}
-                  className={`h-9 px-2.5 sm:px-3 rounded-xl border flex items-center gap-2 text-xs font-semibold transition-colors cursor-pointer ${
-                    isMenuOpen
-                      ? 'bg-slate-900 border-slate-900 text-white'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                  }`}
-                >
-                  {isAuthenticated && user ? (
-                    <>
-                      <span className="w-6 h-6 rounded-lg bg-emerald-700 text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                        {userInitials}
-                      </span>
-                      <span className="hidden md:inline max-w-[110px] truncate">{userDisplayName}</span>
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
-                    </>
-                  ) : (
-                    <>
-                      {isMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-                      <span className="hidden sm:inline">Menu</span>
-                    </>
-                  )}
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMenuOpen((prev) => !prev)}
+                    className={`h-9 px-2.5 sm:px-3 rounded-xl border flex items-center gap-2 text-xs font-semibold transition-colors cursor-pointer ${
+                      isMenuOpen
+                        ? 'bg-white border-white text-emerald-950 shadow-sm'
+                        : 'bg-white/15 hover:bg-white/25 border-white/20 text-white'
+                    }`}
+                  >
+                    {user ? (
+                      <>
+                        <span className="w-6 h-6 rounded-lg bg-emerald-500 text-slate-950 flex items-center justify-center font-bold text-[10px] shrink-0">
+                          {userInitials}
+                        </span>
+                        <span className="hidden md:inline max-w-[110px] truncate">{userDisplayName}</span>
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+                      </>
+                    ) : (
+                      <>
+                        {isMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                        <span className="hidden sm:inline">Menu</span>
+                      </>
+                    )}
+                  </button>
 
                 {/* Compact Popover Dropdown */}
                 {isMenuOpen && (
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-slate-200 shadow-xl p-2 space-y-1.5 z-50">
-                    {isAuthenticated && user ? (
+                    {user && (
                       <div className="px-3 py-2 bg-slate-50 rounded-xl border border-slate-100">
                         <div className="font-bold text-xs text-slate-900 truncate">{userDisplayName}</div>
                         <div className="text-[11px] text-slate-500 mt-0.5 flex items-center justify-between">
@@ -323,17 +325,6 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                           <span className="font-mono text-[10px]">KD: {bpjsConfig.kdFaskes}</span>
                         </div>
                       </div>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setIsLoginModalOpen(true);
-                          setIsMenuOpen(false);
-                        }}
-                        className="w-full py-2 px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <LogIn className="w-3.5 h-3.5" />
-                        <span>Login Petugas Faskes</span>
-                      </button>
                     )}
 
                     <div className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-2">
@@ -445,28 +436,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                       <span className="text-[10px] text-slate-400">Audio</span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        setIsMenuOpen(false);
-                        const ok = exportOperatingManualPdf({
-                          namaFaskes: bpjsConfig.namaFaskes,
-                          kdFaskes: bpjsConfig.kdFaskes,
-                          environment: bpjsConfig.environment,
-                        });
-                        if (ok) {
-                          showSwalSuccess('File PDF Panduan Pengoperasian berhasil diunduh.', 'Unduh Panduan PDF');
-                        }
-                      }}
-                      className="w-full px-3 py-2 rounded-xl hover:bg-emerald-50/70 text-left flex items-center justify-between text-xs font-semibold text-slate-800 cursor-pointer"
-                    >
-                      <span className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-emerald-700" />
-                        <span>Panduan Pengoperasian</span>
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">PDF</span>
-                    </button>
-
-                    {isAuthenticated && user && (
+                    {user && (
                       <div className="pt-1 mt-1 border-t border-slate-100 space-y-1">
                         <button
                           onClick={() => {
@@ -494,45 +464,68 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, setCurrentTab, onOpe
                 )}
               </div>
             </div>
+            ) : (
+              <div className="flex items-center gap-2 shrink-0">
+                {onExitPatientMode && (
+                  <button
+                    type="button"
+                    onClick={onExitPatientMode}
+                    className="h-9 px-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    Kembali
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="h-9 px-3.5 rounded-xl bg-emerald-400 hover:bg-emerald-300 text-slate-950 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Login Petugas</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Mobile Sub-bar (Single Clean Row, No Duplicate Drawer Tabs) */}
-          <div className="lg:hidden flex items-center py-1.5 border-t border-slate-100 gap-1 overflow-x-auto no-scrollbar">
-            {navItems.map((item) => {
-              const isActive = currentTab === item.id;
-              return (
+          {/* Mobile Sub-bar (Hanya tampil saat petugas sudah login) */}
+          {isAuthenticated && (
+            <div className="lg:hidden flex items-center py-1.5 border-t border-white/10 gap-1 overflow-x-auto no-scrollbar">
+              {navItems.map((item) => {
+                const isActive = currentTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setCurrentTab(item.id);
+                      setIsMenuOpen(false);
+                    }}
+                    className={`flex-1 min-w-[68px] py-1.5 px-2 rounded-lg text-center text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? 'bg-white text-emerald-900 shadow-xs'
+                        : 'text-emerald-100/85 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {item.mobileLabel}
+                  </button>
+                );
+              })}
+              {isRmeAdmin && (
                 <button
-                  key={item.id}
                   onClick={() => {
-                    setCurrentTab(item.id);
+                    setCurrentTab('SECURITY');
                     setIsMenuOpen(false);
                   }}
                   className={`flex-1 min-w-[68px] py-1.5 px-2 rounded-lg text-center text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                    isActive
-                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
-                      : 'text-slate-600 hover:text-slate-900'
+                    currentTab === 'SECURITY'
+                      ? 'bg-white text-emerald-900 shadow-xs'
+                      : 'text-emerald-100/85 hover:text-white hover:bg-white/10'
                   }`}
                 >
-                  {item.mobileLabel}
+                  RME
                 </button>
-              );
-            })}
-            {isRmeAdmin && (
-              <button
-                onClick={() => {
-                  setCurrentTab('SECURITY');
-                  setIsMenuOpen(false);
-                }}
-                className={`flex-1 min-w-[68px] py-1.5 px-2 rounded-lg text-center text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
-                  currentTab === 'SECURITY'
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                RME
-              </button>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 

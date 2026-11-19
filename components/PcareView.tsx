@@ -218,9 +218,6 @@ export const PcareView: React.FC<PcareViewProps> = ({
       const json = await res.json().catch(() => null);
       if (res.ok && json?.success && Array.isArray(json.visits)) {
         setPcareVisitLogs(json.visits);
-        if (showFeedback) {
-          showSwalSuccess(`Berhasil memuat ${json.visits.length} riwayat kunjungan PCare.`, 'Data Disegarkan');
-        }
       } else {
         const msg = json?.message || 'Gagal memuat riwayat kunjungan PCare.';
         setVisitsLoadError(msg);
@@ -318,10 +315,6 @@ export const PcareView: React.FC<PcareViewProps> = ({
         setRegNikInput(peserta.nik || (cleanQuery.length === 16 ? cleanQuery : ''));
         setRegNoBpjsInput(peserta.noKartu || (cleanQuery.length === 13 ? cleanQuery : ''));
         setRegNamaInput(peserta.nama || '');
-        showSwalSuccess(
-          `Peserta Ditemukan (${data.source === 'BPJS_BRIDGING_API' ? 'BPJS Bridging API' : 'Data Terdaftar Faskes'}): ${peserta.nama} (${peserta.statusPeserta?.keterangan || 'AKTIF'})`,
-          'Peserta Ditemukan'
-        );
       } else {
         setSearchPesertaResult(null);
         if (cleanQuery.length === 16) setRegNikInput(cleanQuery);
@@ -699,14 +692,15 @@ export const PcareView: React.FC<PcareViewProps> = ({
                     try {
                       const res = await switchBpjsEnvironment(targetEnv);
                       const label = targetEnv === 'production' ? 'Production (Live)' : 'Development (Tester)';
-                      if (res.success) {
+                      const uploadedCount = res.syncResult?.uploadedTotal || 0;
+                      if (res.success && uploadedCount > 0) {
                         showSwalSuccess(
-                          `Koneksi PCare mode ${label} terhubung (${res.latencyMs} ms).`,
+                          `Koneksi PCare mode ${label} terhubung (${res.latencyMs} ms) & ${uploadedCount} data tertunda berhasil diunggah ke BPJS.`,
                           `Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'} Aktif`
                         );
-                      } else {
+                      } else if (!res.success && res.message) {
                         showSwalInfo(
-                          `Mode dialihkan ke ${label} & tersimpan. Ping: ${res.message || 'menunggu whitelist IP server aktif'}.`,
+                          `Mode dialihkan ke ${label} & tersimpan. Status: ${res.message}`,
                           `Mode ${targetEnv === 'production' ? 'PROD' : 'DEV'} Disimpan`
                         );
                       }

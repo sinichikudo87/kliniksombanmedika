@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { ReferralHospital, INDONESIA_PROVINCES } from '@/lib/indonesia-hospitals';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
@@ -39,6 +40,13 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
   const [selectedProvince, setSelectedProvince] = useState('ALL');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  useLockBodyScroll(isAddModalOpen);
 
   // Add RS form states
   const [newKode, setNewKode] = useState('');
@@ -368,11 +376,20 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
         document.body
       )}
 
-      {/* Modal Tambah RS Rujukan ke MySQL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-lg w-full my-auto max-h-[92vh] overflow-y-auto p-5 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+      {/* Modal Tambah RS Rujukan */}
+      {mounted && isAddModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-xs p-3 sm:p-4 overflow-hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsAddModalOpen(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 space-y-4 overflow-y-auto overflow-x-hidden modal-scroll">
+              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
                   <Building2 className="w-4 h-4" />
@@ -516,8 +533,10 @@ export const SearchableHospitalSelect: React.FC<SearchableHospitalSelectProps> =
                 </button>
               </div>
             </form>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

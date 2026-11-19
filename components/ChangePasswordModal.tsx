@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth-context';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
   KeyRound,
@@ -45,6 +46,8 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
     () => true,
     () => false
   );
+
+  useLockBodyScroll(isOpen);
 
   if (!isOpen) return null;
 
@@ -96,21 +99,21 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   };
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex min-h-screen items-center justify-center p-3 sm:p-4 md:p-6">
-      <div className="relative w-full max-w-lg my-auto max-h-[92vh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-200 transform transition-all animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6">
+      <div className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-2xl shadow-slate-950/35 border border-slate-200/90 flex flex-col overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-5 sm:p-6 relative">
+        <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-slate-900 text-white px-6 py-5 shrink-0 relative border-b border-emerald-400/20">
           {!mustChange && (
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 text-emerald-200/80 hover:text-white p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           )}
 
           <div className="flex items-center gap-3.5 pr-8">
-            <div className="relative w-12 h-12 rounded-2xl overflow-hidden bg-white/10 border border-white/20 p-1 flex items-center justify-center shrink-0">
+            <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-white border border-white/20 p-0.5 flex items-center justify-center shrink-0">
               <Image
                 src="/assets/images/Logo-01.jpg_cdb7cbc6.jpeg"
                 alt="Logo Somban Medika"
@@ -126,12 +129,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                   {mustChange ? 'Wajib Ganti Password Awal' : 'Ubah Password Akun Petugas'}
                 </h3>
                 {mustChange && (
-                  <span className="bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    Keamanan Faskes
+                  <span className="text-[11px] font-semibold text-amber-300">
+                    · Keamanan Faskes
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-300 break-words">
+              <p className="text-xs text-emerald-100/80 break-words mt-0.5">
                 Akun: <strong className="text-white font-mono">{user?.username}</strong> ({user?.namaLengkap || (user as any)?.nama_lengkap || user?.username})
               </p>
             </div>
@@ -139,7 +142,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto overflow-x-hidden flex-1 modal-scroll">
           {mustChange ? (
             <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3 text-xs text-amber-900">
               <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />

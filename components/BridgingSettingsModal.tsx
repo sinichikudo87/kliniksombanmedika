@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueue } from '@/lib/queue-context';
+import { useLockBodyScroll } from '@/hooks/useLockBodyScroll';
 import { getBpjsHeaders, resolveBpjsBaseUrlForEnv } from '@/lib/bpjs-bridging';
 import { showSwalSuccess, showSwalError } from '@/lib/swal';
 import {
@@ -182,6 +184,13 @@ const BridgingSettingsModalInner: React.FC<{
   onClose: () => void;
   onOpenPcare?: () => void;
 }> = ({ onClose, onOpenPcare }) => {
+  const mounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  useLockBodyScroll(true);
+
   const {
     bpjsConfig,
     updateBpjsConfig,
@@ -357,9 +366,17 @@ const BridgingSettingsModalInner: React.FC<{
     setSandboxHeaders(headers);
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-3xl lg:max-w-5xl w-full p-5 sm:p-6 shadow-xl border border-slate-200/90 relative max-h-[92vh] flex flex-col">
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 backdrop-blur-sm p-3 sm:p-4 overflow-hidden"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="bg-white rounded-2xl max-w-3xl lg:max-w-5xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200/90 relative max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
@@ -821,7 +838,6 @@ const BridgingSettingsModalInner: React.FC<{
                             if (typeof navigator !== 'undefined' && navigator.clipboard) {
                               navigator.clipboard.writeText(baseUrl);
                             }
-                            showSwalSuccess('URL bridging berhasil disalin.');
                           }}
                           className="flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-sans font-semibold shrink-0 cursor-pointer"
                         >
@@ -1785,4 +1801,7 @@ const BridgingSettingsModalInner: React.FC<{
       </div>
     </div>
   );
+
+  if (!mounted || typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 };
